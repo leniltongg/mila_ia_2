@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de {{ nome_aluno }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            color: #333;
+        }
+        h1, h2, h3 {
+            color: #4CAF50;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            margin: auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="text-center">Relatório Educacional</h1>
+    <h2 class="text-center">Aluno: {{ nome_aluno }}</h2>
+
+    {% if desempenho_por_disciplina %}
+        {% for disciplina, resultados in desempenho_por_disciplina.items() %}
+        <h3>Disciplina: {{ disciplina }}</h3>
+        <p>{{ pareceres[disciplina] }}</p>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Assunto</th>
+                    <th>Total de Questões</th>
+                    <th>Acertos</th>
+                    <th>% Acertos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for resultado in resultados %}
+                <tr>
+                    <td>{{ resultado['assunto'] }}</td>
+                    <td>{{ resultado['total'] }}</td>
+                    <td>{{ resultado['acertos'] }}</td>
+                    <td>{{ resultado['porcentagem'] }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Gráfico de Desempenho -->
+        <h3 class="text-center mt-4">Gráfico de Desempenho Geral</h3>
+        <div class="text-center">
+            <img src="data:image/png;base64,{{ grafico_base64 }}" alt="Gráfico de Desempenho" class="img-fluid">
+        </div>
+
+
+        <!-- Gráfico de Desempenho por Disciplina -->
+        <div class="chart-container">
+            <canvas id="chart-{{ loop.index }}"></canvas>
+        </div>
+        <script>
+            const ctx{{ loop.index }} = document.getElementById('chart-{{ loop.index }}').getContext('2d');
+            new Chart(ctx{{ loop.index }}, {
+                type: 'bar',
+                data: {
+                    labels: [{% for resultado in resultados %}'{{ resultado['assunto'] }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+                    datasets: [{
+                        label: 'Desempenho (%)',
+                        data: [{% for resultado in resultados %}{{ resultado['porcentagem'] }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `${context.raw}%`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+        </script>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted text-center">Nenhum dado de desempenho disponível para este aluno.</p>
+    {% endif %}
+
+    <div class="footer">
+        &copy; Sistema Educacional Inteligente
+    </div>
+</body>
+</html>

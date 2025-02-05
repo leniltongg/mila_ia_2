@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}
+Relatório de {{ aluno }}
+{% endblock %}
+
+{% block content %}
+<h2>Relatório de {{ aluno }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Assunto</th>
+            <th>Total de Perguntas</th>
+            <th>Total de Acertos</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for assunto, total_perguntas, total_acertos in desempenho %}
+        <tr>
+            <td>{{ assunto }}</td>
+            <td>{{ total_perguntas }}</td>
+            <td>{{ total_acertos }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

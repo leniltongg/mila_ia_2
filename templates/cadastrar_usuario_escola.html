@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Usuário - Administração da Escola</h2>
+<form method="POST">
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" name="nome" required>
+
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required>
+
+    <label for="senha">Senha:</label>
+    <input type="password" id="senha" name="senha" required>
+
+    <label for="tipo_usuario_id">Tipo de Usuário:</label>
+    <select id="tipo_usuario_id" name="tipo_usuario_id" onchange="exibirCamposEspecificos()" required>
+        <option value="">Selecione...</option>
+        <option value="Professor">Professor</option>
+        <option value="Aluno">Aluno</option>
+        <option value="Administração da Escola">Administração da Escola</option>
+    </select>
+
+    <div id="campos_especificos" style="display: none;">
+        <label for="tipo_ensino">Tipo de Ensino:</label>
+        <select id="tipo_ensino" name="tipo_ensino">
+            <option value="">Selecione...</option>
+            {% for tipo in tipos_ensino %}
+            <option value="{{ tipo }}">{{ tipo }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="serie_id">Série:</label>
+        <select id="serie_id" name="serie_id">
+            <option value="">Selecione o tipo de ensino primeiro</option>
+        </select>
+
+        <label for="turma">Turma:</label>
+        <select id="turma" name="turma_id">
+            <option value="">Selecione a série primeiro</option>
+        </select>
+    </div>
+
+    <button type="submit">Cadastrar</button>
+</form>
+
+<script>
+function exibirCamposEspecificos() {
+    const tipoUsuario = document.getElementById("tipo_usuario_id").value;
+    const camposEspecificos = document.getElementById("campos_especificos");
+    if (tipoUsuario === "Professor" || tipoUsuario === "Aluno") {
+        camposEspecificos.style.display = "block";
+    } else {
+        camposEspecificos.style.display = "none";
+    }
+}
+
+document.getElementById("tipo_ensino").addEventListener("change", async function () {
+    const tipoEnsino = this.value;
+    const serie_idSelect = document.getElementById("serie_id");
+    if (tipoEnsino) {
+        try {
+            const response = await fetch(`/get_serie_ids?tipo_ensino=${encodeURIComponent(tipoEnsino)}`);
+            const serie_ids = await response.json();
+            serie_idSelect.innerHTML = '<option value="">Selecione...</option>';
+            serie_ids.forEach(serie_id => {
+                serie_idSelect.innerHTML += `<option value="${serie_id}">${serie_id}</option>`;
+            });
+        } catch (error) {
+            console.error("Erro ao carregar séries:", error);
+        }
+    }
+});
+
+document.getElementById("serie_id").addEventListener("change", async function () {
+    const tipoEnsino = document.getElementById("tipo_ensino").value;
+    const serie_id = this.value;
+    const turmaSelect = document.getElementById("turma");
+    if (tipoEnsino && serie_id) {
+        try {
+            const response = await fetch(`/get_turmas?escola_id={{ escola_alocada.id }}&tipo_ensino=${encodeURIComponent(tipoEnsino)}&serie_id=${encodeURIComponent(serie_id)}`);
+            const turmas = await response.json();
+            turmaSelect.innerHTML = '<option value="">Selecione...</option>';
+            turmas.forEach(turma => {
+                turmaSelect.innerHTML += `<option value="${turma.id}">${turma.serie_id} - ${turma.turma}</option>`;
+            });
+        } catch (error) {
+            console.error("Erro ao carregar turmas:", error);
+        }
+    }
+});
+
+document.getElementById("turma").addEventListener("change", async function () {
+    const turmaId = this.value;
+    const alunoSelect = document.getElementById("aluno");
+
+    alunoSelect.innerHTML = '<option value="">Carregando...</option>';
+
+    if (turmaId) {
+        try {
+            const response = await fetch(`/get_alunos_por_turma?turma_id=${encodeURIComponent(turmaId)}`);
+            const alunos = await response.json();
+            alunoSelect.innerHTML = alunos.length > 0
+                ? '<option value="">Selecione...</option>'
+                : '<option value="">Nenhum aluno encontrado</option>';
+
+            alunos.forEach(aluno => {
+                alunoSelect.innerHTML += `<option value="${aluno.id}">${aluno.nome}</option>`;
+            });
+        } catch (error) {
+            console.error("Erro ao carregar alunos:", error);
+            alunoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    } else {
+        alunoSelect.innerHTML = '<option value="">Selecione uma turma primeiro</option>';
+    }
+});
+</script>
+{% endblock %}

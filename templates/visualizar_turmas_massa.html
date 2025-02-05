@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Visualizar Dados para Cadastro em Massa de Turmas</h2>
+
+<form id="turmas-form">
+    <table>
+        <thead>
+            <tr>
+                <th>Escola</th>
+                <th>Tipo de Ensino</th>
+                <th>Série</th>
+                <th>Turma</th>
+                <th>Confirmar Cadastro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for turma in data %}
+            <tr>
+                <!-- Exibe os nomes legíveis -->
+                <td>{{ turma['escola_nome'] }}</td>
+                <td>{{ turma['tipo_ensino_nome'] }}</td>
+                <td>{{ turma['serie_nome'] }}</td>
+                <td>{{ turma['turma'] }}</td>
+                <td>
+                    <!-- Dados ocultos enviados para o backend -->
+                    <input type="checkbox" name="confirm_{{ loop.index }}" value="1" checked>
+                    <input type="hidden" name="escola_id_{{ loop.index }}" value="{{ turma['escola_id'] }}">
+                    <input type="hidden" name="codigo_inep_{{ loop.index }}" value="{{ turma['codigo_inep'] }}">
+                    <input type="hidden" name="tipo_ensino_id_{{ loop.index }}" value="{{ turma['tipo_ensino_id'] }}">
+                    <input type="hidden" name="serie_id_{{ loop.index }}" value="{{ turma['serie_id'] }}">
+                    <input type="hidden" name="turma_{{ loop.index }}" value="{{ turma['turma'] }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="button" id="submit-button">Confirmar Cadastro</button>
+</form>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $('#submit-button').click(function() {
+        var turmasData = [];
+
+        // Coletar os dados das turmas selecionadas
+        $('input[type="checkbox"]:checked').each(function() {
+            var row = $(this).closest('tr');
+            var escola_id = row.find('input[name^="escola_id"]').val();
+            var codigo_inep = row.find('input[name^="codigo_inep"]').val();
+            var tipo_ensino_id = row.find('input[name^="tipo_ensino_id"]').val();
+            var serie_id = row.find('input[name^="serie_id"]').val();
+            var turma = row.find('input[name^="turma"]').val();
+
+            var turmaData = {
+                escola_id: escola_id,
+                codigo_inep: codigo_inep,
+                tipo_ensino_id: tipo_ensino_id,
+                serie_id: serie_id,
+                turma: turma
+            };
+
+            turmasData.push(turmaData);
+        });
+
+        // Envia os dados para o backend via AJAX
+        $.ajax({
+            url: '{{ url_for("confirmar_cadastro_turmas") }}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify(turmasData),
+            success: function(response) {
+                if (response.status === "success") {
+                    alert(response.message);
+                    window.location.href = "{{ url_for('cadastrar_turmas_massa') }}";
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr, status, error) {
+                alert('Ocorreu um erro ao cadastrar as turmas.');
+            }
+        });
+    });
+</script>
+
+{% endblock %}

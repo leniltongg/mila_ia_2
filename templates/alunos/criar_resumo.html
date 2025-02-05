@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Resumo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-file-alt me-2"></i>Criar Resumo</h5>
+                </div>
+                <div class="card-body">
+                    <form id="resumo-form">
+                        <!-- Seleção de disciplina e nível -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="disciplina" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina" required>
+                                    <option value="">Selecione a disciplina</option>
+                                    <option value="matematica">Matemática</option>
+                                    <option value="portugues">Português</option>
+                                    <option value="ciencias">Ciências</option>
+                                    <option value="historia">História</option>
+                                    <option value="geografia">Geografia</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nivel" class="form-label">Nível</label>
+                                <select class="form-select" id="nivel" required>
+                                    <option value="">Selecione o nível</option>
+                                    <option value="fundamental">Fundamental</option>
+                                    <option value="medio">Médio</option>
+                                    <option value="vestibular">Vestibular</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Tipo de resumo -->
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Resumo</label>
+                            <select class="form-select" id="tipo" required>
+                                <option value="completo">Resumo Completo</option>
+                                <option value="topicos">Tópicos Principais</option>
+                                <option value="mapa_conceitual">Mapa Conceitual</option>
+                                <option value="esquema">Esquema de Estudo</option>
+                            </select>
+                        </div>
+
+                        <!-- Área do conteúdo -->
+                        <div class="mb-3">
+                            <label for="conteudo" class="form-label">Digite ou cole o conteúdo</label>
+                            <textarea class="form-control" id="conteudo" rows="10" required
+                                    placeholder="Cole aqui o texto que você quer resumir..."></textarea>
+                        </div>
+
+                        <!-- Opções adicionais -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_exemplos" checked>
+                                    <label class="form-check-label" for="incluir_exemplos">
+                                        Incluir exemplos
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="destacar_importante" checked>
+                                    <label class="form-check-label" for="destacar_importante">
+                                        Destacar pontos importantes
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botão de envio -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info text-white">
+                                <i class="fas fa-magic me-2"></i>Gerar Resumo
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Área do resumo gerado -->
+                    <div id="resumo-area" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                <h6 class="mb-0">Resumo Gerado</h6>
+                                <div>
+                                    <button class="btn btn-outline-primary btn-sm me-2" onclick="copiarResumo()">
+                                        <i class="fas fa-copy me-1"></i>Copiar
+                                    </button>
+                                    <button class="btn btn-outline-success btn-sm" onclick="baixarPDF()">
+                                        <i class="fas fa-download me-1"></i>PDF
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="loading" class="text-center" style="display: none;">
+                                    <div class="spinner-border text-info" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Gerando resumo...</p>
+                                </div>
+                                <div id="resumo-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('resumo-form');
+    const resumoArea = document.getElementById('resumo-area');
+    const resumoContent = document.getElementById('resumo-content');
+    const loadingDiv = document.getElementById('loading');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('Form submitted');
+        
+        const disciplina = document.getElementById('disciplina').value;
+        const nivel = document.getElementById('nivel').value;
+        const tipo = document.getElementById('tipo').value;
+        const conteudo = document.getElementById('conteudo').value;
+        const incluirExemplos = document.getElementById('incluir_exemplos').checked;
+        const destacarImportante = document.getElementById('destacar_importante').checked;
+
+        if (!disciplina || !nivel || !conteudo.trim()) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        const data = {
+            disciplina: disciplina,
+            nivel: nivel,
+            tipo: tipo,
+            conteudo: conteudo,
+            incluir_exemplos: incluirExemplos,
+            destacar_importante: destacarImportante
+        };
+        
+        console.log('Sending data:', data);
+
+        // Mostrar loading
+        resumoArea.style.display = 'block';
+        resumoContent.style.display = 'none';
+        loadingDiv.style.display = 'block';
+
+        try {
+            const response = await fetch('/alunos/gerar_resumo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(data)
+            });
+
+            console.log('Response received:', response);
+            const responseData = await response.json();
+            console.log('Response data:', responseData);
+
+            if (responseData.success) {
+                resumoContent.innerHTML = responseData.resumo;
+                resumoContent.style.display = 'block';
+            } else {
+                resumoContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        ${responseData.error || 'Desculpe, ocorreu um erro ao gerar o resumo.'}
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            resumoContent.innerHTML = `
+                <div class="alert alert-danger">
+                    Desculpe, ocorreu um erro ao processar sua solicitação.
+                </div>
+            `;
+        } finally {
+            loadingDiv.style.display = 'none';
+            resumoContent.style.display = 'block';
+        }
+    });
+});
+
+async function copiarResumo() {
+    const resumo = document.getElementById('resumo-content').innerText;
+    try {
+        await navigator.clipboard.writeText(resumo);
+        alert('Resumo copiado para a área de transferência!');
+    } catch (err) {
+        console.error('Erro ao copiar:', err);
+        alert('Erro ao copiar: ' + err);
+    }
+}
+
+async function baixarPDF() {
+    const resumoContent = document.getElementById('resumo-content');
+    
+    try {
+        const response = await fetch('/alunos/download_resumo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                resumo: resumoContent.innerHTML
+            })
+        });
+        
+        if (response.ok) {
+            // Criar um link temporário para download
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'resumo.html';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+        } else {
+            const error = await response.json();
+            alert(error.error || 'Erro ao baixar o resumo');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao baixar o resumo');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Professor</h2>
+<form method="POST">
+    <!-- Nome com Autocomplete -->
+    <label for="nome">Nome do Professor:</label>
+    <input 
+        type="text" 
+        id="nome" 
+        name="nome" 
+        placeholder="Digite o nome do professor" 
+        oninput="buscarProfessores()" 
+        required
+    >
+    <ul id="autocomplete-list"></ul>
+
+    <!-- Data de Nascimento -->
+    <label for="data_nascimento">Data de Nascimento:</label>
+    <input type="date" id="data_nascimento" name="data_nascimento" readonly required>
+
+    <!-- Turmas -->
+    <label for="turma">Turma:</label>
+    <select id="turma" name="turma" required>
+        <option value="">Selecione...</option>
+        {% for turma in turmas %}
+        <option value="{{ turma[0] }}">
+            {{ turma[4] }} - {{ turma[1] }} ({{ turma[2] }}, {{ turma[3] }})
+        </option>
+        {% endfor %}
+    </select>
+
+    <!-- Botão -->
+    <button type="submit">Cadastrar</button>
+</form>
+
+<script>
+    async function buscarProfessores() {
+        const nomeInput = document.getElementById("nome").value;
+        const autocompleteList = document.getElementById("autocomplete-list");
+        const dataNascimentoField = document.getElementById("data_nascimento");
+
+        // Limpa a lista de sugestões e o campo de data de nascimento
+        autocompleteList.innerHTML = "";
+        dataNascimentoField.value = "";
+
+        if (nomeInput.length < 2) return;
+
+        try {
+            const response = await fetch(`/buscar_professores?nome=${nomeInput}`);
+            const professores = await response.json();
+
+            professores.forEach(professor => {
+                const li = document.createElement("li");
+                li.textContent = professor.nome;
+                li.onclick = () => {
+                    document.getElementById("nome").value = professor.nome;
+                    dataNascimentoField.value = professor.data_nascimento || "";
+                    autocompleteList.innerHTML = "";
+                };
+                autocompleteList.appendChild(li);
+            });
+        } catch (error) {
+            console.error("Erro ao buscar professores:", error);
+        }
+    }
+</script>
+
+<style>
+    #autocomplete-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+        border: 1px solid #ccc;
+        max-height: 150px;
+        overflow-y: auto;
+        position: absolute;
+        z-index: 1000;
+        background: white;
+        width: 100%;
+    }
+
+    #autocomplete-list li {
+        padding: 8px;
+        cursor: pointer;
+    }
+
+    #autocomplete-list li:hover {
+        background: #f0f0f0;
+    }
+</style>
+
+{% if error %}
+<div style="color: red; margin-top: 10px;">{{ error }}</div>
+{% endif %}
+{% endblock %}

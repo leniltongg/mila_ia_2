@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Resultado do Simulado</h2>
+<p>Você acertou {{ acertos }} de {{ total }} perguntas.</p>
+<p>Você errou {{ erros }} perguntas.</p>
+
+<a href="{{ url_for('alunos_bp.portal_alunos') }}">Voltar para Área de Alunos</a>
+{% endblock %}

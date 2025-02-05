@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Relatórios da Rede Municipal</h2>
+
+    <!-- Filtro de Escola -->
+    <form method="GET" class="mb-4">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label for="escola_id" class="form-label">Filtrar por Escola</label>
+                <select id="escola_id" name="escola_id" class="form-select">
+                    <option value="">Todas as Escolas</option>
+                    {% for escola in escolas %}
+                        <option value="{{ escola[0] }}" {% if escola[0] == selected_escola|int %}selected{% endif %}>
+                            {{ escola[1] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-6 align-self-end">
+                <button type="submit" class="btn btn-primary">Aplicar Filtro</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Alunos Destaque -->
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            Alunos Destaque
+        </div>
+        <div class="card-body">
+            {% if alunos_destaque %}
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Aluno</th>
+                            <th>Escola</th>
+                            <th>Disciplina</th>
+                            <th>Assunto</th>
+                            <th>Pontuação</th>
+                            <th>Data</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for idx, aluno in enumerate(alunos_destaque, start=1) %}
+                        <tr>
+                            <td>{{ idx }}</td>
+                            <td>{{ aluno[0] }}</td>
+                            <td>{{ aluno[1] }}</td>
+                            <td>{{ aluno[2] }}</td>
+                            <td>{{ aluno[3] }}</td>
+                            <td>{{ aluno[4] }}</td>
+                            <td>{{ aluno[5] }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted text-center">Nenhum aluno de destaque no momento.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

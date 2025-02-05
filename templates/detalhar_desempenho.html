@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}
+Detalhamento do Desempenho
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="section-title mb-4">Detalhamento do Desempenho</h1>
+
+    <!-- Desempenho por Ano Escolar -->
+    <div class="mb-4">
+        <h3>Ano Escolar</h3>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Ano Escolar</th>
+                    <th>Média de Desempenho</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ano, media in desempenho_por_ano %}
+                <tr>
+                    <td>{{ ano }}</td>
+                    <td>{{ "%.1f"|format(media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Desempenho por Componentes Curriculares -->
+    <div>
+        <h3>Componentes Curriculares</h3>
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Disciplina</th>
+                    <th>Média de Desempenho</th>
+                    <th>Detalhar</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for disciplina, disciplina_id, media in desempenho_por_disciplina %}
+                <tr>
+                    <td>{{ disciplina }}</td>
+                    <td>{{ "%.1f"|format(media) }}%</td>
+                    <td>
+                        <a href="{{ url_for('detalhar_assuntos_por_disciplina', disciplina_id=disciplina_id) }}" class="btn btn-info btn-sm">
+                            <i class="fas fa-eye"></i> Detalhar
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

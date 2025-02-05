@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}
+Alterar Senha
+{% endblock %}
+
+{% block content %}
+<h1>Alterar Senha</h1>
+
+<!-- Exibir mensagens de erro ou sucesso -->
+{% if error %}
+<div style="color: red; margin-top: 10px;">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div style="color: green; margin-top: 10px;">{{ success }}</div>
+{% endif %}
+
+<form action="{{ url_for('alterar_senha') }}" method="post">
+    <label for="senha_atual">Senha Atual:</label>
+    <input type="password" id="senha_atual" name="senha_atual" required><br>
+
+    <label for="nova_senha">Nova Senha:</label>
+    <input type="password" id="nova_senha" name="nova_senha" required><br>
+
+    <label for="confirmar_senha">Confirmar Nova Senha:</label>
+    <input type="password" id="confirmar_senha" name="confirmar_senha" required><br>
+
+    <button type="submit">Alterar Senha</button>
+</form>
+{% endblock %}

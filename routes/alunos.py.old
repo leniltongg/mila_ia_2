@@ -1,0 +1,344 @@
+from flask import Blueprint, render_template, request, jsonify, current_app
+from flask_login import login_required, current_user
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+import json
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+import tempfile
+import random
+
+# Carregar variáveis de ambiente
+load_dotenv()
+
+# Criar o blueprint
+alunos_bp = Blueprint('alunos', __name__)
+client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+
+@alunos_bp.route('/tutor_virtual')
+@login_required
+def tutor_virtual():
+    return render_template('alunos/tutor_virtual.html')
+
+@alunos_bp.route('/chat_tutor', methods=['POST'])
+@login_required
+def chat_tutor():
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+
+        # Criar o prompt do sistema
+        system_prompt = """Você é um tutor virtual educacional, especializado em ajudar estudantes.
+        Suas características:
+        1. Explique conceitos de forma clara e adaptada ao nível do aluno
+        2. Use analogias e exemplos do cotidiano
+        3. Faça perguntas para verificar a compreensão
+        4. Incentive o pensamento crítico
+        5. Mantenha um tom amigável e encorajador
+        6. Corrija erros de forma construtiva
+        7. Sugira recursos adicionais quando apropriado"""
+
+        # Gerar resposta
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": message}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'response': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/resolver_exercicios')
+@login_required
+def resolver_exercicios():
+    return render_template('alunos/resolver_exercicios.html')
+
+@alunos_bp.route('/resolver_exercicio', methods=['POST'])
+@login_required
+def resolver_exercicio():
+    try:
+        data = request.get_json()
+        exercicio = data.get('exercicio', '')
+        disciplina = data.get('disciplina', '')
+        nivel = data.get('nivel', '')
+
+        # Criar o prompt do sistema
+        system_prompt = f"""Você é um tutor especializado em resolver exercícios de {disciplina}.
+        Forneça uma explicação passo a passo, adequada para um aluno do {nivel}.
+        
+        1. Primeiro, identifique os dados importantes do problema
+        2. Explique o raciocínio necessário
+        3. Mostre a resolução passo a passo
+        4. Forneça a resposta final
+        5. Dê dicas para exercícios similares"""
+
+        # Gerar resposta
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": exercicio}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'response': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/criar_resumo')
+@login_required
+def criar_resumo():
+    return render_template('alunos/criar_resumo.html')
+
+@alunos_bp.route('/gerar_resumo', methods=['POST'])
+@login_required
+def gerar_resumo():
+    try:
+        data = request.get_json()
+        conteudo = data.get('conteudo', '')
+        tipo = data.get('tipo', 'completo')
+        nivel = data.get('nivel', 'medio')
+
+        # Criar o prompt do sistema
+        system_prompt = """Você é um especialista em criar resumos educacionais.
+        Crie um resumo que seja:
+        1. Claro e organizado
+        2. Focado nos pontos principais
+        3. Com exemplos quando necessário
+        4. Com palavras-chave destacadas
+        5. Com conexões entre os conceitos"""
+
+        # Gerar resumo
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Crie um resumo {tipo} deste conteúdo, adequado para nível {nivel}: {conteudo}"}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'resumo': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/criar_flashcards')
+@login_required
+def criar_flashcards():
+    return render_template('alunos/criar_flashcards.html')
+
+@alunos_bp.route('/gerar_flashcards', methods=['POST'])
+@login_required
+def gerar_flashcards():
+    try:
+        data = request.get_json()
+        conteudo = data.get('conteudo', '')
+        quantidade = data.get('quantidade', 10)
+
+        # Criar o prompt do sistema
+        system_prompt = """Você é um especialista em criar flashcards educacionais.
+        Crie flashcards que:
+        1. Cubram os conceitos mais importantes
+        2. Tenham perguntas claras e objetivas
+        3. Tenham respostas concisas
+        4. Incluam exemplos quando necessário
+        5. Ajudem na memorização"""
+
+        # Gerar flashcards
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Crie {quantidade} flashcards sobre: {conteudo}"}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'flashcards': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/fazer_quiz')
+@login_required
+def fazer_quiz():
+    return render_template('alunos/fazer_quiz.html')
+
+@alunos_bp.route('/gerar_quiz', methods=['POST'])
+@login_required
+def gerar_quiz():
+    try:
+        data = request.get_json()
+        conteudo = data.get('conteudo', '')
+        quantidade = data.get('quantidade', 5)
+        nivel = data.get('nivel', 'medio')
+
+        # Criar o prompt do sistema
+        system_prompt = """Você é um especialista em criar quizzes educacionais.
+        Crie questões que:
+        1. Testem diferentes níveis de conhecimento
+        2. Tenham alternativas plausíveis
+        3. Incluam explicações para as respostas
+        4. Ajudem no aprendizado
+        5. Sejam desafiadoras mas justas"""
+
+        # Gerar quiz
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Crie um quiz com {quantidade} questões sobre {conteudo}, nível {nivel}"}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'quiz': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/treinar_apresentacao')
+@login_required
+def treinar_apresentacao():
+    return render_template('alunos/treinar_apresentacao.html')
+
+@alunos_bp.route('/feedback_apresentacao', methods=['POST'])
+@login_required
+def feedback_apresentacao():
+    try:
+        data = request.get_json()
+        apresentacao = data.get('apresentacao', '')
+        tipo = data.get('tipo', 'geral')
+
+        # Criar o prompt do sistema
+        system_prompt = """Você é um especialista em apresentações e oratória.
+        Forneça feedback construtivo sobre:
+        1. Estrutura da apresentação
+        2. Clareza das explicações
+        3. Uso de recursos visuais
+        4. Linguagem e vocabulário
+        5. Dicas de oratória
+        6. Sugestões de melhoria"""
+
+        # Gerar feedback
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Analise esta apresentação do tipo {tipo}: {apresentacao}"}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'feedback': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/simular_entrevista')
+@login_required
+def simular_entrevista():
+    return render_template('alunos/simular_entrevista.html')
+
+@alunos_bp.route('/proxima_pergunta', methods=['POST'])
+@login_required
+def proxima_pergunta():
+    try:
+        data = request.get_json()
+        tipo = data.get('tipo', 'vestibular')
+        resposta_anterior = data.get('resposta', '')
+        historico = data.get('historico', [])
+
+        # Criar o prompt do sistema
+        system_prompt = f"""Você é um entrevistador experiente para {tipo}.
+        1. Faça perguntas relevantes e desafiadoras
+        2. Avalie as respostas do candidato
+        3. Forneça feedback construtivo
+        4. Mantenha um tom profissional
+        5. Adapte as próximas perguntas com base nas respostas anteriores"""
+
+        # Gerar próxima pergunta
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Histórico: {historico}\nÚltima resposta: {resposta_anterior}\nGere a próxima pergunta e feedback."}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'response': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@alunos_bp.route('/preparar_redacao')
+@login_required
+def preparar_redacao():
+    return render_template('alunos/preparar_redacao.html')
+
+@alunos_bp.route('/analisar_redacao', methods=['POST'])
+@login_required
+def analisar_redacao():
+    try:
+        data = request.get_json()
+        redacao = data.get('redacao', '')
+        tipo = data.get('tipo', 'enem')
+
+        # Criar o prompt do sistema
+        system_prompt = f"""Você é um especialista em redação {tipo}.
+        Analise a redação considerando:
+        1. Adequação ao tema
+        2. Estrutura do texto
+        3. Argumentação
+        4. Coesão e coerência
+        5. Proposta de intervenção
+        6. Aspectos gramaticais
+        
+        Forneça:
+        1. Nota sugerida para cada competência
+        2. Pontos positivos
+        3. Pontos a melhorar
+        4. Sugestões específicas de melhoria
+        5. Exemplos de como reescrever trechos problemáticos"""
+
+        # Gerar análise
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": redacao}
+            ],
+            temperature=0.7
+        )
+
+        return jsonify({
+            'success': True,
+            'analise': response.choices[0].message.content
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})

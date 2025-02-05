@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Simulados Disponíveis</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Assunto</th>
+            <th>Nível</th>
+            <th>Quantidade de Questões</th>
+            <th>Ação</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for simulado in simulados %}
+        <tr>
+            <td>{{ simulado[0] }}</td>
+            <td>{{ simulado[1] }}</td>
+            <td>{{ simulado[2] }}</td>
+            <td>{{ simulado[3] }}</td>
+            <td>
+                <a href="{{ url_for('responder_simulado', simulado_id=simulado[0]) }}" class="btn btn-primary">Responder</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

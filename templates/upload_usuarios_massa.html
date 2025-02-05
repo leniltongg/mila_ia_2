@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Usuários em Massa</h2>
+<form method="POST" enctype="multipart/form-data">
+    <label for="file">Escolha o arquivo CSV:</label>
+    <input type="file" id="file" name="file" accept=".csv" required>
+    <br><br>
+    <button type="submit">Enviar</button>
+</form>
+
+{% if data %}
+    <h3>Pré-visualização dos Dados</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Tipo de Usuário</th>
+                <th>Escola</th>
+                <th>Turma</th>
+                <th>Tipo de Ensino</th>
+                <th>Série</th>
+                <th>Confirmar Cadastro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in data %}
+            <tr>
+                <td>{{ user['nome'] }}</td>
+                <td>{{ user['email'] }}</td>
+                <td>{{ user['tipo_usuario'] }}</td>
+                <td>{{ user['escola'] }}</td>
+                <td>{{ user['turma'] }}</td>
+                <td>{{ user['tipo_ensino'] }}</td>
+                <td>{{ user['serie_id'] }}</td>
+                <td><input type="checkbox" name="confirmar_{{ loop.index }}" value="1" checked></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <button type="submit">Confirmar Cadastro</button>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Escolas Cadastradas</h2>
+<table border="1">
+    <tr>
+        <th>Nome</th>
+        <th>Telefone</th>
+        <th>Cidade</th>
+        <th>Estado</th>
+    </tr>
+    {% for escola in escolas %}
+    <tr>
+        <td>{{ escola[0] }}</td>
+        <td>{{ escola[1] }}</td>
+        <td>{{ escola[2] }}</td>
+        <td>{{ escola[3] }}</td>
+    </tr>
+    {% endfor %}
+</table>
+<a href="/cadastrar_escola">Cadastrar Nova Escola</a>
+{% endblock %}

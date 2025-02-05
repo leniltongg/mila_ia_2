@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}
+Alunos da Turma
+{% endblock %}
+
+{% block content %}
+
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        Opções
+    </div>
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-3">
+            <a href="{{ url_for('relatorio_turma') }}" class="btn btn-info">Relatório Geral da Turma</a>
+            <a href="{{ url_for('gerar_simulado_turma', turma_id=turma[3]) }}" class="btn btn-primary">Gerar Simulado</a>
+        </div>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <h2>Alunos da Turma {{ turma[0] }}{{ turma[1] }} - {{ turma[2] }}</h2>
+    <ul class="list-group mt-4">
+        {% if alunos %}
+            {% for aluno in alunos %}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
+                    {{ aluno[1] }}
+                    <a href="{{ url_for('selecionar_relatorio', aluno_id=aluno[0]) }}" class="btn btn-primary btn-sm">Ver Relatório</a>
+                </li>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted">Nenhum aluno registrado nesta turma.</p>
+        {% endif %}
+    </ul>
+
+    <!-- Tabela de Desempenho -->
+    <h3 class="mt-4">Desempenho da Turma</h3>
+    {% if desempenho %}
+        <table class="table table-striped mt-3">
+            <thead class="table-dark">
+                <tr>
+                    <th>Aluno</th>
+                    <th>Disciplina</th>
+                    <th>Assunto</th>
+                    <th>Acertos</th>
+                    <th>Total de Questões</th>
+                    <th>Porcentagem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for registro in desempenho %}
+                    <tr>
+                        <td>{{ registro[1] }}</td>
+                        <td>{{ registro[2] }}</td>
+                        <td>{{ registro[3] }}</td>
+                        <td>{{ registro[4] }}</td>
+                        <td>{{ registro[5] }}</td>
+                        <td>{{ registro[6] }}%</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="text-muted">Nenhum desempenho registrado para esta turma.</p>
+    {% endif %}
+    <a href="{{ url_for('portal_professores') }}" class="btn btn-secondary mt-3">Voltar</a>
+</div>
+{% endblock %}

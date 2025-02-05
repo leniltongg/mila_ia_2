@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}
+Alunos da Turma
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Alunos da Turma {{ turma[1] }}</h2>
+    
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            Lista de Alunos
+        </div>
+        <div class="card-body">
+            {% if alunos %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for aluno in alunos %}
+                                <tr>
+                                    <td>{{ aluno[1] }}</td>
+                                    <td>{{ aluno[2] }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <p class="text-muted">Não há alunos cadastrados nesta turma.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="mt-3">
+        <a href="{{ url_for('professores.portal') }}" class="btn btn-secondary">Voltar ao Portal</a>
+    </div>
+</div>
+{% endblock %}

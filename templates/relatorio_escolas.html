@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório de Escolas{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Relatório de Desempenho das Escolas</h2>
+
+    <!-- Desempenho Geral -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">Ranking Geral</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Escola</th>
+                            <th>Total de Alunos</th>
+                            <th>Média Geral</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escola in escolas %}
+                        <tr>
+                            <td>{{ loop.index }}º</td>
+                            <td>{{ escola.nome }}</td>
+                            <td>{{ escola.total_alunos }}</td>
+                            <td>{{ "%.1f"|format(escola.media_geral) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desempenho por Série -->
+    {% for serie in series %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4 class="mb-0">{{ serie.nome }}</h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Escola</th>
+                            <th>Total de Alunos</th>
+                            <th>Média</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escola in serie.escolas %}
+                        <tr>
+                            <td>{{ loop.index }}º</td>
+                            <td>{{ escola.nome }}</td>
+                            <td>{{ escola.total_alunos }}</td>
+                            <td>{{ "%.1f"|format(escola.media) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Botão para gerar PDF -->
+    <div class="text-end mb-4">
+        <a href="{{ url_for('relatorio_escolas_pdf') }}" class="btn btn-primary">
+            <i class="fas fa-file-pdf me-2"></i>Gerar PDF
+        </a>
+        <a href="{{ url_for('relatorio_escolas_excel') }}" class="btn btn-success">
+            <i class="fas fa-file-excel me-2"></i>Gerar Excel
+        </a>
+    </div>
+</div>
+{% endblock %}

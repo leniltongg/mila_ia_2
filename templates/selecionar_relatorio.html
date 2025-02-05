@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório do Aluno{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Relatório de {{ nome_aluno }}</h1>
+    <p>Selecione uma ação:</p>
+    <a href="{{ url_for('gerar_relatorio_pdf_aluno', aluno_id=aluno_id) }}" class="btn btn-dark mb-4">Gerar Relatório Geral (PDF)</a>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            Simulados Respondidos
+        </div>
+        <div class="card-body">
+            {% if simulados %}
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID do Simulado</th>
+                            <th>Assunto</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for simulado in simulados %}
+                            <tr>
+                                <td>{{ simulado[0] }}</td>
+                                <td>{{ simulado[1] }}</td>
+                                <td>
+                                    <td>
+                                        <a href="{{ url_for('detalhar_simulado', aluno_id=aluno_id, simulado_id=simulado[0]) }}" class="btn btn-info btn-sm">Visualizar Respostas</a>
+                                    </td>
+                                    
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="text-muted">Nenhum simulado respondido por este aluno.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

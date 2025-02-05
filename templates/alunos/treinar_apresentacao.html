@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+
+{% block title %}Treinar Apresentação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-presentation me-2"></i>Treinar Apresentação</h5>
+                </div>
+                <div class="card-body">
+                    <form id="apresentacao-form">
+                        <!-- Tipo de apresentação -->
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Apresentação</label>
+                            <select class="form-select" id="tipo" required>
+                                <option value="">Selecione o tipo</option>
+                                <option value="trabalho">Trabalho Escolar</option>
+                                <option value="seminario">Seminário</option>
+                                <option value="feira">Feira de Ciências</option>
+                                <option value="debate">Debate</option>
+                            </select>
+                        </div>
+
+                        <!-- Duração -->
+                        <div class="mb-3">
+                            <label for="duracao" class="form-label">Duração Prevista (minutos)</label>
+                            <input type="number" class="form-control" id="duracao" 
+                                   min="5" max="60" value="15" required>
+                        </div>
+
+                        <!-- Conteúdo da apresentação -->
+                        <div class="mb-3">
+                            <label for="conteudo" class="form-label">Conteúdo da Apresentação</label>
+                            <textarea class="form-control" id="conteudo" rows="10" required
+                                    placeholder="Cole aqui o conteúdo da sua apresentação..."></textarea>
+                        </div>
+
+                        <!-- Opções adicionais -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_slides" checked>
+                                    <label class="form-check-label" for="incluir_slides">
+                                        Incluir dicas para slides
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_tecnicas" checked>
+                                    <label class="form-check-label" for="incluir_tecnicas">
+                                        Incluir técnicas de oratória
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botão de envio -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-magic me-2"></i>Analisar Apresentação
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Área do feedback -->
+                    <div id="feedback-area" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Feedback da Apresentação</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="loading" class="text-center" style="display: none;">
+                                    <div class="spinner-border text-warning" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Analisando apresentação...</p>
+                                </div>
+
+                                <!-- Tabs de feedback -->
+                                <ul class="nav nav-tabs" id="feedbackTabs" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#estrutura">
+                                            Estrutura
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#oratoria">
+                                            Oratória
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#slides">
+                                            Slides
+                                        </button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tempo">
+                                            Tempo
+                                        </button>
+                                    </li>
+                                </ul>
+
+                                <div class="tab-content mt-3" id="feedbackContent">
+                                    <!-- Estrutura -->
+                                    <div class="tab-pane fade show active" id="estrutura">
+                                        <div id="estrutura-content"></div>
+                                    </div>
+
+                                    <!-- Oratória -->
+                                    <div class="tab-pane fade" id="oratoria">
+                                        <div id="oratoria-content"></div>
+                                    </div>
+
+                                    <!-- Slides -->
+                                    <div class="tab-pane fade" id="slides">
+                                        <div id="slides-content"></div>
+                                    </div>
+
+                                    <!-- Tempo -->
+                                    <div class="tab-pane fade" id="tempo">
+                                        <div id="tempo-content"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Botões de ação -->
+                                <div class="d-flex justify-content-end mt-3">
+                                    <button class="btn btn-outline-primary me-2" onclick="copiarFeedback()">
+                                        <i class="fas fa-copy me-1"></i>Copiar
+                                    </button>
+                                    <button class="btn btn-outline-success" onclick="baixarFeedback()">
+                                        <i class="fas fa-download me-1"></i>Baixar PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('apresentacao-form');
+    const feedbackArea = document.getElementById('feedback-area');
+    const loadingDiv = document.getElementById('loading');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const tipo = document.getElementById('tipo').value;
+        const duracao = document.getElementById('duracao').value;
+        const conteudo = document.getElementById('conteudo').value;
+        const incluirSlides = document.getElementById('incluir_slides').checked;
+        const incluirTecnicas = document.getElementById('incluir_tecnicas').checked;
+
+        if (!tipo || !conteudo.trim()) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        // Mostrar loading
+        feedbackArea.style.display = 'block';
+        document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.querySelector('div').innerHTML = '';
+        });
+        loadingDiv.style.display = 'block';
+
+        try {
+            const response = await fetch('/feedback_apresentacao', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tipo: tipo,
+                    duracao: duracao,
+                    conteudo: conteudo,
+                    incluir_slides: incluirSlides,
+                    incluir_tecnicas: incluirTecnicas
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Preencher as tabs com o feedback
+                document.getElementById('estrutura-content').innerHTML = data.feedback.estrutura;
+                document.getElementById('oratoria-content').innerHTML = data.feedback.oratoria;
+                document.getElementById('slides-content').innerHTML = data.feedback.slides;
+                document.getElementById('tempo-content').innerHTML = data.feedback.tempo;
+            } else {
+                alert('Erro ao gerar feedback');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao processar sua solicitação');
+        } finally {
+            loadingDiv.style.display = 'none';
+        }
+    });
+});
+
+function copiarFeedback() {
+    const estrutura = document.getElementById('estrutura-content').innerText;
+    const oratoria = document.getElementById('oratoria-content').innerText;
+    const slides = document.getElementById('slides-content').innerText;
+    const tempo = document.getElementById('tempo-content').innerText;
+
+    const feedback = `FEEDBACK DA APRESENTAÇÃO\n\n` +
+                    `ESTRUTURA:\n${estrutura}\n\n` +
+                    `ORATÓRIA:\n${oratoria}\n\n` +
+                    `SLIDES:\n${slides}\n\n` +
+                    `TEMPO:\n${tempo}`;
+
+    navigator.clipboard.writeText(feedback)
+        .then(() => alert('Feedback copiado para a área de transferência!'))
+        .catch(err => alert('Erro ao copiar: ' + err));
+}
+
+async function baixarFeedback() {
+    try {
+        const response = await fetch('/download_feedback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                estrutura: document.getElementById('estrutura-content').innerHTML,
+                oratoria: document.getElementById('oratoria-content').innerHTML,
+                slides: document.getElementById('slides-content').innerHTML,
+                tempo: document.getElementById('tempo-content').innerHTML
+            })
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'feedback_apresentacao.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('Erro ao gerar PDF');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao baixar PDF');
+    }
+}
+</script>
+{% endblock %}

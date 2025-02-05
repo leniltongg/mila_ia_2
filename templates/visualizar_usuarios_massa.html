@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Visualizar Dados para Cadastro em Massa de Usuários</h2>
+
+<form id="usuarios-form">
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>CPF</th>
+                <th>Escola</th>
+                <th>Tipo de Ensino</th>
+                <th>Série</th>
+                <th>Turma</th>
+                <th>Cidade</th>
+                <th>Confirmar Cadastro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for usuario in data %}
+            <tr>
+                <td>{{ usuario['nome'] }}</td>
+                <td>{{ usuario['email'] }}</td>
+                <td>{{ usuario['cpf'] }}</td>
+                <td>{{ usuario['escola_id'] }}</td>
+                <td>{{ usuario['tipo_ensino_id'] }}</td>
+                <td>{{ usuario['serie_id'] }}</td>
+                <td>{{ usuario['turma_id'] }}</td>
+                <td>{{ usuario['codigo_ibge'] }}</td>
+                <td>
+                    <input type="checkbox" name="confirm_{{ loop.index }}" value="1" checked>
+                    <input type="hidden" name="nome_{{ loop.index }}" value="{{ usuario['nome'] }}">
+                    <input type="hidden" name="email_{{ loop.index }}" value="{{ usuario['email'] }}">
+                    <input type="hidden" name="senha_{{ loop.index }}" value="{{ usuario['senha'] }}">
+                    <input type="hidden" name="tipo_usuario_id_{{ loop.index }}" value="{{ usuario['tipo_usuario_id'] }}">
+                    <input type="hidden" name="escola_id_{{ loop.index }}" value="{{ usuario['escola_id'] }}">
+                    <input type="hidden" name="tipo_ensino_id_{{ loop.index }}" value="{{ usuario['tipo_ensino_id'] }}">
+                    <input type="hidden" name="serie_id_{{ loop.index }}" value="{{ usuario['serie_id'] }}">
+                    <input type="hidden" name="turma_id_{{ loop.index }}" value="{{ usuario['turma_id'] }}">
+                    <input type="hidden" name="codigo_ibge_{{ loop.index }}" value="{{ usuario['codigo_ibge'] }}">
+                    <input type="hidden" name="cpf_{{ loop.index }}" value="{{ usuario['cpf'] }}">
+                    <input type="hidden" name="data_nascimento_{{ loop.index }}" value="{{ usuario['data_nascimento'] }}">
+                    <input type="hidden" name="mae_{{ loop.index }}" value="{{ usuario['mae'] }}">
+                    <input type="hidden" name="pai_{{ loop.index }}" value="{{ usuario['pai'] }}">
+                    <input type="hidden" name="sexo_{{ loop.index }}" value="{{ usuario['sexo'] }}">
+                    <input type="hidden" name="codigo_ibge_{{ loop.index }}" value="{{ usuario['codigo_ibge'] }}">
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="button" id="submit-button">Confirmar Cadastro</button>
+</form>
+
+<div id="response-message"></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    $('#submit-button').click(function() {
+        var usuariosData = [];
+        console.log("Botão clicado");
+
+        // Coleta os dados dos usuários selecionados
+        $('input[type="checkbox"]:checked').each(function() {
+            var row = $(this).closest('tr');
+            var index = $(this).attr('name').split('_')[1];
+            
+            console.log("Processando usuário índice:", index);
+            
+            var usuarioData = {
+                nome: row.find(`input[name="nome_${index}"]`).val(),
+                email: row.find(`input[name="email_${index}"]`).val(),
+                senha: row.find(`input[name="senha_${index}"]`).val(),
+                tipo_usuario_id: row.find(`input[name="tipo_usuario_id_${index}"]`).val(),
+                escola_id: row.find(`input[name="escola_id_${index}"]`).val(),
+                tipo_ensino_id: row.find(`input[name="tipo_ensino_id_${index}"]`).val(),
+                serie_id: row.find(`input[name="serie_id_${index}"]`).val(),
+                turma_id: row.find(`input[name="turma_id_${index}"]`).val(),
+                codigo_ibge: row.find(`input[name="codigo_ibge_${index}"]`).val(),
+                cpf: row.find(`input[name="cpf_${index}"]`).val(),
+                data_nascimento: row.find(`input[name="data_nascimento_${index}"]`).val(),
+                mae: row.find(`input[name="mae_${index}"]`).val(),
+                pai: row.find(`input[name="pai_${index}"]`).val(),
+                sexo: row.find(`input[name="sexo_${index}"]`).val(),
+                codigo_ibge: row.find(`input[name="codigo_ibge_${index}"]`).val()
+            };
+            
+            console.log("Dados do usuário:", usuarioData);
+            usuariosData.push(usuarioData);
+        });
+
+        console.log("Dados completos:", usuariosData);
+
+        // Envia os dados via AJAX
+        $.ajax({
+            url: '{{ url_for("confirmar_cadastro_usuarios") }}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ usuarios: usuariosData }),
+            success: function(response) {
+                console.log("Resposta recebida:", response);
+                if (response.status === "success") {
+                    $('#response-message').html('<div style="color: green;">' + response.message + '</div>');
+                    // Aguarda 2 segundos antes de recarregar
+                    setTimeout(function() {
+                        window.location.href = '{{ url_for("portal_administrador") }}';
+                    }, 2000);
+                } else {
+                    $('#response-message').html('<div style="color: red;">' + response.message + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error("Erro na requisição:", error);
+                console.error("Status:", status);
+                console.error("Resposta:", xhr.responseText);
+                $('#response-message').html('<div style="color: red;">Erro ao cadastrar os usuários: ' + error + '</div>');
+            }
+        });
+    });
+</script>
+
+{% endblock %}

@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if modo_visualizacao %}
+Resultado do Simulado
+{% else %}
+Responder Simulado
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if modo_visualizacao %}
+        <h2 class="text-center mb-4">Resultado do Simulado</h2>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h4 class="card-title">Resumo do Desempenho</h4>
+                <p class="card-text">Total de Questões: {{ total_questoes }}</p>
+                <p class="card-text">Acertos: {{ acertos }}</p>
+                <p class="card-text">Percentual de Acertos: {{ "%.2f"|format(percentual_acertos) }}%</p>
+            </div>
+        </div>
+
+        {% for resultado in resultados %}
+        <div class="card mb-3 {% if resultado.acertou %}border-success{% else %}border-danger{% endif %}">
+            <div class="card-header">
+                <strong>Questão {{ resultado.numero_questao }} - {{ resultado.disciplina }}</strong>
+                <span class="float-end">
+                    {% if resultado.acertou %}
+                        <span class="badge bg-success">Correta</span>
+                    {% else %}
+                        <span class="badge bg-danger">Incorreta</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ resultado.questao }}</h5>
+                <div class="list-group">
+                    {% for alternativa in resultado.alternativas %}
+                        <div class="list-group-item {% if (loop.index + 64)|chr == resultado.resposta_correta %}bg-success text-white{% endif %}
+                            {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}bg-danger text-white{% endif %}
+                            {% if (loop.index + 64)|chr == resultado.resposta_aluno %}fw-bold{% endif %}">
+                            {{ (loop.index + 64)|chr }}) {{ alternativa }}
+                            {% if (loop.index + 64)|chr == resultado.resposta_correta %}
+                                <span class="float-end"><i class="fas fa-check-circle"></i> Resposta Correta</span>
+                            {% endif %}
+                            {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}
+                                <span class="float-end"><i class="fas fa-times-circle"></i> Sua Resposta</span>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-2">
+                    <strong>Sua resposta:</strong> {{ resultado.resposta_aluno }}
+                    <strong class="ms-3">Resposta correta:</strong> {{ resultado.resposta_correta }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="text-center mt-4 mb-4">
+            <a href="{{ url_for('alunos_bp.portal_alunos') }}" class="btn btn-primary">Voltar para o Portal</a>
+        </div>
+
+    {% else %}
+        <h2 class="text-center mb-4">Responder Simulado</h2>
+        <form method="POST">
+            {% for disciplina, questoes in questoes_por_disciplina.items() %}
+                <div class="card mb-4">
+                    <div class="card-header bg-primary text-white">
+                        {{ disciplina }}
+                    </div>
+                    <div class="card-body">
+                        {% for questao in questoes %}
+                            <div class="mb-4">
+                                <p class="fw-bold">{{ loop.index }}. {{ questao[3] }}</p>
+                                <div class="list-group">
+                                    {% for alternativa in [questao[4], questao[5], questao[6], questao[7], questao[8]] %}
+                                        <label class="list-group-item">
+                                            <input type="radio" name="resposta_{{ questao[0] }}" value="{{ loop.index }}" required>
+                                            {{ (loop.index + 64)|chr }}) {{ alternativa }}
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+            
+            <div class="text-center mt-4 mb-4">
+                <button type="submit" class="btn btn-primary">Enviar Respostas</button>
+                <a href="{{ url_for('alunos_bp.portal_alunos') }}" class="btn btn-secondary">Voltar</a>
+            </div>
+        </form>
+    {% endif %}
+</div>
+{% endblock %}

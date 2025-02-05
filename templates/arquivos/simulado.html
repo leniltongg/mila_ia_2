@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Simulado sobre {{ assunto }}</h2>
+
+<div></div>
+
+    <form method="POST" action="/avaliar_simulado">
+        {% for pergunta in perguntas %}
+            <div class="mb-4">
+                <p><strong>{{ loop.index }}. {{ pergunta.pergunta }}</strong></p>
+                <ul>
+                    {% for opcao in pergunta.opcoes %}
+                        <li>
+                            <label>
+                                <input type="radio" name="resposta_{{ loop.parent.index }}" value="{{ opcao[0] }}">
+                                {{ opcao }}
+                            </label>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary">Enviar Respostas</button>
+    </form>
+{% endblock %}

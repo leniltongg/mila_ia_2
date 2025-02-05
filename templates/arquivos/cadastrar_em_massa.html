@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Cadastro em Massa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Cadastro em Massa</h2>
+    <form action="{{ url_for('cadastrar_em_massa') }}" method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="file" class="form-label">Selecione um arquivo CSV:</label>
+            <input type="file" name="file" class="form-control" id="file" accept=".csv" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Enviar</button>
+    </form>
+</div>
+{% endblock %}

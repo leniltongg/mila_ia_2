@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}
+Simulado Gerado
+{% endblock %}
+
+{% block content %}
+<!-- Link para Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+<div class="container mt-4">
+    <h2 class="text-center">Simulado Gerado</h2>
+
+    {% if questoes %}
+        <!-- Visualização das questões -->
+        <div id="visualizacaoSimulado">
+            <ul class="list-group">
+                {% for questao in questoes %}
+                    <li class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="mb-2">
+                                    <div class="d-flex align-items-center">
+                                        <strong>Pergunta:</strong> 
+                                        <span id="pergunta-text-{{ loop.index0 }}" class="ms-2">{{ questao.pergunta }}</span>
+                                        {% if current_user.tipo_usuario_id == 5 %}
+                                        <button class="btn btn-link btn-sm" onclick="editarCampo('pergunta', {{ loop.index0 }})">
+                                            <i class="fas fa-pencil-alt"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <ul>
+                                    {% set questao_index = loop.index0 %}
+                                    {% for letra, alternativa in questao.alternativas.items() %}
+                                        {% if letra != 'E' or alternativa.strip() %}
+                                            <li>
+                                                <div class="d-flex align-items-center">
+                                                    <strong>{{ letra }}:</strong>
+                                                    <span id="alternativa-{{ letra }}-text-{{ questao_index }}" class="ms-2">{{ alternativa }}</span>
+                                                    {% if current_user.tipo_usuario_id == 5 %}
+                                                    <button class="btn btn-link btn-sm" onclick="editarCampo('alternativa-{{ letra }}', {{ questao_index }})">
+                                                        <i class="fas fa-pencil-alt"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                                <div class="d-flex align-items-center">
+                                    <strong>Resposta Correta:</strong>
+                                    <span id="correta-text-{{ loop.index0 }}" class="ms-2">{{ questao.correta }}</span>
+                                    {% if current_user.tipo_usuario_id == 5 %}
+                                    <button class="btn btn-link btn-sm" onclick="editarCampo('correta', {{ loop.index0 }})">
+                                        <i class="fas fa-pencil-alt"></i>
+                                    </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Formulário de edição (inicialmente oculto) -->
+        <form id="formEditarSimulado" action="{{ url_for('salvar_edicao_simulado', simulado_id=simulado_id) }}" method="POST">
+            <ul class="list-group">
+                {% for questao in questoes %}
+                    <li id="pergunta-edit-{{ loop.index0 }}" class="list-group-item" style="display: none;">
+                        <div class="form-group">
+                            <label><strong>Pergunta:</strong></label>
+                            <textarea class="form-control mb-3" name="perguntas[{{ loop.index0 }}][pergunta]" rows="3" required>{{ questao.pergunta }}</textarea>
+                            
+                            <label><strong>Alternativas:</strong></label>
+                            {% for letra, alternativa in questao.alternativas.items() %}
+                                {% if letra != 'E' or alternativa.strip() %}
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">{{ letra }}</span>
+                                        <input type="text" class="form-control" name="perguntas[{{ loop.index0 }}][alternativas][{{ letra }}]" value="{{ alternativa }}" {% if letra != 'E' %}required{% endif %}>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            <label><strong>Resposta Correta:</strong></label>
+                            <select class="form-control mb-3" name="perguntas[{{ loop.index0 }}][correta]" required>
+                                {% for letra, alternativa in questao.alternativas.items() %}
+                                    {% if letra != 'E' or alternativa.strip() %}
+                                        <option value="{{ letra }}" {% if letra == questao.correta %}selected{% endif %}>
+                                            {{ letra }}
+                                        </option>
+                                    {% endif %}
+                                {% endfor %}
+                            </select>
+                            
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-success btn-sm" onclick="salvarPergunta({{ loop.index0 }})">Salvar</button>
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="cancelarEdicao({{ loop.index0 }})">Cancelar</button>
+                            </div>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </form>
+
+        <form method="POST" action="{{ url_for('visualizar_simulado', simulado_id=simulado_id) }}">
+            <button type="submit" class="btn btn-primary mt-4">Enviar para Alunos</button>
+        </form>
+    {% else %}
+        <p class="text-muted">Nenhuma questão encontrada.</p>
+    {% endif %}
+</div>
+
+<style>
+    .btn-link {
+        color: #007bff;
+        padding: 0;
+        margin-left: 10px;
+    }
+    .btn-link:hover {
+        color: #0056b3;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-control-sm {
+        max-width: 300px;
+    }
+</style>
+
+<script>
+    function editarCampo(tipo, index) {
+        const elemento = document.getElementById(`${tipo}-text-${index}`);
+        const valorAtual = elemento.textContent.trim();
+        
+        let input;
+        if (tipo === 'correta') {
+            // Criar select para resposta correta
+            input = document.createElement('select');
+            input.className = 'form-control form-control-sm d-inline-block w-auto';
+            ['A', 'B', 'C', 'D', 'E'].forEach(letra => {
+                const option = document.createElement('option');
+                option.value = letra;
+                option.textContent = letra;
+                if (letra === valorAtual) option.selected = true;
+                input.appendChild(option);
+            });
+        } else {
+            // Criar input text para outros campos
+            input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'form-control form-control-sm d-inline-block w-auto';
+            input.value = valorAtual;
+        }
+
+        // Criar botões de ação
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn btn-success btn-sm ms-2';
+        saveBtn.innerHTML = '<i class="fas fa-check"></i>';
+        saveBtn.onclick = () => salvarCampo(tipo, index, input.value);
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn btn-secondary btn-sm ms-1';
+        cancelBtn.innerHTML = '<i class="fas fa-times"></i>';
+        cancelBtn.onclick = () => cancelarEdicaoCampo(tipo, index, valorAtual);
+
+        // Substituir o texto pelo formulário de edição
+        elemento.innerHTML = '';
+        elemento.appendChild(input);
+        elemento.appendChild(saveBtn);
+        elemento.appendChild(cancelBtn);
+
+        input.focus();
+    }
+
+    function salvarCampo(tipo, index, novoValor) {
+        const formData = new FormData();
+        formData.append('tipo', tipo);
+        formData.append('index', index);
+        formData.append('valor', novoValor);
+
+        fetch(`${window.location.pathname}/editar-campo`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const elemento = document.getElementById(`${tipo}-text-${index}`);
+                elemento.textContent = novoValor;
+                // Atualizar o formulário oculto se necessário
+                atualizarFormularioOculto(tipo, index, novoValor);
+            } else {
+                alert('Erro ao salvar: ' + data.message);
+                cancelarEdicaoCampo(tipo, index, document.getElementById(`${tipo}-text-${index}`).dataset.original);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao salvar as alterações');
+            cancelarEdicaoCampo(tipo, index, document.getElementById(`${tipo}-text-${index}`).dataset.original);
+        });
+    }
+
+    function cancelarEdicaoCampo(tipo, index, valorOriginal) {
+        const elemento = document.getElementById(`${tipo}-text-${index}`);
+        elemento.textContent = valorOriginal;
+    }
+
+    function atualizarFormularioOculto(tipo, index, valor) {
+        let campo;
+        if (tipo.startsWith('alternativa-')) {
+            const letra = tipo.split('-')[1];
+            campo = document.querySelector(`input[name="perguntas[${index}][alternativas][${letra}]"]`);
+        } else if (tipo === 'pergunta') {
+            campo = document.querySelector(`textarea[name="perguntas[${index}][pergunta]"]`);
+        } else if (tipo === 'correta') {
+            campo = document.querySelector(`select[name="perguntas[${index}][correta]"]`);
+        }
+        if (campo) campo.value = valor;
+    }
+
+    function editarPergunta(index) {
+        const questaoView = document.querySelector(`#visualizacaoSimulado ul li:nth-child(${index + 1})`);
+        questaoView.style.display = 'none';
+        
+        const questaoEdit = document.getElementById(`pergunta-edit-${index}`);
+        questaoEdit.style.display = 'block';
+    }
+    
+    function cancelarEdicao(index) {
+        const questaoView = document.querySelector(`#visualizacaoSimulado ul li:nth-child(${index + 1})`);
+        questaoView.style.display = 'block';
+        
+        const questaoEdit = document.getElementById(`pergunta-edit-${index}`);
+        questaoEdit.style.display = 'none';
+    }
+    
+    function validarFormulario(index) {
+    const questaoEdit = document.getElementById(`pergunta-edit-${index}`);
+
+    // Capturar os campos corretamente
+    const campos = {
+        pergunta: questaoEdit.querySelector(`textarea[name="perguntas[${index}][pergunta]"]`),
+        alternativaA: questaoEdit.querySelector(`input[name="perguntas[${index}][alternativas][A]"]`),
+        alternativaB: questaoEdit.querySelector(`input[name="perguntas[${index}][alternativas][B]"]`),
+        alternativaC: questaoEdit.querySelector(`input[name="perguntas[${index}][alternativas][C]"]`),
+        alternativaD: questaoEdit.querySelector(`input[name="perguntas[${index}][alternativas][D]"]`),
+        alternativaE: questaoEdit.querySelector(`input[name="perguntas[${index}][alternativas][E]"]`),
+        resposta: questaoEdit.querySelector(`select[name="perguntas[${index}][correta]"]`)
+    };
+
+    // Debug dos elementos encontrados
+    console.log('Elementos do formulário:', campos);
+    
+    // Debug dos valores capturados
+    console.log('Valores dos campos:', {
+        pergunta: campos.pergunta?.value,
+        alternativaA: campos.alternativaA?.value,
+        alternativaB: campos.alternativaB?.value,
+        alternativaC: campos.alternativaC?.value,
+        alternativaD: campos.alternativaD?.value,
+        alternativaE: campos.alternativaE?.value,
+        resposta: campos.resposta?.value
+    });
+
+    // Validar campos obrigatórios
+    if (!campos.pergunta?.value?.trim()) {
+        alert('Por favor, preencha a pergunta.');
+        return null;
+    }
+
+    const alternativas = ['A', 'B', 'C', 'D'];
+    for (const letra of alternativas) {
+        if (!campos[`alternativa${letra}`]?.value?.trim()) {
+            alert(`Por favor, preencha a alternativa ${letra}.`);
+            return null;
+        }
+    }
+
+    if (!campos.resposta?.value) {
+        alert('Por favor, selecione a resposta correta.');
+        return null;
+    }
+
+    if (campos.resposta.value === 'E' && (!campos.alternativaE?.value?.trim())) {
+        alert('A alternativa E foi marcada como correta mas não foi preenchida.');
+        return null;
+    }
+
+    // Retornar dados validados
+    return {
+        pergunta: campos.pergunta.value.trim(),
+        alternativas: {
+            A: campos.alternativaA.value.trim(),
+            B: campos.alternativaB.value.trim(),
+            C: campos.alternativaC.value.trim(),
+            D: campos.alternativaD.value.trim(),
+            E: campos.alternativaE?.value?.trim() || ''
+        },
+        resposta: campos.resposta.value
+    };
+}
+
+
+    function salvarPergunta(index) {
+        console.log('Iniciando salvamento da pergunta:', index);
+        
+        const dadosValidados = validarFormulario(index);
+        if (!dadosValidados) {
+            console.log('Validação falhou');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append(`perguntas[${index}][pergunta]`, dadosValidados.pergunta);
+        
+        for (const [letra, valor] of Object.entries(dadosValidados.alternativas)) {
+            if (valor || letra !== 'E') {
+                formData.append(`perguntas[${index}][alternativas][${letra}]`, valor);
+            }
+        }
+        
+        formData.append(`perguntas[${index}][correta]`, dadosValidados.resposta);
+        
+        console.log('Dados a serem enviados:');
+        for (let pair of formData.entries()) {
+            console.log(pair[0] + ': ' + pair[1]);
+        }
+        
+        const form = document.getElementById('formEditarSimulado');
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro na resposta do servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Resposta do servidor:', data);
+            if (data.success) {
+                alert('Alterações salvas com sucesso!');
+                window.location.reload();
+            } else {
+                alert('Erro ao salvar as alterações: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao salvar as alterações: ' + error.message);
+        });
+    }
+    window.salvarPergunta = salvarPergunta;
+
+</script>
+{% endblock %}

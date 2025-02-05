@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}
+Corrigir Simulado
+{% endblock %}
+
+{% block content %}
+<h2>Corrigir Simulado</h2>
+
+{% if respostas %}
+<table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Aluno</th>
+            <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Pergunta</th>
+            <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Resposta Dada</th>
+            <th style="border: 1px solid #ccc; padding: 10px; text-align: left;">Correta</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for resposta in respostas %}
+        <tr>
+            <td style="border: 1px solid #ccc; padding: 10px;">{{ resposta[0] }}</td>
+            <td style="border: 1px solid #ccc; padding: 10px;">{{ resposta[1] }}</td>
+            <td style="border: 1px solid #ccc; padding: 10px;">{{ resposta[2] }}</td>
+            <td style="border: 1px solid #ccc; padding: 10px; {% if resposta[3] %}color: green;{% else %}color: red;{% endif %}">
+                {% if resposta[3] %}✔ Correct{% else %}✖ Incorrect{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Nenhuma resposta foi encontrada para este simulado.</p>
+{% endif %}
+
+<a href="{{ url_for('portal_professores') }}" style="display: inline-block; margin-top: 20px; padding: 10px 20px; background-color: #007BFF; color: white; text-decoration: none; border-radius: 5px;">Voltar ao Portal</a>
+{% endblock %}

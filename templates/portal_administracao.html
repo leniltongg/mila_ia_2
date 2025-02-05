@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}Portal da Administração{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Portal da Administração Escolar</h2>
+
+    <div class="card">
+        <div class="card-body">
+            <a href="{{ url_for('ver_relatorio_escola') }}" class="btn btn-primary">Ver Relatório Geral da Escola</a>
+            <a href="{{ url_for('cadastrar_usuario_escola') }}" class="btn btn-success">Cadastrar Usuários</a>
+            <a href="{{ url_for('alterar_senha') }}" class="btn btn-success">Alterar Senha</a>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

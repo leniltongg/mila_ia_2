@@ -1,0 +1,47 @@
+/* Proteções contra manipulação do DOM */
+
+/* Previne seleção de texto em elementos protegidos */
+.protected {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Esconde elementos protegidos quando o DevTools está aberto */
+.protected.devtools-open {
+    visibility: hidden !important;
+    opacity: 0 !important;
+}
+
+/* Estilo para elementos que não devem ser modificados */
+[data-protected="true"] {
+    pointer-events: none;
+}
+
+/* Previne que elementos protegidos sejam arrastados */
+.protected {
+    -webkit-user-drag: none;
+    -khtml-user-drag: none;
+    -moz-user-drag: none;
+    -o-user-drag: none;
+    user-drag: none;
+}
+
+/* Esconde conteúdo sensível ao tentar copiar */
+.sensitive-data::selection {
+    background: transparent;
+    color: transparent;
+}
+
+/* Estilo para inputs protegidos */
+input[data-protected="true"] {
+    background-color: #f8f9fa !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Previne modificações em tempo real via DevTools */
+.protected * {
+    transition: none !important;
+    animation: none !important;
+}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}
+Portal do Administrador
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Bem-vindo ao Portal do Administrador</h2>
+
+    <!-- Seção de Opções -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Opções Administrativas
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-3">
+                <a href="{{ url_for('cadastrar_usuario') }}" class="btn btn-success">Cadastrar Usuário</a>
+                <a href="{{ url_for('cadastrar_usuarios_massa') }}" class="btn btn-danger">Cadastrar Usuários em Massa</a>
+                <a href="{{ url_for('cadastrar_escola') }}" class="btn btn-info">Cadastrar Escola</a>
+                <a href="{{ url_for('cadastrar_escolas_massa') }}" class="btn btn-primary">Cadastrar Escolas em Massa</a>
+                <a href="{{ url_for('cadastrar_disciplina') }}" class="btn btn-warning">Cadastrar Disciplina</a>
+                <a href="{{ url_for('cadastrar_turma') }}" class="btn btn-dark">Cadastrar Turma</a>
+                <a href="{{ url_for('cadastrar_turmas_massa') }}" class="btn btn-secondary">Cadastrar Turmas em Massa</a>
+                <a href="{{ url_for('relatorios') }}" class="btn btn-secondary">Visualizar Relatórios</a>
+                <a href="{{ url_for('ranking') }}" class="btn btn-warning">Ver Ranking</a> <!-- Botão para ranking -->
+                <a href="{{ url_for('alterar_senha') }}" class="btn btn-success">Alterar Senha</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Upload de Questões -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-white">
+            Upload de Questões
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" action="{{ url_for('upload_questoes_ia') }}">
+                <label for="file">Carregar arquivo com questões (PDF ou Texto):</label>
+                <input type="file" name="file" id="file" accept=".pdf,.txt" required class="form-control mb-3">
+                <button type="submit" class="btn btn-primary">Processar e Cadastrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Seção de Notificações -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            Notificações Recentes
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Nenhuma notificação no momento.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

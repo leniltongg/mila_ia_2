@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Relatório da Rede Municipal</h2>
+    
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Escola</th>
+                <th>Total de Alunos</th>
+                <th>Média de Desempenho (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in relatorio_geral %}
+                <tr>
+                    <td>{{ row['escola'] }}</td>
+                    <td>{{ row['total_alunos'] }}</td>
+                    <td>{{ row['media_desempenho'] | round(2) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="mt-4">Parecer da IA</h3>
+    <p>{{ parecer_ia }}</p>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('gerar_pdf_relatorio', tipo_relatorio='rede') }}" class="btn btn-primary">Gerar PDF</a>
+    </div>
+</div>
+{% endblock %}

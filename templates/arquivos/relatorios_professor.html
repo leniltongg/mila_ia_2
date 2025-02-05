@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Relatórios</h2>
+<ul>
+    <li><a href="{{ url_for('relatorio_individual/<int:aluno_id>') }}">Relatório Individual</a></li>
+    <li><a href="{{ url_for('gerar_relatorio_turma') }}">Relatório da Turma</a></li>
+</ul>
+{% endblock %}

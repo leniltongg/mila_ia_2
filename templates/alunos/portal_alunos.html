@@ -1,0 +1,105 @@
+{% extends "alunos/base_alunos.html" %}
+
+{% block title %}Portal dos Alunos - Início{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Bem-vindo ao Portal dos Alunos</h1>
+
+<div class="row g-4">
+    <!-- Tutor Virtual -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-person-workspace feature-icon"></i>
+                <h5 class="card-title">Tutor Virtual</h5>
+                <p class="card-text">Tire suas dúvidas e receba explicações personalizadas sobre qualquer assunto.</p>
+                <a href="{{ url_for('alunos_bp.tutor_virtual') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resolver Exercícios -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-journal-text feature-icon"></i>
+                <h5 class="card-title">Resolver Exercícios</h5>
+                <p class="card-text">Receba ajuda passo a passo para resolver exercícios e problemas.</p>
+                <a href="{{ url_for('alunos_bp.resolver_exercicios') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Criar Resumo -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-file-text feature-icon"></i>
+                <h5 class="card-title">Criar Resumo</h5>
+                <p class="card-text">Gere resumos estruturados e objetivos para facilitar seus estudos.</p>
+                <a href="{{ url_for('alunos_bp.criar_resumo') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Flashcards -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-card-text feature-icon"></i>
+                <h5 class="card-title">Flashcards</h5>
+                <p class="card-text">Crie cartões de estudo interativos para memorizar conceitos importantes.</p>
+                <a href="{{ url_for('alunos_bp.criar_flashcards') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-question-circle feature-icon"></i>
+                <h5 class="card-title">Quiz</h5>
+                <p class="card-text">Teste seus conhecimentos com quizzes personalizados.</p>
+                <a href="{{ url_for('alunos_bp.fazer_quiz') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Treinar Apresentação -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-easel feature-icon"></i>
+                <h5 class="card-title">Treinar Apresentação</h5>
+                <p class="card-text">Prepare-se para apresentações com feedback personalizado.</p>
+                <a href="{{ url_for('alunos_bp.treinar_apresentacao') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simular Entrevista -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-mic feature-icon"></i>
+                <h5 class="card-title">Simular Entrevista</h5>
+                <p class="card-text">Pratique entrevistas e receba dicas para melhorar seu desempenho.</p>
+                <a href="{{ url_for('alunos_bp.simular_entrevista') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preparar Redação -->
+    <div class="col-md-6 col-lg-4">
+        <div class="card feature-card h-100">
+            <div class="card-body text-center">
+                <i class="bi bi-pencil-square feature-icon"></i>
+                <h5 class="card-title">Preparar Redação</h5>
+                <p class="card-text">Receba orientações e feedback para melhorar suas redações.</p>
+                <a href="{{ url_for('alunos_bp.preparar_redacao') }}" class="btn btn-primary">Acessar</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

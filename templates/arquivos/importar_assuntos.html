@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Assuntos{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Importar Assuntos</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="file" class="form-label">Arquivo CSV</label>
+            <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Importar</button>
+    </form>
+</div>
+{% endblock %}

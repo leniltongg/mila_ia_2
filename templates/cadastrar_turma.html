@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Turma</h2>
+<form method="POST">
+    <label for="escola_id">Escola:</label>
+    <select id="escola_id" name="escola_id" onchange="carregarTiposDeEnsino()" required>
+        <option value="">Selecione uma escola...</option>
+        {% for escola in escolas %}
+        <option value="{{ escola[0] }}">{{ escola[1] }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="tipo_ensino_id">Tipo de Ensino:</label>
+    <select id="tipo_ensino_id" name="tipo_ensino_id" onchange="carregarseries()" required>
+        <option value="">Selecione uma escola primeiro</option>
+    </select>
+
+    <label for="serie_id">Série:</label>
+    <select id="serie_id" name="serie_id" required>
+        <option value="">Selecione o tipo de ensino primeiro</option>
+    </select>
+
+    <label for="turma">Turma:</label>
+    <input type="text" id="turma" name="turma" placeholder="Exemplo: A" required>
+
+    <button type="submit">Cadastrar</button>
+</form>
+
+<script>
+async function carregarTiposDeEnsino() {
+    const escolaId = document.getElementById("escola_id").value;
+    const tipoEnsinoSelect = document.getElementById("tipo_ensino_id");
+    const serieSelect = document.getElementById("serie_id");
+
+    // Limpar campos dependentes
+    tipoEnsinoSelect.innerHTML = '<option value="">Carregando...</option>';
+    serieSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+
+    if (!escolaId) {
+        tipoEnsinoSelect.innerHTML = '<option value="">Selecione uma escola primeiro</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get_tipo_ensino?escola_id=${escolaId}`);
+        if (!response.ok) {
+            throw new Error("Erro ao carregar tipos de ensino");
+        }
+        const tiposEnsino = await response.json();
+
+        console.log("Tipos de ensino recebidos:", tiposEnsino);
+
+        tipoEnsinoSelect.innerHTML = '<option value="">Selecione...</option>';
+        tiposEnsino.forEach(tipo => {
+            tipoEnsinoSelect.innerHTML += `<option value="${tipo.id}">${tipo.nome}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar tipos de ensino:", error);
+        tipoEnsinoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+async function carregarseries() {
+    const tipoEnsinoId = document.getElementById("tipo_ensino_id").value;
+    const serieSelect = document.getElementById("serie_id");
+
+    serieSelect.innerHTML = '<option value="">Carregando...</option>';
+
+    if (!tipoEnsinoId) {
+        serieSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get_serie_ids?tipo_ensino_id=${tipoEnsinoId}`);
+        if (!response.ok) {
+            throw new Error("Erro ao carregar séries");
+        }
+        const series = await response.json();
+
+        console.log("Séries recebidas:", series);
+
+        serieSelect.innerHTML = '<option value="">Selecione...</option>';
+        series.forEach(serie => {
+            serieSelect.innerHTML += `<option value="${serie.id}">${serie.nome}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar séries:", error);
+        serieSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+</script>
+
+{% if error %}
+<div style="color: red; margin-top: 10px;">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div style="color: green; margin-top: 10px;">{{ success }}</div>
+{% endif %}
+{% endblock %}

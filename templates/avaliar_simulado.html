@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Avaliar Simulado</h2>
+
+<div class="simulado-info">
+    <p><strong>Assunto:</strong> {{ simulado[1] }}</p>
+    <p><strong>Disciplina:</strong> {{ simulado[2] }}</p>
+    <p><strong>Descrição:</strong> {{ simulado[3] }}</p>
+    <p><strong>Avaliação Atual:</strong> 
+        {% if simulado[4] %}
+            {{ simulado[4] }} estrela(s)
+        {% else %}
+            Não avaliado
+        {% endif %}
+    </p>
+</div>
+
+<form method="POST">
+    <label for="avaliacao">Selecione uma avaliação (1 a 5 estrelas):</label>
+    <div class="stars">
+        {% for i in range(1, 6) %}
+        <input type="radio" id="star{{ i }}" name="avaliacao" value="{{ i }}" {% if simulado[4] == i %}checked{% endif %}>
+        <label for="star{{ i }}">&#9733;</label>
+        {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary">Salvar Avaliação</button>
+</form>
+
+<style>
+.stars {
+    display: inline-flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+}
+
+.stars input[type="radio"] {
+    display: none;
+}
+
+.stars label {
+    font-size: 2rem;
+    color: #ddd;
+    cursor: pointer;
+}
+
+.stars input[type="radio"]:checked ~ label {
+    color: #f5c518;
+}
+
+.stars label:hover,
+.stars label:hover ~ label {
+    color: #f5c518;
+}
+</style>
+
+{% if error %}
+<div style="color: red;">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div style="color: green;">{{ success }}</div>
+{% endif %}
+{% endblock %}

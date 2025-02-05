@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% block title %}
+Detalhamento da Disciplina {{ disciplina }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="section-title mb-4">{{ disciplina }}</h1>
+    
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h3 class="h5 mb-0">Questões e Desempenho</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Assunto</th>
+                            <th>Questão</th>
+                            <th>Total de Respostas</th>
+                            <th>Total de Acertos</th>
+                            <th>Taxa de Acerto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for questao in estatisticas_questoes %}
+                        <tr>
+                            <td>{{ questao[2] }}</td>
+                            <td>
+                                <div class="questao-texto">{{ questao[1] }}</div>
+                            </td>
+                            <td>{{ questao[3] }}</td>
+                            <td>{{ questao[4] }}</td>
+                            <td>
+                                <div class="progress" style="height: 20px;">
+                                    <div class="progress-bar" role="progressbar" 
+                                         style="width: {{ questao[5]|round(1) }}%;" 
+                                         aria-valuenow="{{ questao[5]|round(1) }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ questao[5]|round(1) }}%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.questao-texto {
+    max-width: 500px;
+    white-space: normal;
+    font-size: 0.9rem;
+}
+.progress {
+    background-color: #e9ecef;
+    border-radius: 0.25rem;
+}
+.progress-bar {
+    background-color: #6777ef;
+    color: white;
+    text-align: center;
+    line-height: 20px;
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}

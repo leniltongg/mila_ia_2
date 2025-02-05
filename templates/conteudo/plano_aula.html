@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Plano de Aula{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Criar Plano de Aula</h4>
+                </div>
+                <div class="card-body">
+                    <form id="planoAulaForm" onsubmit="gerarPlanoAula(event)">
+                        <div class="mb-3">
+                            <label for="disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="disciplina" name="disciplina" required>
+                                <option value="">Selecione a disciplina</option>
+                                <option value="matematica">Matemática</option>
+                                <option value="portugues">Português</option>
+                                <option value="ciencias">Ciências</option>
+                                <option value="historia">História</option>
+                                <option value="geografia">Geografia</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="serie" class="form-label">Série</label>
+                            <select class="form-select" id="serie" name="serie" required>
+                                <option value="">Selecione a série</option>
+                                <option value="6">6º ano</option>
+                                <option value="7">7º ano</option>
+                                <option value="8">8º ano</option>
+                                <option value="9">9º ano</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tema" class="form-label">Tema da Aula</label>
+                            <input type="text" class="form-control" id="tema" name="tema" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="duracao" class="form-label">Duração (minutos)</label>
+                            <input type="number" class="form-control" id="duracao" name="duracao" min="30" max="180" value="50" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info">Gerar Plano de Aula</button>
+                        </div>
+                    </form>
+
+                    <div id="resultado" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Plano de Aula Gerado</h5>
+                                <button class="btn btn-sm btn-outline-primary" onclick="copiarPlano()">
+                                    <i class="fas fa-copy"></i> Copiar
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <pre id="planoAulaTexto" class="bg-light p-3" style="white-space: pre-wrap;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function gerarPlanoAula(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const submitButton = form.querySelector('button[type="submit"]');
+    const resultado = document.getElementById('resultado');
+    const planoAulaTexto = document.getElementById('planoAulaTexto');
+    
+    // Desabilitar botão e mostrar loading
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
+    
+    try {
+        const formData = new FormData(form);
+        const response = await fetch('/criar_plano_aula', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            planoAulaTexto.textContent = data.plano_aula;
+            resultado.style.display = 'block';
+        } else {
+            alert('Erro ao gerar plano de aula: ' + data.error);
+        }
+    } catch (error) {
+        alert('Erro ao comunicar com o servidor: ' + error);
+    } finally {
+        // Restaurar botão
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Gerar Plano de Aula';
+    }
+}
+
+function copiarPlano() {
+    const planoAulaTexto = document.getElementById('planoAulaTexto');
+    navigator.clipboard.writeText(planoAulaTexto.textContent)
+        .then(() => alert('Plano de aula copiado para a área de transferência!'))
+        .catch(err => alert('Erro ao copiar: ' + err));
+}
+</script>
+{% endblock %}

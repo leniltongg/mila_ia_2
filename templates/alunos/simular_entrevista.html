@@ -1,0 +1,465 @@
+{% extends "base.html" %}
+
+{% block title %}Simular Entrevista{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Configuração da Entrevista -->
+            <div class="card mb-4" id="config-card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-comments me-2"></i>Simular Entrevista</h5>
+                </div>
+                <div class="card-body">
+                    <form id="entrevista-form">
+                        <!-- Tipo de entrevista -->
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo de Entrevista</label>
+                            <select class="form-select" id="tipo" required>
+                                <option value="">Selecione o tipo</option>
+                                <option value="vestibular">Vestibular</option>
+                                <option value="estagio">Estágio</option>
+                                <option value="apresentacao">Apresentação de Trabalho</option>
+                                <option value="debate">Debate</option>
+                            </select>
+                        </div>
+
+                        <!-- Área de interesse -->
+                        <div class="mb-3">
+                            <label for="area" class="form-label">Área de Interesse</label>
+                            <input type="text" class="form-control" id="area" 
+                                   placeholder="Ex: Engenharia, Medicina, etc." required>
+                        </div>
+
+                        <!-- Nível de dificuldade -->
+                        <div class="mb-3">
+                            <label for="nivel" class="form-label">Nível de Dificuldade</label>
+                            <select class="form-select" id="nivel" required>
+                                <option value="facil">Fácil</option>
+                                <option value="medio" selected>Médio</option>
+                                <option value="dificil">Difícil</option>
+                            </select>
+                        </div>
+
+                        <!-- Opções adicionais -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="feedback_detalhado" checked>
+                                    <label class="form-check-label" for="feedback_detalhado">
+                                        Feedback detalhado
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="gravar_sessao" checked>
+                                    <label class="form-check-label" for="gravar_sessao">
+                                        Gravar sessão para revisão
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botão de início -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-play me-2"></i>Iniciar Simulação
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Área da Entrevista -->
+            <div id="entrevista-area" style="display: none;">
+                <!-- Loading -->
+                <div id="loading" class="text-center mb-4" style="display: none;">
+                    <div class="spinner-border text-warning" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="text-muted mt-2">Preparando entrevista...</p>
+                </div>
+
+                <!-- Chat da Entrevista -->
+                <div class="card" id="chat-card">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Entrevista em Andamento</h5>
+                        <div>
+                            <span class="badge bg-light text-dark" id="tempo">00:00</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Área do chat -->
+                        <div id="chat-area" class="mb-3" style="height: 400px; overflow-y: auto;">
+                            <!-- Mensagens serão inseridas aqui -->
+                        </div>
+
+                        <!-- Área de resposta -->
+                        <form id="resposta-form" class="d-flex gap-2">
+                            <input type="text" id="resposta-input" class="form-control" 
+                                   placeholder="Digite sua resposta..." autocomplete="off">
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </form>
+
+                        <!-- Feedback da última resposta -->
+                        <div id="feedback-area" class="mt-3" style="display: none;">
+                            <!-- Feedback será inserido aqui -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultado Final -->
+                <div class="card mt-4" id="resultado-card" style="display: none;">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">Resultado da Entrevista</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Pontuação -->
+                        <div class="row mb-4">
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Clareza</h6>
+                                        <h4 class="mb-0" id="pontos-clareza">0/10</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Conteúdo</h6>
+                                        <h4 class="mb-0" id="pontos-conteudo">0/10</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card bg-light">
+                                    <div class="card-body text-center">
+                                        <h6 class="text-muted mb-2">Objetividade</h6>
+                                        <h4 class="mb-0" id="pontos-objetividade">0/10</h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Feedback geral -->
+                        <div class="mb-4">
+                            <h6>Feedback Geral</h6>
+                            <div id="feedback-geral"></div>
+                        </div>
+
+                        <!-- Pontos fortes e a melhorar -->
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h6 class="text-success">Pontos Fortes</h6>
+                                <ul id="pontos-fortes" class="list-unstyled">
+                                    <!-- Pontos fortes serão inseridos aqui -->
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-danger">Pontos a Melhorar</h6>
+                                <ul id="pontos-melhorar" class="list-unstyled">
+                                    <!-- Pontos a melhorar serão inseridos aqui -->
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Botões de ação -->
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-outline-primary" onclick="verTranscricao()">
+                                <i class="fas fa-file-alt me-1"></i>Ver Transcrição
+                            </button>
+                            <button class="btn btn-outline-success" onclick="baixarRelatorio()">
+                                <i class="fas fa-download me-1"></i>Baixar Relatório
+                            </button>
+                            <button class="btn btn-warning" onclick="novaEntrevista()">
+                                <i class="fas fa-redo me-1"></i>Nova Entrevista
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let entrevista = {
+    timer: null,
+    inicio: null,
+    historico: [],
+    finalizada: false
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('entrevista-form');
+    const entrevistaArea = document.getElementById('entrevista-area');
+    const loadingDiv = document.getElementById('loading');
+    const chatCard = document.getElementById('chat-card');
+    const configCard = document.getElementById('config-card');
+    const respostaForm = document.getElementById('resposta-form');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const tipo = document.getElementById('tipo').value;
+        const area = document.getElementById('area').value;
+        const nivel = document.getElementById('nivel').value;
+        const feedbackDetalhado = document.getElementById('feedback_detalhado').checked;
+        const gravarSessao = document.getElementById('gravar_sessao').checked;
+
+        if (!tipo || !area) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        // Mostrar loading
+        configCard.style.display = 'none';
+        entrevistaArea.style.display = 'block';
+        loadingDiv.style.display = 'block';
+        chatCard.style.display = 'none';
+
+        try {
+            // Iniciar entrevista
+            entrevista.inicio = new Date();
+            entrevista.timer = setInterval(atualizarTempo, 1000);
+            entrevista.historico = [];
+            entrevista.finalizada = false;
+
+            // Primeira mensagem do entrevistador
+            const response = await fetch('/proxima_pergunta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    tipo: tipo,
+                    area: area,
+                    nivel: nivel,
+                    feedback_detalhado: feedbackDetalhado,
+                    historico: []
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                adicionarMensagem(data.response, false);
+            } else {
+                throw new Error('Erro ao iniciar entrevista');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro ao iniciar entrevista');
+            novaEntrevista();
+        } finally {
+            loadingDiv.style.display = 'none';
+            chatCard.style.display = 'block';
+        }
+    });
+
+    respostaForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const input = document.getElementById('resposta-input');
+        const resposta = input.value.trim();
+        
+        if (resposta && !entrevista.finalizada) {
+            input.value = '';
+            adicionarMensagem(resposta, true);
+            
+            try {
+                const response = await fetch('/proxima_pergunta', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        resposta: resposta,
+                        historico: entrevista.historico
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.feedback) {
+                        mostrarFeedback(data.feedback);
+                    }
+                    
+                    if (data.finalizar) {
+                        finalizarEntrevista(data.resultado);
+                    } else {
+                        adicionarMensagem(data.response, false);
+                    }
+                } else {
+                    throw new Error('Erro ao processar resposta');
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao processar sua resposta');
+            }
+        }
+    });
+});
+
+function adicionarMensagem(mensagem, isUser) {
+    const chatArea = document.getElementById('chat-area');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `d-flex ${isUser ? 'justify-content-end' : 'justify-content-start'} mb-3`;
+    
+    messageDiv.innerHTML = `
+        <div class="message p-3 rounded ${isUser ? 'bg-warning text-dark' : 'bg-light'}" 
+             style="max-width: 75%;">
+            ${mensagem}
+        </div>
+    `;
+    
+    chatArea.appendChild(messageDiv);
+    chatArea.scrollTop = chatArea.scrollHeight;
+    
+    // Adicionar ao histórico
+    entrevista.historico.push({
+        mensagem: mensagem,
+        isUser: isUser
+    });
+}
+
+function mostrarFeedback(feedback) {
+    const feedbackArea = document.getElementById('feedback-area');
+    feedbackArea.innerHTML = `
+        <div class="alert alert-light border">
+            <h6 class="alert-heading">Feedback da Resposta</h6>
+            <p class="mb-0">${feedback}</p>
+        </div>
+    `;
+    feedbackArea.style.display = 'block';
+}
+
+function finalizarEntrevista(resultado) {
+    entrevista.finalizada = true;
+    clearInterval(entrevista.timer);
+    
+    document.getElementById('chat-card').style.display = 'none';
+    document.getElementById('resultado-card').style.display = 'block';
+    
+    // Preencher pontuações
+    document.getElementById('pontos-clareza').textContent = `${resultado.clareza}/10`;
+    document.getElementById('pontos-conteudo').textContent = `${resultado.conteudo}/10`;
+    document.getElementById('pontos-objetividade').textContent = `${resultado.objetividade}/10`;
+    
+    // Preencher feedback geral
+    document.getElementById('feedback-geral').innerHTML = resultado.feedback_geral;
+    
+    // Preencher pontos fortes e a melhorar
+    const pontosFortes = document.getElementById('pontos-fortes');
+    const pontosMelhorar = document.getElementById('pontos-melhorar');
+    
+    pontosFortes.innerHTML = resultado.pontos_fortes.map(ponto => 
+        `<li><i class="fas fa-check-circle text-success me-2"></i>${ponto}</li>`
+    ).join('');
+    
+    pontosMelhorar.innerHTML = resultado.pontos_melhorar.map(ponto => 
+        `<li><i class="fas fa-exclamation-circle text-danger me-2"></i>${ponto}</li>`
+    ).join('');
+}
+
+function atualizarTempo() {
+    const tempoDecorrido = Math.floor((new Date() - entrevista.inicio) / 1000);
+    document.getElementById('tempo').textContent = formatarTempo(tempoDecorrido);
+}
+
+function formatarTempo(segundos) {
+    const minutos = Math.floor(segundos / 60);
+    segundos = segundos % 60;
+    return `${String(minutos).padStart(2, '0')}:${String(segundos).padStart(2, '0')}`;
+}
+
+function verTranscricao() {
+    const transcricao = entrevista.historico.map(msg => 
+        `${msg.isUser ? 'Você' : 'Entrevistador'}: ${msg.mensagem}`
+    ).join('\n\n');
+    
+    const win = window.open('', '_blank');
+    win.document.write(`
+        <html>
+            <head>
+                <title>Transcrição da Entrevista</title>
+                <style>
+                    body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; }
+                    .mensagem { margin-bottom: 20px; }
+                </style>
+            </head>
+            <body>
+                <h2>Transcrição da Entrevista</h2>
+                <pre>${transcricao}</pre>
+            </body>
+        </html>
+    `);
+}
+
+async function baixarRelatorio() {
+    try {
+        const response = await fetch('/download_relatorio_entrevista', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                historico: entrevista.historico,
+                tempo: Math.floor((new Date() - entrevista.inicio) / 1000),
+                pontuacoes: {
+                    clareza: document.getElementById('pontos-clareza').textContent,
+                    conteudo: document.getElementById('pontos-conteudo').textContent,
+                    objetividade: document.getElementById('pontos-objetividade').textContent
+                },
+                feedback_geral: document.getElementById('feedback-geral').innerHTML,
+                pontos_fortes: Array.from(document.getElementById('pontos-fortes').children).map(li => li.textContent),
+                pontos_melhorar: Array.from(document.getElementById('pontos-melhorar').children).map(li => li.textContent)
+            })
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'relatorio_entrevista.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('Erro ao gerar PDF');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao baixar relatório');
+    }
+}
+
+function novaEntrevista() {
+    if (entrevista.timer) {
+        clearInterval(entrevista.timer);
+    }
+    
+    document.getElementById('entrevista-form').reset();
+    document.getElementById('config-card').style.display = 'block';
+    document.getElementById('entrevista-area').style.display = 'none';
+    document.getElementById('chat-card').style.display = 'none';
+    document.getElementById('resultado-card').style.display = 'none';
+    
+    entrevista = {
+        timer: null,
+        inicio: null,
+        historico: [],
+        finalizada: false
+    };
+}
+</script>
+{% endblock %}

@@ -1,0 +1,77 @@
+// Mapa Mental
+digraph {
+	rankdir=LR
+	node [fillcolor=white fontname=Arial fontsize=12 shape=box style="rounded,filled"]
+	edge [color="#666666"]
+	central [label="frações" fillcolor="#E8F4F9" fontsize=14 shape=box style="rounded,filled"]
+	tTtuloCriativoNavegandopeloMundodasFraesUmMapaMental [label="Título Criativo: \"Navegando pelo Mundo das Frações: Um Mapa Mental\"" fillcolor="#F0F9E8"]
+	central -> tTtuloCriativoNavegandopeloMundodasFraesUmMapaMental
+	tObjetivosdeAprendizagem [label="Objetivos de Aprendizagem:" fillcolor="#F4E8F9"]
+	central -> tObjetivosdeAprendizagem
+	t1Compreenderosconceitosbsicosdefraes [label="1. Compreender os conceitos básicos de frações." fillcolor="#F9E8E8"]
+	central -> t1Compreenderosconceitosbsicosdefraes
+	t2Identificardiferentestiposdefraes [label="2. Identificar diferentes tipos de frações." fillcolor="#E8F4F9"]
+	central -> t2Identificardiferentestiposdefraes
+	t3Resolverproblemassimplesenvolvendofraes [label="3. Resolver problemas simples envolvendo frações." fillcolor="#F9F4E8"]
+	central -> t3Resolverproblemassimplesenvolvendofraes
+	tMateriaisNecessrios [label="Materiais Necessários:" fillcolor="#F0F9E8"]
+	central -> tMateriaisNecessrios
+	t1FolhadepapeldetamanhoA3 [label="1. Folha de papel de tamanho A3" fillcolor="#F4E8F9"]
+	central -> t1FolhadepapeldetamanhoA3
+	t2Canetascoloridas [label="2. Canetas coloridas" fillcolor="#F9E8E8"]
+	central -> t2Canetascoloridas
+	t3Lpiseborracha [label="3. Lápis e borracha" fillcolor="#E8F4F9"]
+	central -> t3Lpiseborracha
+	t4Rgua [label="4. Régua" fillcolor="#F9F4E8"]
+	central -> t4Rgua
+	t5Adesivosourecortesdecones [label="5. Adesivos ou recortes de ícones" fillcolor="#F0F9E8"]
+	central -> t5Adesivosourecortesdecones
+	tPassoaPassoDetalhado [label="Passo a Passo Detalhado:" fillcolor="#F4E8F9"]
+	central -> tPassoaPassoDetalhado
+	t1DesenheumcrculonocentrodafolhaeescrevaapalavraFraesneleEsteoconceitoprincipaldomapamental [label="1. Desenhe um círculo no centro da folha e escreva a palavra \"Frações\" nele. Este é o conceito principal do mapa mental." fillcolor="#F9E8E8"]
+	central -> t1DesenheumcrculonocentrodafolhaeescrevaapalavraFraesneleEsteoconceitoprincipaldomapamental
+	t2DesenhetrsramificaesprincipaissaindodocrculocentralNomeieascomoDefinioTiposdeFraeseOperaes [label="2. Desenhe três ramificações principais saindo do círculo central. Nomeie-as como \"Definição\", \"Tipos de Frações\" e \"Operações\"." fillcolor="#E8F4F9"]
+	central -> t2DesenhetrsramificaesprincipaissaindodocrculocentralNomeieascomoDefinioTiposdeFraeseOperaes
+	t3SobaramificaoDefiniocriesubramificaesparaNumeradorDenominadoreRepresentaodeFraesAdicionedefiniescurtaseexemplosparacadauma [label="3. Sob a ramificação \"Definição\", crie sub-ramificações para \"Numerador\", \"Denominador\" e \"Representação de Frações\". Adicione definições curtas e exemplos para cada uma." fillcolor="#F9F4E8"]
+	central -> t3SobaramificaoDefiniocriesubramificaesparaNumeradorDenominadoreRepresentaodeFraesAdicionedefiniescurtaseexemplosparacadauma
+	t4SobaramificaoTiposdeFraescriesubramificaesparaFraesPrpriasFraesImprpriaseFraoMistaDexemplosdecadatipo [label="4. Sob a ramificação \"Tipos de Frações\", crie sub-ramificações para \"Frações Próprias\", \"Frações Impróprias\" e \"Fração Mista\". Dê exemplos de cada tipo." fillcolor="#F0F9E8"]
+	central -> t4SobaramificaoTiposdeFraescriesubramificaesparaFraesPrpriasFraesImprpriaseFraoMistaDexemplosdecadatipo
+	t5SobaramificaoOperaescriesubramificaesparaAdioSubtraoMultiplicaoeDivisoIncluaexemplosdeproblemasparacadaoperao [label="5. Sob a ramificação \"Operações\", crie sub-ramificações para \"Adição\", \"Subtração\", \"Multiplicação\" e \"Divisão\". Inclua exemplos de problemas para cada operação." fillcolor="#F4E8F9"]
+	central -> t5SobaramificaoOperaescriesubramificaesparaAdioSubtraoMultiplicaoeDivisoIncluaexemplosdeproblemasparacadaoperao
+	t6Certifiquesedeconectarassubramificaesrelevantescomlinhasesetasparamostrararelaoentreelas [label="6. Certifique-se de conectar as sub-ramificações relevantes com linhas e setas para mostrar a relação entre elas." fillcolor="#F9E8E8"]
+	central -> t6Certifiquesedeconectarassubramificaesrelevantescomlinhasesetasparamostrararelaoentreelas
+	t7Identifiquecadaramificaoprincipalcomumacordiferenteparacategorizarasinformaes [label="7. Identifique cada ramificação principal com uma cor diferente para categorizar as informações." fillcolor="#E8F4F9"]
+	central -> t7Identifiquecadaramificaoprincipalcomumacordiferenteparacategorizarasinformaes
+	t8Adicioneconesousmbolosparamelhoraravisualizaoeamemorizaodosconceitos [label="8. Adicione ícones ou símbolos para melhorar a visualização e a memorização dos conceitos." fillcolor="#F9F4E8"]
+	central -> t8Adicioneconesousmbolosparamelhoraravisualizaoeamemorizaodosconceitos
+	tSugestesdeCoresecones [label="Sugestões de Cores e Ícones:" fillcolor="#F0F9E8"]
+	central -> tSugestesdeCoresecones
+	t1DefinioAzuluseconesdeumlivroouculos [label="1. \"Definição\" - Azul, use ícones de um livro ou óculos" fillcolor="#F4E8F9"]
+	central -> t1DefinioAzuluseconesdeumlivroouculos
+	t2TiposdeFraesVerdeuseconesdediferentesformasgeomtricas [label="2. \"Tipos de Frações\" - Verde, use ícones de diferentes formas geométricas" fillcolor="#F9E8E8"]
+	central -> t2TiposdeFraesVerdeuseconesdediferentesformasgeomtricas
+	t3OperaesVermelhouseconesdesinaismatemticos [label="3. \"Operações\" - Vermelho, use ícones de sinais matemáticos" fillcolor="#E8F4F9"]
+	central -> t3OperaesVermelhouseconesdesinaismatemticos
+	tDicasparaPersonalizao [label="Dicas para Personalização:" fillcolor="#F9F4E8"]
+	central -> tDicasparaPersonalizao
+	tOsalunospodemadicionardesenhosrelacionadosaoconceitodecadaramificaoousubramificaoTambmpodemusaradesivosparadecorarepersonalizaromapamental [label="Os alunos podem adicionar desenhos relacionados ao conceito de cada ramificação ou sub-ramificação. Também podem usar adesivos para decorar e personalizar o mapa mental." fillcolor="#F0F9E8"]
+	central -> tOsalunospodemadicionardesenhosrelacionadosaoconceitodecadaramificaoousubramificaoTambmpodemusaradesivosparadecorarepersonalizaromapamental
+	tFormasdeAvaliao [label="Formas de Avaliação:" fillcolor="#F4E8F9"]
+	central -> tFormasdeAvaliao
+	t1Verifiqueaprecisodasdefiniesexemploseconexesdosalunos [label="1. Verifique a precisão das definições, exemplos e conexões dos alunos." fillcolor="#F9E8E8"]
+	central -> t1Verifiqueaprecisodasdefiniesexemploseconexesdosalunos
+	t2Peaaosalunosparaexplicarseumapamentalnafrentedaclasse [label="2. Peça aos alunos para explicar seu mapa mental na frente da classe." fillcolor="#E8F4F9"]
+	central -> t2Peaaosalunosparaexplicarseumapamentalnafrentedaclasse
+	t3Useomapamentalcomoumaferramentaderevisoparafuturostesteseexames [label="3. Use o mapa mental como uma ferramenta de revisão para futuros testes e exames." fillcolor="#F9F4E8"]
+	central -> t3Useomapamentalcomoumaferramentaderevisoparafuturostesteseexames
+	tVariaesouAdaptaesPossveis [label="Variações ou Adaptações Possíveis:" fillcolor="#F0F9E8"]
+	central -> tVariaesouAdaptaesPossveis
+	t1Paraalunosmaisjovenssimplifiqueomapamentalconcentrandoseapenasnadefinioenostiposdefraes [label="1. Para alunos mais jovens, simplifique o mapa mental, concentrando-se apenas na definição e nos tipos de frações." fillcolor="#F4E8F9"]
+	central -> t1Paraalunosmaisjovenssimplifiqueomapamentalconcentrandoseapenasnadefinioenostiposdefraes
+	t2ParaalunosmaisavanadosadicionemaisramificaescomoFraesDecimaiseFraesPercentuais [label="2. Para alunos mais avançados, adicione mais ramificações, como \"Frações Decimais\" e \"Frações Percentuais\"." fillcolor="#F9E8E8"]
+	central -> t2ParaalunosmaisavanadosadicionemaisramificaescomoFraesDecimaiseFraesPercentuais
+	tConexescomOutrosTemas [label="Conexões com Outros Temas:" fillcolor="#E8F4F9"]
+	central -> tConexescomOutrosTemas
+	tEstemapamentalpodeserconectadoaoutrostpicosdematemticacomonmerosdecimaisporcentagemproporesegeometriaaodiscutirarepresentaodefraes [label="Este mapa mental pode ser conectado a outros tópicos de matemática, como números decimais, porcentagem, proporções e geometria ao discutir a representação de frações." fillcolor="#F9F4E8"]
+	central -> tEstemapamentalpodeserconectadoaoutrostpicosdematemticacomonmerosdecimaisporcentagemproporesegeometriaaodiscutirarepresentaodefraes
+}

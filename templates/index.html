@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <h1 class="display-4">Bem-vindo ao Sistema Mila</h1>
+            <p class="lead">Sistema de Gestão Educacional</p>
+            
+            {% if current_user.is_authenticated %}
+                <div class="mt-4">
+                    <h2>Olá, {{ current_user.nome }}!</h2>
+                    {% if current_user.tipo_usuario_id == 1 %}
+                        <a href="{{ url_for('portal_administrador') }}" class="btn btn-primary">Portal do Administrador</a>
+                    {% elif current_user.tipo_usuario_id == 2 %}
+                        <a href="{{ url_for('portal_professores') }}" class="btn btn-primary">Portal do Professor</a>
+                    {% elif current_user.tipo_usuario_id == 4 %}
+                        <a href="{{ url_for('alunos_bp.portal_alunos') }}" class="btn btn-primary">Portal do Aluno</a>
+                    {% elif current_user.tipo_usuario_id == 5 %}
+                        <a href="{{ url_for('portal_secretaria_educacao') }}" class="btn btn-primary">Portal da Secretaria</a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="mt-4">
+                    <p>Por favor, faça login para acessar o sistema.</p>
+                    <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Login</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

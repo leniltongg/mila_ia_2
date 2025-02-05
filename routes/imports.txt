@@ -1,0 +1,5 @@
+# Importar os blueprints
+from routes import conteudo_bp
+
+# Registrar os blueprints
+app.register_blueprint(conteudo_bp)

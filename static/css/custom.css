@@ -1,0 +1,451 @@
+:root {
+    --primary-color: #1E1433;
+    --secondary-color: #FFA726;
+    --accent-color: #4A90E2;
+    --text-color: #2C3E50;
+    --light-bg: #f8f9fa;
+    --white: #ffffff;
+    --success: #2ECC71;
+    --danger: #E74C3C;
+}
+
+body {
+    background-color: #F5F7FA;
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+    line-height: 1.6;
+}
+
+/* Navbar */
+.navbar {
+    background: linear-gradient(135deg, var(--primary-color), #2C1B4D) !important;
+    padding: 1rem 0;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+    color: var(--white) !important;
+    font-weight: 600;
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+}
+
+.nav-link {
+    color: var(--white) !important;
+    opacity: 0.9;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    margin: 0 0.2rem;
+    border-radius: 5px;
+}
+
+.nav-link:hover {
+    opacity: 1;
+    background-color: rgba(255,255,255,0.1);
+    transform: translateY(-1px);
+}
+
+/* Cards e Seções */
+.card {
+    border: none;
+    border-radius: 15px;
+    background: var(--white);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    background: linear-gradient(135deg, var(--primary-color), #2C1B4D) !important;
+    padding: 1.2rem;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.card-body {
+    background-color: var(--white);
+    padding: 1.5rem;
+}
+
+.card-header h5,
+.card-header .mb-0 {
+    color: var(--white) !important;
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.card-header small,
+.card-header .text-muted {
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.9rem;
+    display: block;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.card .table {
+    color: var(--text-color);
+}
+
+.card .table td,
+.card .table th {
+    color: var(--text-color);
+    border-color: rgba(255,255,255,0.1);
+}
+
+/* Botões */
+.btn {
+    padding: 0.6rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--secondary-color), #FF8F00);
+    border: none;
+    color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #FF8F00, var(--secondary-color));
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 167, 38, 0.3);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--success), #27AE60);
+    border: none;
+}
+
+/* Formulários */
+.form-control {
+    border-radius: 8px;
+    border: 2px solid #E8ECF3;
+    padding: 0.8rem 1rem;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus {
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 0.2rem rgba(255, 167, 38, 0.15);
+}
+
+/* Títulos e Textos */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+/* Seções do Portal */
+.section-title {
+    color: var(--primary-color);
+    font-size: 1.8rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    text-align: center;
+    position: relative;
+    padding-bottom: 1rem;
+}
+
+.section-title:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 3px;
+    background: linear-gradient(to right, var(--secondary-color), var(--accent-color));
+    border-radius: 3px;
+}
+
+/* Upload de Questões */
+.upload-section {
+    background-color: var(--white);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    margin-bottom: 2rem;
+}
+
+.upload-section h3 {
+    color: var(--primary-color);
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Alertas */
+.alert {
+    border: none;
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+}
+
+.alert-success {
+    background-color: #D5F5E3;
+    color: #196F3D;
+}
+
+.alert-danger {
+    background-color: #FADBD8;
+    color: #943126;
+}
+
+/* Tabelas */
+.table {
+    background-color: var(--white);
+    color: var(--text-color);
+}
+
+.table thead th {
+    background: linear-gradient(135deg, var(--primary-color), #2C1B4D);
+    color: var(--white);
+    border: none;
+    padding: 1rem;
+    font-weight: 500;
+}
+
+.table tbody td {
+    color: var(--text-color);
+    padding: 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    background-color: var(--white);
+}
+
+.table tbody tr:hover {
+    background-color: #f7fafc;
+}
+
+/* Estilos para tabelas no dashboard */
+.table thead th {
+    color: #4a5568;
+    font-weight: 600;
+    border-bottom: 2px solid #e2e8f0;
+    background-color: #f8fafc;
+    padding: 12px;
+}
+
+.table tbody td {
+    color: #2d3748;
+    padding: 12px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f7fafc;
+    transition: all 0.2s ease;
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+}
+
+/* Opções Administrativas */
+.admin-options {
+    background: linear-gradient(135deg, var(--primary-color), #2C1B4D);
+    color: var(--white);
+    padding: 1rem;
+    border-radius: 10px;
+    margin-bottom: 1.5rem;
+}
+
+.admin-options h3 {
+    color: var(--white);
+    margin-bottom: 1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .card {
+        margin-bottom: 1rem;
+    }
+    
+    .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+}
+
+/* Estilo específico para questões do simulado */
+.questao {
+    background-color: var(--white);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.pergunta {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.alternativas {
+    background-color: var(--light-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.form-check {
+    margin-bottom: 1rem;
+    padding-left: 2rem;
+}
+
+.form-check-input {
+    margin-top: 0.3rem;
+}
+
+.form-check-label {
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+/* Layout com Menu Lateral */
+.wrapper {
+    display: flex;
+    width: 100%;
+    align-items: stretch;
+}
+
+#sidebar {
+    min-width: 250px;
+    max-width: 250px;
+    background: linear-gradient(160deg, var(--primary-color), #2C1B4D);
+    color: var(--white);
+    transition: all 0.3s;
+    min-height: 100vh;
+    box-shadow: 3px 0 10px rgba(0,0,0,0.1);
+}
+
+#sidebar.active {
+    margin-left: -250px;
+}
+
+#sidebar .sidebar-header {
+    padding: 20px;
+    background: rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+#sidebar .sidebar-header h3 {
+    color: var(--white);
+    margin: 0;
+    font-size: 1.5em;
+}
+
+#sidebar ul.components {
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+#sidebar ul li a {
+    padding: 15px 20px;
+    font-size: 1.1em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--white);
+    text-decoration: none;
+    transition: all 0.3s;
+}
+
+#sidebar ul li a:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--secondary-color);
+}
+
+#sidebar ul li a i {
+    width: 20px;
+    text-align: center;
+}
+
+#sidebar ul li.active > a {
+    background: var(--secondary-color);
+    color: var(--primary-color);
+}
+
+#content {
+    width: 100%;
+    padding: 20px;
+    min-height: 100vh;
+    transition: all 0.3s;
+    background-color: #F5F7FA;
+}
+
+/* Botão para mostrar/esconder menu em telas pequenas */
+#sidebarCollapse {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--white);
+    padding: 10px;
+    cursor: pointer;
+}
+
+/* Menu superior para telas pequenas */
+.top-nav {
+    display: none;
+    background: var(--primary-color);
+    padding: 10px 20px;
+    color: var(--white);
+    align-items: center;
+}
+
+@media (max-width: 768px) {
+    #sidebar {
+        margin-left: -250px;
+        position: fixed;
+        z-index: 999;
+        height: 100%;
+    }
+
+    #sidebar.active {
+        margin-left: 0;
+    }
+
+    #sidebarCollapse {
+        display: block;
+    }
+
+    .top-nav {
+        display: flex;
+    }
+
+    #content {
+        padding-top: 60px;
+    }
+}
+
+/* Ajuste do container principal */
+.main-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}

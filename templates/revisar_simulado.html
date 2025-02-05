@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Revisar Simulado{% endblock %}
+
+{% block content %}
+<h2>Revisar Simulado</h2>
+<p><strong>Assunto:</strong> {{ simulado['assunto_id'] }}</p>
+<p><strong>Status:</strong> {{ simulado['status'] }}</p>
+<ul>
+    {% for questao in questoes %}
+        <li>
+            <p><strong>Pergunta:</strong> {{ questao['pergunta'] }}</p>
+            <ul>
+                {% for alternativa in questao['alternativas']|from_json %}
+                    <li>{{ alternativa }}</li>
+                {% endfor %}
+            </ul>
+            <p><strong>Resposta Correta:</strong> {{ questao['resposta_correta'] }}</p>
+        </li>
+    {% endfor %}
+</ul>
+<form method="POST">
+    <button name="acao" value="aprovar">Aprovar</button>
+    <button name="acao" value="rejeitar">Rejeitar</button>
+</form>
+
+{% endblock %}

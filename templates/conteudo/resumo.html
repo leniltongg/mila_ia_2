@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Resumo{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">Criar Resumo</h4>
+                </div>
+                <div class="card-body">
+                    <form id="resumoForm" onsubmit="gerarResumo(event)">
+                        <div class="mb-3">
+                            <label for="disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="disciplina" name="disciplina" required>
+                                <option value="">Selecione a disciplina</option>
+                                <option value="matematica">Matemática</option>
+                                <option value="portugues">Português</option>
+                                <option value="ciencias">Ciências</option>
+                                <option value="historia">História</option>
+                                <option value="geografia">Geografia</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="serie" class="form-label">Série</label>
+                            <select class="form-select" id="serie" name="serie" required>
+                                <option value="">Selecione a série</option>
+                                <option value="6">6º ano</option>
+                                <option value="7">7º ano</option>
+                                <option value="8">8º ano</option>
+                                <option value="9">9º ano</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="tema" class="form-label">Tema/Conteúdo</label>
+                            <input type="text" class="form-control" id="tema" name="tema" required 
+                                   placeholder="Ex: Frações, Revolução Francesa, Verbos...">
+                        </div>
+                        <div class="mb-3">
+                            <label for="tipo_resumo" class="form-label">Tipo de Resumo</label>
+                            <select class="form-select" id="tipo_resumo" name="tipo_resumo" required>
+                                <option value="">Selecione o tipo</option>
+                                <option value="topicos">Tópicos principais</option>
+                                <option value="detalhado">Resumo detalhado</option>
+                                <option value="mapa_conceitual">Mapa conceitual</option>
+                                <option value="esquema">Esquema de estudo</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nivel_detalhe" class="form-label">Nível de Detalhamento</label>
+                            <select class="form-select" id="nivel_detalhe" name="nivel_detalhe" required>
+                                <option value="basico">Básico - Conceitos principais</option>
+                                <option value="intermediario">Intermediário - Explicações e exemplos</option>
+                                <option value="avancado">Avançado - Aprofundamento e conexões</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="gerar_imagem" name="gerar_imagem">
+                                <label class="form-check-label" for="gerar_imagem">
+                                    Gerar imagem ilustrativa
+                                </label>
+                            </div>
+                            <div id="imagem_desc_container" class="mt-2" style="display: none;">
+                                <label for="imagem_desc" class="form-label">Descrição da imagem desejada</label>
+                                <input type="text" class="form-control" id="imagem_desc" name="imagem_desc" 
+                                       placeholder="Ex: Um triângulo retângulo com seus ângulos marcados">
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info">Gerar Resumo</button>
+                        </div>
+                    </form>
+
+                    <div id="resultado" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Resumo Gerado</h5>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary me-2" onclick="copiarResumo()">
+                                        <i class="fas fa-copy"></i> Copiar
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" onclick="baixarPDF()">
+                                        <i class="fas fa-download"></i> Baixar PDF
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div id="imagem_container" class="text-center mb-4" style="display: none;">
+                                    <img id="imagem_gerada" class="img-fluid rounded" style="max-width: 100%; height: auto;" alt="Imagem gerada">
+                                </div>
+                                <pre id="resumoTexto" class="bg-light p-3" style="white-space: pre-wrap;"></pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('gerar_imagem').addEventListener('change', function() {
+    const imagemDescContainer = document.getElementById('imagem_desc_container');
+    imagemDescContainer.style.display = this.checked ? 'block' : 'none';
+    if (!this.checked) {
+        document.getElementById('imagem_desc').value = '';
+    }
+});
+
+async function gerarResumo(event) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const submitButton = form.querySelector('button[type="submit"]');
+    const resultado = document.getElementById('resultado');
+    const resumoTexto = document.getElementById('resumoTexto');
+    const imagemContainer = document.getElementById('imagem_container');
+    const imagemGerada = document.getElementById('imagem_gerada');
+    
+    // Desabilitar botão e mostrar loading
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Gerando...';
+    
+    try {
+        const formData = new FormData(form);
+        const response = await fetch('/criar_resumo', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            resumoTexto.textContent = data.resumo;
+            
+            if (data.imagem_url) {
+                imagemGerada.src = data.imagem_url;
+                imagemContainer.style.display = 'block';
+            } else {
+                imagemContainer.style.display = 'none';
+            }
+            
+            resultado.style.display = 'block';
+        } else {
+            alert('Erro ao gerar resumo: ' + data.error);
+        }
+    } catch (error) {
+        alert('Erro ao comunicar com o servidor: ' + error);
+    } finally {
+        // Restaurar botão
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Gerar Resumo';
+    }
+}
+
+function copiarResumo() {
+    const resumoTexto = document.getElementById('resumoTexto');
+    navigator.clipboard.writeText(resumoTexto.textContent)
+        .then(() => alert('Resumo copiado para a área de transferência!'))
+        .catch(err => alert('Erro ao copiar: ' + err));
+}
+
+async function baixarPDF() {
+    const resumoTexto = document.getElementById('resumoTexto').textContent;
+    try {
+        const response = await fetch('/download_resumo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ resumo: resumoTexto })
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'resumo.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('Erro ao gerar PDF');
+        }
+    } catch (error) {
+        alert('Erro ao baixar PDF: ' + error);
+    }
+}
+</script>
+{% endblock %}

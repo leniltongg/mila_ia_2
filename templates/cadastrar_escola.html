@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Escola</h2>
+
+<form method="POST">
+    <!-- Nome da Escola -->
+    <label for="nome">Nome da Escola:</label>
+    <input type="text" id="nome" name="nome" placeholder="Digite o nome da escola" required>
+
+    <!-- CEP -->
+    <label for="cep">CEP:</label>
+    <input type="text" id="cep" name="cep" placeholder="00.000-000" oninput="formatarCEP()" onblur="buscarEndereco()" required>
+
+    <!-- Estado -->
+    <label for="estado">Estado:</label>
+    <input type="text" id="estado" name="estado" placeholder="Estado" readonly required>
+
+    <!-- Cidade -->
+    <label for="cidade">Cidade:</label>
+    <input type="text" id="cidade" name="cidade" placeholder="Cidade" readonly required>
+
+    <!-- Bairro -->
+    <label for="bairro">Bairro:</label>
+    <input type="text" id="bairro" name="bairro" placeholder="Bairro" readonly required>
+
+    <!-- Endereço -->
+    <label for="endereco">Endereço:</label>
+    <input type="text" id="endereco" name="endereco" placeholder="Endereço" readonly required>
+
+    <!-- Código IBGE -->
+    <input type="hidden" id="codigo_ibge" name="codigo_ibge">
+
+    <!-- Número -->
+    <label for="numero">Número:</label>
+    <input type="text" id="numero" name="numero" placeholder="Número do endereço" required>
+
+    <!-- Telefone -->
+    <label for="telefone">Telefone:</label>
+    <input type="text" id="telefone" name="telefone" placeholder="(00) 00000-0000" oninput="formatarTelefone()" required>
+
+    <!-- CNPJ -->
+    <label for="cnpj">CNPJ:</label>
+    <input type="text" id="cnpj" name="cnpj" placeholder="00.000.000/0001-00" oninput="formatarCNPJ()" required>
+
+    <!-- Nome do Diretor -->
+    <label for="diretor">Nome do Diretor:</label>
+    <input type="text" id="diretor" name="diretor" placeholder="Digite o nome do diretor" required>
+
+    <!-- Tipos de Ensino -->
+    <label for="tipo_ensino">Tipos de Ensino:</label>
+    <table>
+        <thead>
+            <tr>
+                <th>Tipo de Ensino</th>
+                <th>Selecionar</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tipo in tipos_ensino %}
+            <tr>
+                <td>{{ tipo[1] }}</td>
+                <td><input type="checkbox" name="tipos_ensino[]" value="{{ tipo[0] }}"></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- Botão de Envio -->
+    <button type="submit">Cadastrar</button>
+</form>
+
+<script>
+    // Formatar CEP
+    function formatarCEP() {
+        const cepField = document.getElementById("cep");
+        let cep = cepField.value.replace(/\D/g, ""); // Remove caracteres não numéricos
+        if (cep.length > 5) cep = cep.slice(0, 5) + "-" + cep.slice(5);
+        cepField.value = cep;
+    }
+
+    // Buscar Endereço pelo CEP (ViaCEP)
+    async function buscarEndereco() {
+        const cep = document.getElementById("cep").value.replace(/\D/g, ""); // Remove caracteres não numéricos
+
+        if (cep.length !== 8) {
+            alert("CEP inválido! Digite um CEP válido com 8 números.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+            const data = await response.json();
+
+            if (data.erro) {
+                alert("CEP não encontrado!");
+                return;
+            }
+
+            // Preenchendo os campos automaticamente
+            document.getElementById("estado").value = data.uf || "";
+            document.getElementById("cidade").value = data.localidade || "";
+            document.getElementById("bairro").value = data.bairro || "";
+            document.getElementById("endereco").value = data.logradouro || "";
+            document.getElementById("codigo_ibge").value = data.ibge || ""; // Código IBGE
+        } catch (error) {
+            console.error("Erro ao buscar o endereço:", error);
+            alert("Erro ao buscar o endereço. Tente novamente mais tarde.");
+        }
+    }
+
+    // Formatar Telefone
+    function formatarTelefone() {
+        const telefoneField = document.getElementById("telefone");
+        let telefone = telefoneField.value.replace(/\D/g, ""); // Remove caracteres não numéricos
+        if (telefone.length > 2) telefone = "(" + telefone.slice(0, 2) + ") " + telefone.slice(2);
+        if (telefone.length > 9) telefone = telefone.slice(0, 9) + "-" + telefone.slice(9, 13);
+        telefoneField.value = telefone;
+    }
+
+    // Formatar CNPJ
+    function formatarCNPJ() {
+        const cnpjField = document.getElementById("cnpj");
+        let cnpj = cnpjField.value.replace(/\D/g, ""); // Remove caracteres não numéricos
+        if (cnpj.length > 2) cnpj = cnpj.slice(0, 2) + "." + cnpj.slice(2);
+        if (cnpj.length > 6) cnpj = cnpj.slice(0, 6) + "." + cnpj.slice(6);
+        if (cnpj.length > 10) cnpj = cnpj.slice(0, 10) + "/" + cnpj.slice(10);
+        if (cnpj.length > 15) cnpj = cnpj.slice(0, 15) + "-" + cnpj.slice(15, 17);
+        cnpjField.value = cnpj;
+    }
+</script>
+
+<style>
+    form {
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    label {
+        display: block;
+        margin: 10px 0 5px;
+    }
+
+    input, select, button {
+        width: 100%;
+        padding: 8px;
+        margin-bottom: 10px;
+    }
+
+    button {
+        background-color: #007BFF;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+    }
+
+    th, td {
+        border: 1px solid #ddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    th {
+        background-color: #f4f4f4;
+    }
+</style>
+
+{% endblock %}

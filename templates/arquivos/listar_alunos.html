@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block title %}
+Relatório Individual - Listar Alunos
+{% endblock %}
+
+{% block content %}
+<h2>Relatório Individual de Alunos</h2>
+<p>Selecione um aluno para visualizar o relatório:</p>
+<ul>
+    {% for aluno in alunos %}
+    <li>
+        <a href="{{ url_for('relatorio_individual/<int:aluno_id>', aluno_id=aluno.id) }}">{{ aluno.nome }}</a>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

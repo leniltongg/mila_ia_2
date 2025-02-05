@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}Resolver Exercícios{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-pencil-alt me-2"></i>Resolver Exercícios</h5>
+                </div>
+                <div class="card-body">
+                    <form id="exercicio-form">
+                        <!-- Seleção de disciplina e nível -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="disciplina" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina" required>
+                                    <option value="">Selecione a disciplina</option>
+                                    <option value="matematica">Matemática</option>
+                                    <option value="portugues">Português</option>
+                                    <option value="ciencias">Ciências</option>
+                                    <option value="fisica">Física</option>
+                                    <option value="quimica">Química</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nivel" class="form-label">Nível</label>
+                                <select class="form-select" id="nivel" required>
+                                    <option value="">Selecione o nível</option>
+                                    <option value="fundamental">Fundamental</option>
+                                    <option value="medio">Médio</option>
+                                    <option value="vestibular">Vestibular</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Área do exercício -->
+                        <div class="mb-3">
+                            <label for="exercicio" class="form-label">Digite ou cole o exercício</label>
+                            <textarea class="form-control" id="exercicio" rows="5" required
+                                    placeholder="Ex: Calcule a área de um círculo com raio de 5cm..."></textarea>
+                        </div>
+
+                        <!-- Botão de envio -->
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-success" id="btnResolver" onclick="window.resolverExercicio()">
+                                <i class="fas fa-lightbulb me-2"></i>Resolver Exercício
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Área da resolução -->
+                    <div id="resolucao" class="mt-4" style="display: none;">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Resolução Passo a Passo</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="loading" class="text-center" style="display: none;">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Carregando...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Resolvendo o exercício...</p>
+                                </div>
+                                <div id="resolucao-content"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Exemplos de exercícios -->
+                    <div class="mt-4">
+                        <h6 class="text-muted mb-3">Exemplos de Exercícios:</h6>
+                        <div class="list-group">
+                            <button class="list-group-item list-group-item-action" onclick="window.usarExemplo(this)" data-disciplina="matematica" data-nivel="fundamental">
+                                <strong>Matemática (Fundamental):</strong> Se João tem 15 bolinhas e deu 1/3 delas para Maria, com quantas bolinhas ele ficou?
+                            </button>
+                            <button class="list-group-item list-group-item-action" onclick="window.usarExemplo(this)" data-disciplina="portugues" data-nivel="medio">
+                                <strong>Português (Médio):</strong> Identifique o sujeito e o predicado na frase: "Os alunos dedicados conquistaram excelentes resultados."
+                            </button>
+                            <button class="list-group-item list-group-item-action" onclick="window.usarExemplo(this)" data-disciplina="fisica" data-nivel="vestibular">
+                                <strong>Física (Vestibular):</strong> Um carro percorre 100 metros em 5 segundos. Qual é sua velocidade média em km/h?
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Página carregada');
+});
+
+// Definir função no escopo global
+window.resolverExercicio = function() {
+    console.log('Função chamada');
+    const disciplina = document.getElementById('disciplina').value;
+    const nivel = document.getElementById('nivel').value;
+    const exercicio = document.getElementById('exercicio').value;
+
+    // Validar campos
+    if (!disciplina || !nivel || !exercicio.trim()) {
+        alert('Por favor, preencha todos os campos.');
+        return;
+    }
+
+    // Mostrar loading
+    document.getElementById('resolucao').style.display = 'block';
+    document.getElementById('resolucao-content').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+
+    // Fazer requisição
+    fetch('/alunos/processar-exercicio', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            disciplina: disciplina,
+            nivel: nivel,
+            exercicio: exercicio
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('resolucao-content').innerHTML = `
+                <div class="alert alert-success">
+                    <h5 class="alert-heading">Resolução Guiada:</h5>
+                    <p style="white-space: pre-line">${data.response}</p>
+                </div>`;
+        } else {
+            document.getElementById('resolucao-content').innerHTML = `
+                <div class="alert alert-danger">
+                    <h5 class="alert-heading">Erro:</h5>
+                    <p>${data.error || 'Ocorreu um erro ao processar o exercício.'}</p>
+                </div>`;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        document.getElementById('resolucao-content').innerHTML = `
+            <div class="alert alert-danger">
+                Desculpe, ocorreu um erro ao processar sua solicitação.
+            </div>
+        `;
+    })
+    .finally(() => {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('resolucao-content').style.display = 'block';
+    });
+};
+
+// Função para usar exemplo
+window.usarExemplo = function(button) {
+    const disciplina = button.getAttribute('data-disciplina');
+    const nivel = button.getAttribute('data-nivel');
+    const exercicio = button.textContent.split(':')[1].trim();
+
+    document.getElementById('disciplina').value = disciplina;
+    document.getElementById('nivel').value = nivel;
+    document.getElementById('exercicio').value = exercicio;
+};
+</script>
+{% endblock %}

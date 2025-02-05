@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Quiz{% endblock %}
+
+{% block head %}
+<script src="{{ url_for('static', filename='js/quiz.js') }}" defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Card de configuração -->
+            <div class="card mb-4" id="config-card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-question-circle me-2"></i>Criar Quiz</h5>
+                </div>
+                <div class="card-body">
+                    <form id="quiz-form">
+                        <!-- Seleção de disciplina e nível -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="disciplina" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="matematica">Matemática</option>
+                                    <option value="portugues">Português</option>
+                                    <option value="ciencias">Ciências</option>
+                                    <option value="historia">História</option>
+                                    <option value="geografia">Geografia</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="nivel" class="form-label">Nível</label>
+                                <select class="form-select" id="nivel" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="facil">Fácil</option>
+                                    <option value="medio">Médio</option>
+                                    <option value="dificil">Difícil</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Quantidade de questões -->
+                        <div class="mb-3">
+                            <label for="quantidade" class="form-label">Quantidade de Questões</label>
+                            <input type="number" class="form-control" id="quantidade" min="5" max="20" value="10" required>
+                        </div>
+
+                        <!-- Conteúdo -->
+                        <div class="mb-3">
+                            <label for="conteudo" class="form-label">Conteúdo</label>
+                            <textarea class="form-control" id="conteudo" rows="5" placeholder="Cole aqui o conteúdo que você quer praticar..." required></textarea>
+                        </div>
+
+                        <!-- Opções -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="modo_estudo" checked>
+                                <label class="form-check-label" for="modo_estudo">
+                                    Modo Estudo (ver explicação após responder)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Botão de envio -->
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-info text-white" onclick="iniciarQuizManual()">
+                                <i class="fas fa-play me-2"></i>Iniciar Quiz
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Área do Quiz -->
+            <div id="quiz-area" style="display: none;">
+                <!-- Loading -->
+                <div id="loading" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-info" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Gerando quiz...</p>
+                </div>
+
+                <!-- Card da Questão -->
+                <div class="card mb-4" id="questao-card" style="display: none;">
+                    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Questão <span id="questao-numero">1</span></h5>
+                        <div>
+                            <span class="badge bg-light text-dark me-2">
+                                <i class="fas fa-clock me-1"></i><span id="tempo">00:00</span>
+                            </span>
+                            <span class="badge bg-light text-dark">
+                                <i class="fas fa-star me-1"></i><span id="pontos">0</span> pts
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Conteúdo da Questão -->
+                        <div id="questao-content" class="mb-4"></div>
+
+                        <!-- Alternativas -->
+                        <div id="alternativas" class="mb-4"></div>
+
+                        <!-- Feedback -->
+                        <div id="feedback" class="mb-4" style="display: none;"></div>
+
+                        <!-- Navegação -->
+                        <div class="d-flex justify-content-between">
+                            <button id="btn-anterior" class="btn btn-outline-info" onclick="questaoAnterior()">
+                                <i class="fas fa-arrow-left me-2"></i>Anterior
+                            </button>
+                            <button id="btn-proximo" class="btn btn-info text-white" onclick="proximaQuestao()">
+                                Próxima<i class="fas fa-arrow-right ms-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card de Resultado -->
+                <div class="card" id="resultado-card" style="display: none;">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Resultado</h5>
+                    </div>
+                    <div class="card-body text-center">
+                        <h2 class="display-4 mb-4"><span id="pontuacao-final">0</span> pts</h2>
+                        <div class="row mb-4">
+                            <div class="col-6">
+                                <h5>Acertos</h5>
+                                <p class="lead" id="acertos">0/0</p>
+                            </div>
+                            <div class="col-6">
+                                <h5>Tempo Total</h5>
+                                <p class="lead" id="tempo-total">00:00</p>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-info text-white" onclick="verRevisao()">
+                                <i class="fas fa-search me-2"></i>Ver Revisão
+                            </button>
+                            <button class="btn btn-outline-info" onclick="baixarResultado()">
+                                <i class="fas fa-download me-2"></i>Baixar Resultado
+                            </button>
+                            <button class="btn btn-outline-info" onclick="novoQuiz()">
+                                <i class="fas fa-redo me-2"></i>Novo Quiz
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

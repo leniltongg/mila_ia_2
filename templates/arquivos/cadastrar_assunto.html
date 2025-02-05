@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Assunto</h2>
+<form method="POST">
+    <label for="disciplina_id">Disciplina:</label>
+    <select id="disciplina_id" name="disciplina_id" required>
+        <option value="">Selecione...</option>
+        {% for disciplina in disciplinas %}
+        <option value="{{ disciplina[0] }}">{{ disciplina[1] }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="turma_id">Turma:</label>
+    <select id="turma_id" name="turma_id" required>
+        <option value="">Selecione...</option>
+        {% for turma in turmas %}
+        <option value="{{ turma[0] }}">{{ turma[1] }} - {{ turma[2] }} ({{ turma[3] }})</option>
+        {% endfor %}
+    </select>
+
+    <label for="nome_assunto">Nome do Assunto:</label>
+    <input type="text" id="nome_assunto" name="nome_assunto" required>
+
+    <button type="submit" class="btn btn-primary">Cadastrar Assunto</button>
+</form>
+
+{% if error %}
+<div style="color: red;">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div style="color: green;">{{ success }}</div>
+{% endif %}
+{% endblock %}

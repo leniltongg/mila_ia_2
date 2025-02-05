@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Visualizar Dados para Cadastro em Massa de Escolas</h2>
+
+<form id="escolas-form">
+    <table>
+        <thead>
+            <tr>
+                <th>Tipo de Registro</th>
+                <th>Código INEP</th>
+                <th>Nome da Escola</th>
+                <th>CEP</th>
+                <th>Código IBGE</th>
+                <th>Endereço</th>
+                <th>Número</th>
+                <th>Complemento</th>
+                <th>Bairro</th>
+                <th>DDD</th>
+                <th>Telefone</th>
+                <th>Telefone 2</th>
+                <th>Email</th>
+                <th>Ensino Fundamental</th>
+                <th>Confirmar Cadastro</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for escola in data %}
+            <tr>
+                <td>{{ escola.tipo_de_registro }}</td>
+                <td>{{ escola.codigo_inep }}</td>
+                <td>{{ escola.nome_da_escola }}</td>
+                <td>{{ escola.cep }}</td>
+                <td>{{ escola.codigo_ibge }}</td>
+                <td>{{ escola.endereco }}</td>
+                <td>{{ escola.numero }}</td>
+                <td>{{ escola.complemento }}</td>
+                <td>{{ escola.bairro }}</td>
+                <td>{{ escola.ddd }}</td>
+                <td>{{ escola.telefone }}</td>
+                <td>{{ escola.telefone_2 }}</td>
+                <td>{{ escola.email }}</td>
+                <td><input type="checkbox" name="ensino_fundamental_{{ escola.nome_da_escola }}" value="1" {% if escola.ensino_fundamental == '1' %}checked{% endif %}></td>
+                <td><input type="checkbox" name="confirmar_{{ escola.nome_da_escola }}" value="1" checked></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <button type="button" id="submit-button">Confirmar Cadastro</button>
+</form>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $('#submit-button').click(function() {
+        // Pega os dados das escolas e armazena em um array
+        var escolasData = [];
+        $('tbody tr').each(function() {
+            var row = $(this);
+            var nomeDaEscola = row.find('td:eq(2)').text().trim();
+            var escola = {
+                tipo_de_registro: row.find('td:eq(0)').text().trim(),
+                codigo_inep: row.find('td:eq(1)').text().trim(),
+                nome_da_escola: nomeDaEscola,
+                cep: row.find('td:eq(3)').text().trim(),
+                codigo_ibge: row.find('td:eq(4)').text().trim(),
+                endereco: row.find('td:eq(5)').text().trim(),
+                numero: row.find('td:eq(6)').text().trim(),
+                complemento: row.find('td:eq(7)').text().trim(),
+                bairro: row.find('td:eq(8)').text().trim(),
+                ddd: row.find('td:eq(9)').text().trim(),
+                telefone: row.find('td:eq(10)').text().trim(),
+                telefone_2: row.find('td:eq(11)').text().trim(),
+                email: row.find('td:eq(12)').text().trim(),
+                ensino_fundamental: $('input[name="ensino_fundamental_' + nomeDaEscola + '"]').prop('checked') ? 1 : 0
+            };
+            escolasData.push(escola);
+        });
+
+        // Envia os dados para a rota de confirmação via AJAX
+        $.ajax({
+            url: '{{ url_for("confirmar_cadastro_escolas_massa") }}',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ escolas_data: escolasData }),
+            success: function(response) {
+                alert('Cadastro realizado com sucesso!');
+                window.location.href = "{{ url_for('portal_administrador') }}";  // Redireciona para a página de administração
+            },
+            error: function(xhr, status, error) {
+                alert('Ocorreu um erro ao cadastrar as escolas.');
+            }
+        });
+    });
+</script>
+
+{% endblock %}

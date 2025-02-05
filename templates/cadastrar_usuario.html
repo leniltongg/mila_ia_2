@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Cadastrar Usuário</h2>
+<form method="POST" id="form-cadastro">
+    <label for="nome">Nome:</label>
+    <input type="text" id="nome" name="nome" required>
+
+    <label for="email">Email:</label>
+    <input type="email" id="email" name="email" required>
+
+    <label for="senha">Senha:</label>
+    <input type="password" id="senha" name="senha" required>
+
+    <label for="tipo_usuario_id">Tipo de Usuário:</label>
+    <select id="tipo_usuario_id" name="tipo_usuario_id" onchange="exibirCamposEspecificos()" required>
+        <option value="">Selecione...</option>
+        <option value="1">Administrador</option>
+        <option value="2">Administração da Escola</option>
+        <option value="3">Professor</option>
+        <option value="4">Aluno</option>
+        <option value="5">Secretaria de Educação</option>
+    </select>
+
+    <label for="cep">CEP:</label>
+    <input type="text" id="cep" name="cep" maxlength="10" required oninput="formatarCEP()" onblur="buscarCidadePorCep()">
+    <input type="hidden" id="codigo_ibge" name="codigo_ibge">
+
+    <div id="campos_especificos" style="display: none;">
+        <div id="turmas-container" style="display: none;">
+            <div id="turma-group-1" class="turma-group">
+                <label for="escola_id_1">Escola:</label>
+                <select id="escola_id_1" name="escola_id[]" onchange="carregarTiposDeEnsino(1)" required>
+                    <option value="">Selecione...</option>
+                    {% for escola in escolas %}
+                    <option value="{{ escola[0] }}">{{ escola[1] }}</option>
+                    {% endfor %}
+                </select>
+
+                <label for="tipo_ensino_1">Tipo de Ensino:</label>
+                <select id="tipo_ensino_1" name="tipo_ensino[]" onchange="carregarSeries(1)" required>
+                    <option value="">Selecione uma escola primeiro</option>
+                </select>
+
+                <label for="serie_1">Série:</label>
+                <select id="serie_1" name="serie[]" onchange="carregarTurmas(1)" required>
+                    <option value="">Selecione o tipo de ensino primeiro</option>
+                </select>
+
+                <label for="turma_id_1">Turma:</label>
+                <select id="turma_id_1" name="turma_id[]" required>
+                    <option value="">Selecione a série primeiro</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="button" id="adicionar-turma" onclick="adicionarTurma()" style="display: none;">Adicionar Outra Turma</button>
+    </div>
+
+    <button type="submit">Cadastrar</button>
+</form>
+
+<script>
+let turmaCount = 1;
+
+function exibirCamposEspecificos() {
+    const tipoUsuario = document.getElementById("tipo_usuario_id").value;
+    const camposEspecificos = document.getElementById("campos_especificos");
+    const turmasContainer = document.getElementById("turmas-container");
+    const adicionarTurmaBtn = document.getElementById("adicionar-turma");
+
+    camposEspecificos.style.display = "none";
+    turmasContainer.style.display = "none";
+    adicionarTurmaBtn.style.display = "none";
+
+    if (tipoUsuario === "3") { // Professor
+        camposEspecificos.style.display = "block";
+        turmasContainer.style.display = "block";
+        adicionarTurmaBtn.style.display = "inline-block";
+    } else if (tipoUsuario === "4") { // Aluno
+        camposEspecificos.style.display = "block";
+        turmasContainer.style.display = "block";
+    }
+}
+
+function adicionarTurma() {
+    turmaCount++;
+    const container = document.getElementById("turmas-container");
+    const newGroup = document.createElement("div");
+    newGroup.className = "turma-group";
+    newGroup.id = `turma-group-${turmaCount}`;
+    newGroup.innerHTML = `
+        <label for="escola_id_${turmaCount}">Escola:</label>
+        <select id="escola_id_${turmaCount}" name="escola_id[]" onchange="carregarTiposDeEnsino(${turmaCount})" required>
+            <option value="">Selecione...</option>
+            {% for escola in escolas %}
+            <option value="{{ escola[0] }}">{{ escola[1] }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="tipo_ensino_${turmaCount}">Tipo de Ensino:</label>
+        <select id="tipo_ensino_${turmaCount}" name="tipo_ensino[]" onchange="carregarSeries(${turmaCount})" required>
+            <option value="">Selecione uma escola primeiro</option>
+        </select>
+
+        <label for="serie_${turmaCount}">Série:</label>
+        <select id="serie_${turmaCount}" name="serie[]" onchange="carregarTurmas(${turmaCount})" required>
+            <option value="">Selecione o tipo de ensino primeiro</option>
+        </select>
+
+        <label for="turma_id_${turmaCount}">Turma:</label>
+        <select id="turma_id_${turmaCount}" name="turma_id[]" required>
+            <option value="">Selecione a série primeiro</option>
+        </select>
+    `;
+    container.appendChild(newGroup);
+}
+
+async function carregarTiposDeEnsino(index) {
+    const escolaId = document.getElementById(`escola_id_${index}`).value;
+    const tipoEnsinoSelect = document.getElementById(`tipo_ensino_${index}`);
+    tipoEnsinoSelect.innerHTML = '<option value="">Carregando...</option>';
+
+    if (!escolaId) {
+        tipoEnsinoSelect.innerHTML = '<option value="">Selecione uma escola primeiro</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get_tipo_ensino?escola_id=${escolaId}`);
+        const tiposEnsino = await response.json();
+        tipoEnsinoSelect.innerHTML = '<option value="">Selecione...</option>';
+        tiposEnsino.forEach(tipo => {
+            tipoEnsinoSelect.innerHTML += `<option value="${tipo.id}">${tipo.nome}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar tipos de ensino:", error);
+    }
+}
+
+async function carregarSeries(index) {
+    const tipoEnsinoId = document.getElementById(`tipo_ensino_${index}`).value;
+    const serieSelect = document.getElementById(`serie_${index}`);
+    serieSelect.innerHTML = '<option value="">Carregando...</option>';
+
+    if (!tipoEnsinoId) {
+        serieSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get_serie_ids?tipo_ensino_id=${tipoEnsinoId}`);
+        const series = await response.json();
+        serieSelect.innerHTML = '<option value="">Selecione...</option>';
+        series.forEach(serie => {
+            serieSelect.innerHTML += `<option value="${serie.id}">${serie.nome}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar séries:", error);
+    }
+}
+
+async function carregarTurmas(index) {
+    const escolaId = document.getElementById(`escola_id_${index}`).value;
+    const tipoEnsinoId = document.getElementById(`tipo_ensino_${index}`).value;
+    const serieId = document.getElementById(`serie_${index}`).value;
+    const turmaSelect = document.getElementById(`turma_id_${index}`);
+    turmaSelect.innerHTML = '<option value="">Carregando...</option>';
+
+    if (!escolaId || !tipoEnsinoId || !serieId) {
+        turmaSelect.innerHTML = '<option value="">Preencha os campos anteriores</option>';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/get_turmas?escola_id=${escolaId}&tipo_ensino_id=${tipoEnsinoId}&serie_id=${serieId}`);
+        const turmas = await response.json();
+        turmaSelect.innerHTML = '<option value="">Selecione...</option>';
+        turmas.forEach(turma => {
+            turmaSelect.innerHTML += `<option value="${turma.id}">${turma.turma}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar turmas:", error);
+    }
+}
+
+async function buscarCidadePorCep() {
+    const cepField = document.getElementById("cep");
+    const cep = cepField.value.replace(/\D/g, "");
+    if (cep.length !== 8) {
+        alert("CEP inválido. Use o formato 00.000-000.");
+        return;
+    }
+
+    try {
+        const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+        const data = await response.json();
+
+        if (data.erro) {
+            alert("CEP não encontrado.");
+        } else {
+            document.getElementById("codigo_ibge").value = data.ibge;
+        }
+    } catch (error) {
+        alert("Erro ao buscar o CEP.");
+    }
+}
+
+function formatarCEP() {
+    const cepField = document.getElementById("cep");
+    let cep = cepField.value.replace(/\D/g, "");
+    if (cep.length > 5) {
+        cep = `${cep.slice(0, 2)}.${cep.slice(2, 5)}-${cep.slice(5)}`;
+    }
+    cepField.value = cep;
+}
+</script>
+
+{% if error %}
+<div style="color: red;">{{ error }}</div>
+{% endif %}
+{% if success %}
+<div style="color: green;">{{ success }}</div>
+{% endif %}
+{% endblock %}

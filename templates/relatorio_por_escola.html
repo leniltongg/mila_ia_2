@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Relatório Detalhado por Escola</h2>
+    
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Série</th>
+                <th>Turma</th>
+                <th>Total de Alunos</th>
+                <th>Média de Desempenho (%)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in relatorio_por_escola %}
+                <tr>
+                    <td>{{ row['serie'] }}</td>
+                    <td>{{ row['turma'] }}</td>
+                    <td>{{ row['total_alunos'] }}</td>
+                    <td>{{ row['media_desempenho'] | round(2) }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3 class="mt-4">Parecer da IA</h3>
+    <p>{{ parecer_ia }}</p>
+</div>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Gerar Simulado para Turma</h2>
+<form method="POST">
+    <label for="disciplina_id">Disciplina:</label>
+    <select id="disciplina_id" name="disciplina_id" required onchange="this.form.submit()">
+        <option value="">Selecione...</option>
+        {% for disciplina in disciplinas %}
+            <option value="{{ disciplina[0] }}" {% if disciplina[0] == disciplina_id|int %}selected{% endif %}>
+                {{ disciplina[1] }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <label for="assunto_id">Assunto:</label>
+    <select id="assunto_id" name="assunto_id" {% if novo_assunto is defined and novo_assunto != "" %}disabled{% endif %}>
+        <option value="">Selecione um assunto...</option>
+        {% for assunto in assuntos %}
+            <option value="{{ assunto[0] }}" {% if assunto[0] == request.form.get('assunto_id')|int %}selected{% endif %}>
+                {{ assunto[1] }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <button type="button" class="btn btn-secondary" onclick="mostrarCampoNovoAssunto()">Adicionar Assunto</button>
+    <input type="text" id="novo_assunto" name="novo_assunto" placeholder="Digite o nome do novo assunto" 
+           style="display:none;" value="{{ request.form.get('novo_assunto', '') }}" 
+           {% if novo_assunto is defined and novo_assunto != "" %}required{% endif %}>
+    <p class="text-muted">Após adicionar, o assunto estará disponível na lista.</p>
+
+    <label for="nivel">Nível de Dificuldade:</label>
+    <select id="nivel" name="nivel" required>
+        <option value="">Selecione...</option>
+        <option value="Fácil" {% if request.form.get('nivel') == 'Fácil' %}selected{% endif %}>Fácil</option>
+        <option value="Moderada" {% if request.form.get('nivel') == 'Moderada' %}selected{% endif %}>Moderada</option>
+        <option value="Difícil" {% if request.form.get('nivel') == 'Difícil' %}selected{% endif %}>Difícil</option>
+        <option value="Nível dos Titãs" {% if request.form.get('nivel') == 'Nível dos Titãs' %}selected{% endif %}>Nível dos Titãs</option>
+    </select>
+
+    <label for="quantidade_questoes">Quantidade de Questões:</label>
+    <input type="number" id="quantidade_questoes" name="quantidade_questoes" min="4" max="10" required
+           value="{{ request.form.get('quantidade_questoes') }}">
+
+    <label for="quantidade_alternativas">Quantidade de Alternativas:</label>
+    <input type="number" id="quantidade_alternativas" name="quantidade_alternativas" min="4" max="5" required
+           value="{{ request.form.get('quantidade_alternativas') }}">
+
+    <button type="submit" class="btn btn-primary">Gerar Simulado</button>
+
+    {% if success_message %}
+    <div class="alert alert-success mt-3">
+        {{ success_message }}
+    </div>
+    {% endif %}
+</form>
+
+<!-- Lista de Questões Geradas (após POST) -->
+{% if simulado %}
+    <h3 class="mt-4">Questões Geradas</h3>
+    <ol>
+        {% for questao in simulado %}
+        <li>
+            <p><strong>{{ questao.pergunta }}</strong></p>
+            <ul>
+                {% for alternativa in questao.opcoes %}
+                <li>{{ alternativa }}</li>
+                {% endfor %}
+            </ul>
+        </li>
+        {% endfor %}
+    </ol>
+{% endif %}
+
+
+<script>
+    function mostrarCampoNovoAssunto() {
+        const novoAssuntoInput = document.getElementById("novo_assunto");
+        const assuntoSelect = document.getElementById("assunto_id");
+        const isHidden = novoAssuntoInput.style.display === "none";
+        novoAssuntoInput.style.display = isHidden ? "block" : "none";
+        assuntoSelect.disabled = isHidden; 
+        novoAssuntoInput.required = isHidden; 
+    }
+</script>
+{% endblock %}

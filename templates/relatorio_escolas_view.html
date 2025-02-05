@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Relatório de Desempenho das Escolas</title>
+    <style>
+        @page {
+            margin: 1cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+        }
+        .page {
+            page-break-after: always;
+            margin-bottom: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #4a148c;
+            padding-bottom: 10px;
+        }
+        .header h1 {
+            color: #4a148c;
+            margin: 0;
+            font-size: 22px;
+        }
+        .data {
+            text-align: center;
+            color: #666;
+            margin-top: 8px;
+            font-size: 13px;
+        }
+        .progress-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 20px auto;
+            max-width: 700px;
+            padding: 0 15px;
+        }
+        .progress-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .progress-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .progress-bar-container {
+            width: 100%;
+            height: 20px;
+            background-color: #edf2f7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background-color: #4a148c;
+            transition: width 1.5s ease-in-out;
+            border-radius: 8px;
+        }
+        .progress-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #4a148c;
+            min-width: 50px;
+            text-align: right;
+        }
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px auto;
+            max-width: 700px;
+        }
+        .stats-box {
+            flex: 1;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            max-width: 200px;
+        }
+        .stats-box span {
+            font-size: 13px;
+            color: #666;
+        }
+        .stats-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #4a148c;
+            margin: 8px 0;
+        }
+        .rankings-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px auto;
+            max-width: 700px;
+            padding: 0 15px;
+        }
+        .ranking-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            width: 450px;
+            margin: 0 auto;
+        }
+        .ranking-title {
+            color: #4a148c;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            text-align: center;
+            border-bottom: 2px solid #4a148c;
+            padding-bottom: 5px;
+        }
+        .best-school {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f0ebf7;
+            border-radius: 6px;
+        }
+        .best-school-label {
+            color: #4a148c;
+            font-size: 13px;
+            margin-bottom: 5px;
+        }
+        .best-school-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 3px;
+        }
+        .best-school-score {
+            color: #4a148c;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        .ranking-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 13px;
+        }
+        .ranking-item {
+            padding: 5px 8px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.2s;
+        }
+        .ranking-item span:first-child {
+            white-space: normal;
+            padding-right: 10px;
+            flex: 1;
+            font-size: 12px;
+            line-height: 1.3;
+        }
+        .ranking-item span:last-child {
+            color: #666;
+            font-weight: 500;
+            min-width: 45px;
+            text-align: right;
+            white-space: nowrap;
+        }
+        .ranking-position {
+            font-weight: 600;
+            color: #4a148c;
+            margin-right: 8px;
+            min-width: 20px;
+            display: inline-block;
+        }
+        .school-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 12px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .school-table th {
+            background: #4a148c;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px;
+        }
+        .school-table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+        }
+        .school-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .school-table tr:hover {
+            background: #f5f5f5;
+        }
+        @media print {
+            .page {
+                page-break-after: always;
+            }
+            body {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Primeira página - Visão Geral -->
+    <div class="page">
+        <div class="header">
+            <h1>Relatório de Desempenho das Escolas</h1>
+            <div class="data">
+                {{ dados_municipio.municipio }} - Data: {{ data_atual.strftime('%d/%m/%Y') }}
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>Desempenho Geral</span>
+                    <span class="progress-value">{{ "%.1f"|format(dados_municipio.media_geral) }}%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" data-percentage="{{ dados_municipio.media_geral }}" data-type="media"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stats-box">
+                <span>Alunos Matriculados</span>
+                <div class="stats-value">{{ dados_municipio.total_alunos }}</div>
+            </div>
+            <div class="stats-box">
+                <span>Total de Escolas</span>
+                <div class="stats-value">{{ dados_municipio.total_escolas }}</div>
+            </div>
+        </div>
+
+        <div class="rankings-container">
+            <div class="ranking-section">
+                <div class="ranking-title">Ranking por Ano Escolar</div>
+                <div class="best-school">
+                    <div class="best-school-label">Melhor Escola Geral</div>
+                    <div class="best-school-name">{{ escolas[0].nome }}</div>
+                    <div class="best-school-score">{{ "%.1f"|format(escolas[0].media_geral) }}%</div>
+                </div>
+                <ul class="ranking-list">
+                    {% for serie in series %}
+                    {% if serie.escolas|length > 0 %}
+                    <li class="ranking-item">
+                        <span><span class="ranking-position">{{ serie.nome|replace("Série", "º Ano") }}</span> {{ serie.escolas[0].nome }}</span>
+                        <span>{{ "%.1f"|format(serie.escolas[0].media) }}%</span>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Páginas por Ano Escolar -->
+    {% for serie in series %}
+    <div class="page">
+        <div class="header">
+            <h1>{{ serie.nome|replace("Série", "Ano Escolar") }}</h1>
+            <div class="data">
+                {{ dados_municipio.municipio }} - Data: {{ data_atual.strftime('%d/%m/%Y') }}
+            </div>
+        </div>
+
+        <div class="progress-container">
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>Média do Ano escolar</span>
+                    <span class="progress-value">{{ "%.1f"|format(serie.media_geral) }}%</span>
+                </div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" data-percentage="{{ serie.media_geral }}" data-type="media"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stats-box">
+                <span>Total de Alunos</span>
+                <div class="stats-value">{{ serie.total_alunos }}</div>
+            </div>
+            <div class="stats-box">
+                <span>Alunos Ativos</span>
+                <div class="stats-value">{{ serie.alunos_ativos }}</div>
+            </div>
+        </div>
+
+        <table class="school-table">
+            <thead>
+                <tr>
+                    <th style="width: 50%">Escola</th>
+                    <th style="width: 25%">Total de Alunos</th>
+                    <th style="width: 25%">Média</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for escola in serie.escolas %}
+                <tr>
+                    <td>{{ escola.nome }}</td>
+                    <td>{{ escola.total_alunos }}</td>
+                    <td>{{ "%.1f"|format(escola.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            console.log("Script iniciado");
+            const bars = document.querySelectorAll(".progress-bar[data-percentage]");
+            console.log("Barras encontradas:", bars.length);
+
+            bars.forEach(bar => {
+                const percentage = parseFloat(bar.getAttribute("data-percentage"));
+                console.log("Porcentagem:", percentage);
+                bar.style.width = "0%";
+                bar.offsetHeight;
+                setTimeout(() => {
+                    bar.style.width = Math.min(percentage, 100) + "%";
+                }, 100);
+            });
+        });
+    </script>
+</body>
+</html>

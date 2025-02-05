@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Simulado Diário{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center">Simulado Diário</h2>
+    {% if perguntas %}
+    <form method="POST">
+        <ul>
+            {% for pergunta in perguntas %}
+            <li>
+                <strong>{{ loop.index }}. {{ pergunta.pergunta }}</strong>
+                <ul>
+                    {% for opcao_idx, opcao in enumerate(pergunta.opcoes, start=1) %}
+                    <li>
+                        <label>
+                            <input 
+                                type="radio" 
+                                name="resposta_{{ pergunta.id }}" 
+                                value="{{ opcao_idx }}" 
+                                required>
+                            {{ opcao }}
+                        </label>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endfor %}
+        </ul>
+        <button type="submit" class="btn btn-primary">Enviar Respostas</button>
+    </form>
+    {% else %}
+    <p class="text-muted text-center">Nenhum simulado diário disponível no momento.</p>
+    {% endif %}
+</div>
+{% endblock %}

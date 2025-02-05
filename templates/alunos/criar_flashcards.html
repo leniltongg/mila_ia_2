@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Flashcards{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-clone me-2"></i>Criar Flashcards</h5>
+                </div>
+                <div class="card-body">
+                    <form id="flashcard-form">
+                        <!-- Seleção de disciplina -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="disciplina" class="form-label">Disciplina</label>
+                                <select class="form-select" id="disciplina" required>
+                                    <option value="">Selecione a disciplina</option>
+                                    <option value="matematica">Matemática</option>
+                                    <option value="portugues">Português</option>
+                                    <option value="ciencias">Ciências</option>
+                                    <option value="historia">História</option>
+                                    <option value="geografia">Geografia</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="quantidade" class="form-label">Quantidade de Flashcards</label>
+                                <input type="number" class="form-control" id="quantidade" 
+                                       min="5" max="20" value="10" required>
+                            </div>
+                        </div>
+
+                        <!-- Área do conteúdo -->
+                        <div class="mb-3">
+                            <label for="conteudo" class="form-label">Digite ou cole o conteúdo</label>
+                            <textarea class="form-control" id="conteudo" rows="8" required
+                                    placeholder="Cole aqui o conteúdo para gerar os flashcards..."></textarea>
+                        </div>
+
+                        <!-- Opções adicionais -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_imagens">
+                                    <label class="form-check-label" for="incluir_imagens">
+                                        Incluir imagens (quando possível)
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="incluir_dicas" checked>
+                                    <label class="form-check-label" for="incluir_dicas">
+                                        Incluir dicas de memorização
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botão de envio -->
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-info text-white">
+                                <i class="fas fa-magic me-2"></i>Gerar Flashcards
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Área dos flashcards -->
+                    <div id="flashcards-area" class="mt-4" style="display: none;">
+                        <div id="loading" class="text-center" style="display: none;">
+                            <div class="spinner-border text-info" role="status">
+                                <span class="visually-hidden">Carregando...</span>
+                            </div>
+                            <p class="text-muted mt-2">Gerando flashcards...</p>
+                        </div>
+
+                        <!-- Carrossel de Flashcards -->
+                        <div id="flashcardsCarousel" class="carousel slide" data-bs-interval="false">
+                            <div class="carousel-inner" id="flashcards-container">
+                                <!-- Flashcards serão inseridos aqui -->
+                            </div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#flashcardsCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon bg-dark rounded" aria-hidden="true"></span>
+                                <span class="visually-hidden">Anterior</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#flashcardsCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon bg-dark rounded" aria-hidden="true"></span>
+                                <span class="visually-hidden">Próximo</span>
+                            </button>
+                        </div>
+
+                        <!-- Controles dos Flashcards -->
+                        <div class="text-center mt-3">
+                            <button class="btn btn-outline-primary me-2" onclick="embaralharFlashcards()">
+                                <i class="fas fa-random me-1"></i>Embaralhar
+                            </button>
+                            <button class="btn btn-outline-success me-2" onclick="baixarFlashcards()">
+                                <i class="fas fa-download me-1"></i>Baixar PDF
+                            </button>
+                            <button class="btn btn-outline-info" onclick="compartilharFlashcards()">
+                                <i class="fas fa-share-alt me-1"></i>Compartilhar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.flashcard {
+    height: 300px;
+    perspective: 1000px;
+    cursor: pointer;
+}
+
+.flashcard-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.8s;
+    transform-style: preserve-3d;
+}
+
+.flashcard.flipped .flashcard-inner {
+    transform: rotateY(180deg);
+}
+
+.flashcard-front, .flashcard-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.flashcard-front {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.flashcard-back {
+    background-color: #e9ecef;
+    border: 1px solid #dee2e6;
+    transform: rotateY(180deg);
+}
+
+.carousel-item {
+    padding: 20px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('flashcard-form');
+    const flashcardsArea = document.getElementById('flashcards-area');
+    const loadingDiv = document.getElementById('loading');
+    const container = document.getElementById('flashcards-container');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const disciplina = document.getElementById('disciplina').value;
+        const quantidade = document.getElementById('quantidade').value;
+        const conteudo = document.getElementById('conteudo').value;
+        const incluirImagens = document.getElementById('incluir_imagens').checked;
+        const incluirDicas = document.getElementById('incluir_dicas').checked;
+
+        if (!disciplina || !conteudo.trim()) {
+            alert('Por favor, preencha todos os campos obrigatórios.');
+            return;
+        }
+
+        // Mostrar loading
+        flashcardsArea.style.display = 'block';
+        container.style.display = 'none';
+        loadingDiv.style.display = 'block';
+
+        try {
+            const response = await fetch('/gerar_flashcards', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    disciplina: disciplina,
+                    quantidade: quantidade,
+                    conteudo: conteudo,
+                    incluir_imagens: incluirImagens,
+                    incluir_dicas: incluirDicas
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                renderFlashcards(data.flashcards);
+            } else {
+                container.innerHTML = `
+                    <div class="alert alert-danger">
+                        Desculpe, ocorreu um erro ao gerar os flashcards.
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            container.innerHTML = `
+                <div class="alert alert-danger">
+                    Desculpe, ocorreu um erro ao processar sua solicitação.
+                </div>
+            `;
+        } finally {
+            loadingDiv.style.display = 'none';
+            container.style.display = 'block';
+        }
+    });
+});
+
+function renderFlashcards(flashcards) {
+    const container = document.getElementById('flashcards-container');
+    container.innerHTML = '';
+
+    flashcards.forEach((card, index) => {
+        const div = document.createElement('div');
+        div.className = `carousel-item${index === 0 ? ' active' : ''}`;
+        div.innerHTML = `
+            <div class="flashcard" onclick="flipCard(this)">
+                <div class="flashcard-inner">
+                    <div class="flashcard-front">
+                        <div>
+                            <h5 class="mb-3">Pergunta ${index + 1}</h5>
+                            <p>${card.pergunta}</p>
+                            ${card.dica ? `<small class="text-muted mt-2 d-block">Dica: ${card.dica}</small>` : ''}
+                        </div>
+                    </div>
+                    <div class="flashcard-back">
+                        <div>
+                            <h5 class="mb-3">Resposta</h5>
+                            <p>${card.resposta}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function flipCard(card) {
+    card.classList.toggle('flipped');
+}
+
+function embaralharFlashcards() {
+    const container = document.getElementById('flashcards-container');
+    const items = Array.from(container.children);
+    
+    for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        container.appendChild(items[j]);
+    }
+    
+    // Atualizar classes active
+    items.forEach((item, index) => {
+        item.classList.remove('active');
+        if (index === 0) item.classList.add('active');
+    });
+}
+
+async function baixarFlashcards() {
+    try {
+        const response = await fetch('/download_flashcards', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'flashcards.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('Erro ao gerar PDF');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao baixar PDF');
+    }
+}
+
+function compartilharFlashcards() {
+    if (navigator.share) {
+        navigator.share({
+            title: 'Meus Flashcards',
+            text: 'Confira estes flashcards que eu criei!',
+            url: window.location.href
+        })
+        .catch((error) => console.log('Erro ao compartilhar:', error));
+    } else {
+        alert('Seu navegador não suporta a função de compartilhamento.');
+    }
+}
+</script>
+{% endblock %}

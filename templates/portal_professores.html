@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}
+Portal dos Professores
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="text-center mb-4">Bem-vindo ao Portal dos Professores</h2>
+
+    <!-- Seção de Opções -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            Opções
+        </div>
+        <div class="card-body">
+            <div class="d-flex flex-wrap gap-3">
+                <a href="{{ url_for('alterar_senha') }}" class="btn btn-success">Alterar Senha</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Criação de Conteúdo -->
+    <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+            Criação de Conteúdo Didático
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chalkboard-teacher fa-2x mb-3 text-info"></i>
+                            <h5 class="card-title">Plano de Aula</h5>
+                            <p class="card-text">Gere planos de aula personalizados para suas turmas</p>
+                            <a href="criar_plano_aula" class="btn btn-info">Criar Plano</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-file-alt fa-2x mb-3 text-info"></i>
+                            <h5 class="card-title">Resumos</h5>
+                            <p class="card-text">Crie resumos e materiais de estudo</p>
+                            <a href="/criar_resumo" class="btn btn-info">Criar Resumo</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-tasks fa-2x mb-3 text-info"></i>
+                            <h5 class="card-title">Exercícios</h5>
+                            <p class="card-text">Gere exercícios práticos e atividades</p>
+                            <a href="/criar_exercicios" class="btn btn-info">Criar Exercícios</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-book fa-2x mb-3 text-info"></i>
+                            <h5 class="card-title">Material Complementar</h5>
+                            <p class="card-text">Crie materiais extras e recursos adicionais</p>
+                            <a href="/criar_material_complementar" class="btn btn-info">Criar Material</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Seção de Turmas Vinculadas -->
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            Turmas Vinculadas
+        </div>
+        <div class="card-body">
+            {% if turmas %}
+                <ul class="list-group">
+                    {% for turma in turmas %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            {{ turma[1] }} - {{ turma[2] }} ({{ turma[3] }})
+                            <a href="/professores/ver_alunos/{{ turma[0] }}" class="btn btn-primary btn-sm">Ver Alunos</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="text-muted">Você ainda não está vinculado a nenhuma turma.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
