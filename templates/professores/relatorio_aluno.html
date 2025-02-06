@@ -1,0 +1,195 @@
+{% extends "professores/base_professores.html" %}
+
+{% block title %}
+Relatório do Aluno - {{ aluno.nome }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Relatório do Aluno</h4>
+            <div class="btn-group">
+                <a href="{{ url_for('professores.relatorio_aluno_pdf', aluno_id=aluno.id) }}" target="_blank" class="btn btn-light">
+                    <i class="fas fa-eye me-2"></i>
+                    Visualizar para Impressão
+                </a>
+                <a href="{{ url_for('professores.relatorio_aluno_pdf', aluno_id=aluno.id, download='pdf') }}" class="btn btn-light">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    Baixar PDF
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Informações do Aluno -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5>Informações Gerais</h5>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Nome:</th>
+                            <td>{{ aluno.nome }}</td>
+                        </tr>
+                        <tr>
+                            <th>Turma:</th>
+                            <td>{{ turma.serie }} - {{ turma.turma }}</td>
+                        </tr>
+                        <tr>
+                            <th>Escola:</th>
+                            <td>{{ turma.escola }}</td>
+                        </tr>
+                    </table>
+                </div>
+                {% if media_geral > 0 %}
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Resumo do Desempenho
+                            </h6>
+                            <p class="card-text">
+                                Média Geral: {{ "%.1f"|format(media_geral) }}%
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if not notas_simulados %}
+            <!-- Mensagem quando não há dados -->
+            <div class="alert alert-info">
+                <h5 class="alert-heading">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Aluno Recém-Matriculado
+                </h5>
+                <p class="mb-0">
+                    Este aluno ainda não realizou nenhum simulado ou atividade avaliativa no portal. 
+                    O relatório completo estará disponível assim que o aluno começar a participar das atividades.
+                </p>
+                <hr>
+                <p class="mb-0">
+                    Sugestões:
+                </p>
+                <ul class="mb-0">
+                    <li>Incentive o aluno a participar dos próximos simulados</li>
+                    <li>Compartilhe materiais de estudo pelo portal</li>
+                    <li>Acompanhe o progresso inicial do aluno</li>
+                </ul>
+            </div>
+            {% else %}
+            <!-- Parecer da IA -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>
+                        Parecer da IA
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-primary">Comportamento e Engajamento</h6>
+                        <p>{{ parecer.comportamento|safe }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary">Desempenho em Simulados</h6>
+                        <p>{{ parecer.desempenho|safe }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary">Áreas de Destaque</h6>
+                        <p>{{ parecer.destaques|safe }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary">Recomendações</h6>
+                        <p>{{ parecer.recomendacoes|safe }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos de Desempenho -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Desempenho por Disciplina</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="disciplinasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Evolução no Tempo</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="evolucaoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart.js -->
+            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+            <script>
+            // Gráfico de Desempenho por Disciplina
+            const disciplinasCtx = document.getElementById('disciplinasChart').getContext('2d');
+            new Chart(disciplinasCtx, {
+                type: 'bar',
+                data: {
+                    labels: {{ disciplinas|tojson }},
+                    datasets: [{
+                        label: 'Média por Disciplina (%)',
+                        data: {{ medias_disciplinas|tojson }},
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+
+            // Gráfico de Evolução no Tempo
+            const evolucaoCtx = document.getElementById('evolucaoChart').getContext('2d');
+            new Chart(evolucaoCtx, {
+                type: 'line',
+                data: {
+                    labels: {{ datas_simulados|tojson }},
+                    datasets: [{
+                        label: 'Evolução do Desempenho (%)',
+                        data: {{ notas_simulados|tojson }},
+                        fill: false,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    }
+                }
+            });
+            </script>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

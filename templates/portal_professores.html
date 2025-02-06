@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "professores/base_professores.html" %}
 
 {% block title %}
 Portal dos Professores
@@ -8,17 +8,7 @@ Portal dos Professores
 <div class="container mt-4">
     <h2 class="text-center mb-4">Bem-vindo ao Portal dos Professores</h2>
 
-    <!-- Seção de Opções -->
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
-            Opções
-        </div>
-        <div class="card-body">
-            <div class="d-flex flex-wrap gap-3">
-                <a href="{{ url_for('alterar_senha') }}" class="btn btn-success">Alterar Senha</a>
-            </div>
-        </div>
-    </div>
+    
 
     <!-- Seção de Criação de Conteúdo -->
     <div class="card mb-4">
@@ -71,25 +61,4 @@ Portal dos Professores
         </div>
     </div>
 
-    <!-- Seção de Turmas Vinculadas -->
-    <div class="card mb-4">
-        <div class="card-header bg-secondary text-white">
-            Turmas Vinculadas
-        </div>
-        <div class="card-body">
-            {% if turmas %}
-                <ul class="list-group">
-                    {% for turma in turmas %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            {{ turma[1] }} - {{ turma[2] }} ({{ turma[3] }})
-                            <a href="/professores/ver_alunos/{{ turma[0] }}" class="btn btn-primary btn-sm">Ver Alunos</a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            {% else %}
-                <p class="text-muted">Você ainda não está vinculado a nenhuma turma.</p>
-            {% endif %}
-        </div>
-    </div>
-</div>
 {% endblock %}

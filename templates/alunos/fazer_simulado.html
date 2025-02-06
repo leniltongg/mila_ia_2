@@ -1,0 +1,336 @@
+{% extends "alunos/base_alunos.html" %}
+
+{% block head %}
+<style>
+    .timer {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .questao {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    .questao.atual {
+        border-color: #0d6efd;
+        background-color: #f8f9fa;
+    }
+    .alternativa {
+        display: block;
+        padding: 0.5rem;
+        margin-bottom: 0.5rem;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .alternativa:hover {
+        background-color: #e9ecef;
+    }
+    .alternativa.selecionada {
+        background-color: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .navegacao-questoes {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        gap: 0.5rem;
+    }
+    .btn-questao {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .btn-questao.respondida {
+        background-color: #198754;
+        border-color: #198754;
+    }
+    .btn-questao.atual {
+        border-width: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block title %}{{ simulado.titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Cabeçalho -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h4>{{ simulado.titulo }}</h4>
+            <p class="text-muted mb-0">{{ simulado.descricao }}</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <div class="alert alert-danger mb-0">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Tempo Restante:</span>
+                    <span class="timer" data-fim="{{ simulado.tempo_fim }}">
+                        {{ simulado.tempo_restante }}
+                    </span>
+                </div>
+                <div class="progress mt-2" style="height: 5px;">
+                    <div class="progress-bar bg-danger" role="progressbar" 
+                         style="width: {{ simulado.progresso_tempo }}%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Questões -->
+        <div class="col-md-8">
+            {% for questao in simulado.questoes %}
+            <div class="questao {% if questao.atual %}atual{% endif %}" id="questao-{{ questao.ordem }}" {% if not questao.atual %}style="display: none;"{% endif %}>
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <h5 class="mb-0">Questão {{ questao.ordem }}</h5>
+                    <span class="badge bg-primary">{{ questao.pontos }} pontos</span>
+                </div>
+
+                <p class="mb-4">{{ questao.enunciado }}</p>
+
+                {% if questao.tipo == 'objetiva' %}
+                <div class="alternativas">
+                    {% for alternativa in questao.alternativas %}
+                    <label class="alternativa {% if alternativa.letra == questao.resposta %}selecionada{% endif %}">
+                        <input type="radio" name="resposta-{{ questao.id }}" value="{{ alternativa.letra }}"
+                               {% if alternativa.letra == questao.resposta %}checked{% endif %}
+                               onchange="salvarResposta({{ questao.id }}, this.value)">
+                        <span class="ms-2">{{ alternativa.letra }}) {{ alternativa.texto }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="form-group">
+                    <textarea class="form-control" rows="5" 
+                              onchange="salvarResposta({{ questao.id }}, this.value)"
+                              placeholder="Digite sua resposta aqui...">{{ questao.resposta }}</textarea>
+                </div>
+                {% endif %}
+
+                <!-- Navegação entre questões -->
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <button class="btn btn-outline-primary" 
+                            onclick="navegarQuestao({{ questao.ordem - 1 }})"
+                            {% if questao.ordem == 1 %}disabled{% endif %}>
+                        <i class="bi bi-arrow-left"></i> Anterior
+                    </button>
+                    
+                    <button class="btn btn-outline-primary" 
+                            onclick="navegarQuestao({{ questao.ordem + 1 }})"
+                            {% if questao.ordem == simulado.total_questoes %}disabled{% endif %}>
+                        Próxima <i class="bi bi-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Barra Lateral -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Navegação</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Progresso -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Progresso:</span>
+                            <span>{{ simulado.questoes_respondidas }}/{{ simulado.total_questoes }}</span>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-success" role="progressbar" 
+                                 style="width: {{ simulado.progresso_questoes }}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mapa de Questões -->
+                    <div class="navegacao-questoes">
+                        {% for questao in simulado.questoes %}
+                        <button class="btn btn-outline-primary btn-questao
+                                   {% if questao.respondida %}respondida{% endif %}
+                                   {% if questao.atual %}atual{% endif %}"
+                                onclick="navegarQuestao({{ questao.ordem }})">
+                            {{ questao.ordem }}
+                        </button>
+                        {% endfor %}
+                    </div>
+
+                    <hr>
+
+                    <!-- Finalizar -->
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-success" onclick="confirmarFinalizacao()">
+                            <i class="bi bi-check-circle"></i> Finalizar Simulado
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmarFinalizacaoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Finalização</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Você tem certeza que deseja finalizar o simulado?</p>
+                {% if simulado.questoes_nao_respondidas > 0 %}
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Atenção: Você ainda tem {{ simulado.questoes_nao_respondidas }} questões não respondidas.
+                </div>
+                {% endif %}
+                <p class="mb-0">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="finalizarSimulado()">
+                    Finalizar Simulado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Atualizar timer
+function atualizarTimer() {
+    const timer = document.querySelector('.timer');
+    const tempoRestante = new Date(timer.dataset.fim) - new Date();
+    
+    if (tempoRestante <= 0) {
+        finalizarSimulado();
+        return;
+    }
+
+    const horas = Math.floor(tempoRestante / 3600000);
+    const minutos = Math.floor((tempoRestante % 3600000) / 60000);
+    const segundos = Math.floor((tempoRestante % 60000) / 1000);
+
+    timer.textContent = `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+
+    // Alertar quando faltar 5 minutos
+    if (tempoRestante <= 300000 && !timer.classList.contains('alerta-dado')) {
+        timer.classList.add('alerta-dado');
+        alert('Atenção: Faltam apenas 5 minutos para o término do simulado!');
+    }
+}
+
+setInterval(atualizarTimer, 1000);
+
+// Navegação entre questões
+function navegarQuestao(ordem) {
+    document.querySelectorAll('.questao').forEach(questao => {
+        questao.style.display = 'none';
+        questao.classList.remove('atual');
+    });
+    
+    document.querySelectorAll('.btn-questao').forEach(btn => {
+        btn.classList.remove('atual');
+    });
+    
+    const questaoAtual = document.getElementById(`questao-${ordem}`);
+    questaoAtual.style.display = 'block';
+    questaoAtual.classList.add('atual');
+    
+    document.querySelector(`.btn-questao:nth-child(${ordem})`).classList.add('atual');
+    
+    // Salvar última questão vista
+    fetch(`/alunos/salvar-ultima-questao/${simuladoId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ordem: ordem })
+    });
+}
+
+// Salvar resposta
+let salvandoResposta = false;
+async function salvarResposta(questaoId, resposta) {
+    if (salvandoResposta) return;
+    salvandoResposta = true;
+    
+    try {
+        const response = await fetch('/alunos/salvar-resposta', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                simulado_id: simuladoId,
+                questao_id: questaoId,
+                resposta: resposta
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Marcar questão como respondida
+            document.querySelector(`.btn-questao:nth-child(${data.ordem})`).classList.add('respondida');
+            
+            // Atualizar contador de questões
+            const [respondidas, total] = document.querySelector('.mb-2 span:last-child').textContent.split('/');
+            document.querySelector('.mb-2 span:last-child').textContent = `${data.questoes_respondidas}/${total}`;
+            
+            // Atualizar barra de progresso
+            document.querySelector('.progress-bar').style.width = `${data.progresso}%`;
+        } else {
+            throw new Error(data.error || 'Erro ao salvar resposta');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao salvar resposta. Por favor, tente novamente.');
+    } finally {
+        salvandoResposta = false;
+    }
+}
+
+// Finalização
+function confirmarFinalizacao() {
+    const modal = new bootstrap.Modal(document.getElementById('confirmarFinalizacaoModal'));
+    modal.show();
+}
+
+async function finalizarSimulado() {
+    try {
+        const response = await fetch(`/alunos/finalizar-simulado/${simuladoId}`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            window.location.href = `/alunos/resultado-simulado/${simuladoId}`;
+        } else {
+            throw new Error(data.error || 'Erro ao finalizar simulado');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao finalizar simulado. Por favor, tente novamente.');
+    }
+}
+
+// Prevenir fechamento acidental
+window.addEventListener('beforeunload', function(e) {
+    e.preventDefault();
+    e.returnValue = '';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "professores/base_professores.html" %}
+
+{% block title %}
+Minhas Turmas
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Minhas Turmas</h4>
+        </div>
+        <div class="card-body">
+            {% if turmas %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Série</th>
+                                <th>Turma</th>
+                                <th>Escola</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for turma in turmas %}
+                            <tr>
+                                <td>{{ turma[1] }}</td>
+                                <td>{{ turma[2] }}</td>
+                                <td>{{ turma[3] }}</td>
+                                <td class="text-center">
+                                    <button onclick="carregarAlunos({{ turma[0] }}, this)" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-users me-1"></i> Ver Alunos
+                                    </button>
+                                    <a href="{{ url_for('conteudo.criar_plano_aula', turma_id=turma[0]) }}" class="btn btn-info btn-sm">
+                                        <i class="fas fa-chalkboard-teacher me-1"></i> Plano de Aula
+                                    </a>
+                                    <a href="{{ url_for('professores.relatorio_turma', turma_id=turma[0]) }}" class="btn btn-success btn-sm">
+                                        <i class="fas fa-chart-line me-1"></i> Relatório
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr id="alunos-turma-{{ turma[0] }}" style="display: none;">
+                                <td colspan="4">
+                                    <div class="card">
+                                        <div class="card-header bg-light">
+                                            <h5 class="mb-0">Alunos da Turma</h5>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="lista-alunos-{{ turma[0] }}">
+                                                <div class="text-center">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="visually-hidden">Carregando...</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info" role="alert">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Você ainda não está vinculado a nenhuma turma.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function carregarAlunos(turmaId, botao) {
+    const row = document.getElementById(`alunos-turma-${turmaId}`);
+    const listaAlunos = document.getElementById(`lista-alunos-${turmaId}`);
+    
+    if (row.style.display === 'none') {
+        // Mostrar a linha e carregar os alunos
+        row.style.display = 'table-row';
+        botao.classList.remove('btn-primary');
+        botao.classList.add('btn-secondary');
+        
+        fetch(`/professores/get_alunos_turma/${turmaId}`)
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(data => {
+                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.alunos && data.alunos.length > 0) {
+                    let html = '<div class="table-responsive"><table class="table table-sm">';
+                    html += '<thead><tr><th>Nome</th><th>Email</th><th>Ações</th></tr></thead><tbody>';
+                    
+                    data.alunos.forEach(aluno => {
+                        html += `<tr>
+                            <td>${aluno.nome || ''}</td>
+                            <td>${aluno.email || ''}</td>
+                            <td>
+                                <a href="/professores/relatorio_aluno/${aluno.id}" class="btn btn-info btn-sm">
+                                    <i class="fas fa-chart-line"></i> Relatório
+                                </a>
+                            </td>
+                        </tr>`;
+                    });
+                    
+                    html += '</tbody></table></div>';
+                    listaAlunos.innerHTML = html;
+                } else {
+                    listaAlunos.innerHTML = '<div class="alert alert-warning">Nenhum aluno encontrado nesta turma.</div>';
+                }
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+                listaAlunos.innerHTML = `<div class="alert alert-danger">
+                    <strong>Erro ao carregar alunos:</strong><br>
+                    ${error.message}
+                </div>`;
+            });
+    } else {
+        // Esconder a linha
+        row.style.display = 'none';
+        botao.classList.remove('btn-secondary');
+        botao.classList.add('btn-primary');
+    }
+}
+</script>
+{% endblock %}

@@ -21,7 +21,7 @@ import pdfplumber  # se precisar deste para outra funcionalidade
 from werkzeug.security import generate_password_hash
 from flask import send_file
 import tempfile
-from routes import conteudo_bp, professores_bp, alunos_bp
+from routes import conteudo_bp, professores_bp, alunos_bp, simulados_bp
 
 
 # Configuração básica do app
@@ -40,6 +40,7 @@ app.secret_key = os.getenv('SECRET_KEY', 'chave-secreta-temporaria')
 app.register_blueprint(conteudo_bp)
 app.register_blueprint(professores_bp)
 app.register_blueprint(alunos_bp)
+app.register_blueprint(simulados_bp)
 
 # Adicionando `enumerate` ao contexto Jinja2
 @app.context_processor

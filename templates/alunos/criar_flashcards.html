@@ -1,5 +1,181 @@
 {% extends "base.html" %}
 
+{% block head %}
+<script>
+async function gerarFlashcards() {
+    const disciplina = document.getElementById('disciplina').value;
+    const quantidade = document.getElementById('quantidade').value;
+    const conteudo = document.getElementById('conteudo').value;
+    const incluirImagens = document.getElementById('incluir_imagens').checked;
+    const incluirDicas = document.getElementById('incluir_dicas').checked;
+
+    if (!disciplina || !conteudo.trim()) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+
+    // Mostrar loading
+    const flashcardsArea = document.getElementById('flashcards-area');
+    const container = document.getElementById('flashcards-container');
+    const loadingDiv = document.getElementById('loading');
+    
+    flashcardsArea.style.display = 'block';
+    container.style.display = 'none';
+    loadingDiv.style.display = 'block';
+
+    try {
+        const response = await fetch('/alunos/gerar_flashcards', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                disciplina: disciplina,
+                quantidade: quantidade,
+                conteudo: conteudo,
+                incluir_imagens: incluirImagens,
+                incluir_dicas: incluirDicas
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Response data:', data);
+
+        if (data.success) {
+            renderFlashcards(data.flashcards);
+            container.style.display = 'block';
+        } else {
+            throw new Error(data.error || 'Erro ao gerar flashcards');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                Desculpe, ocorreu um erro ao gerar os flashcards. Detalhes: ${error.message}
+            </div>
+        `;
+        container.style.display = 'block';
+    } finally {
+        loadingDiv.style.display = 'none';
+    }
+}
+
+function renderFlashcards(flashcards) {
+    const container = document.getElementById('flashcards-container');
+    container.innerHTML = '';
+
+    flashcards.forEach((flashcard, index) => {
+        const isActive = index === 0 ? 'active' : '';
+        const html = `
+            <div class="carousel-item ${isActive}">
+                <div class="flashcard" onclick="flipCard(this)">
+                    <div class="flashcard-inner">
+                        <div class="flashcard-front">
+                            <div class="content">
+                                <h4>${flashcard.pergunta}</h4>
+                                ${flashcard.imagem ? `<img src="${flashcard.imagem}" class="img-fluid mt-2" alt="Imagem ilustrativa">` : ''}
+                            </div>
+                        </div>
+                        <div class="flashcard-back">
+                            <div class="content">
+                                <p>${flashcard.resposta}</p>
+                                ${flashcard.dica ? `<div class="mt-3"><small class="text-muted"><i class="fas fa-lightbulb"></i> Dica: ${flashcard.dica}</small></div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.innerHTML += html;
+    });
+}
+
+function flipCard(card) {
+    card.classList.toggle('flipped');
+}
+
+function embaralharFlashcards() {
+    const container = document.getElementById('flashcards-container');
+    const items = Array.from(container.children);
+    
+    // Remover classe active de todos os items
+    items.forEach(item => item.classList.remove('active'));
+    
+    // Embaralhar array
+    for (let i = items.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        container.appendChild(items[j]);
+    }
+    
+    // Adicionar classe active ao primeiro item
+    items[0].classList.add('active');
+}
+
+function baixarFlashcards() {
+    const flashcardsContent = document.getElementById('flashcards-container').innerHTML;
+    const disciplina = document.getElementById('disciplina').value;
+    
+    fetch('/alunos/download_flashcards', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            flashcards: flashcardsContent,
+            disciplina: disciplina
+        })
+    })
+    .then(response => response.blob())
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Flashcards_${disciplina}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        a.remove();
+    })
+    .catch(error => {
+        console.error('Erro ao baixar PDF:', error);
+        alert('Erro ao gerar o PDF. Por favor, tente novamente.');
+    });
+}
+
+function compartilharFlashcards() {
+    const url = window.location.href;
+    const disciplina = document.getElementById('disciplina').value;
+    const texto = `Confira estes flashcards de ${disciplina} que eu criei!`;
+    
+    if (navigator.share) {
+        navigator.share({
+            title: 'Flashcards',
+            text: texto,
+            url: url
+        })
+        .catch(error => console.log('Erro ao compartilhar:', error));
+    } else {
+        alert('Seu navegador não suporta a funcionalidade de compartilhamento.');
+    }
+}
+
+// Quando o documento estiver carregado
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('flashcard-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            gerarFlashcards();
+        });
+    }
+});
+</script>
+{% endblock %}
+
 {% block title %}Criar Flashcards{% endblock %}
 
 {% block content %}
@@ -157,163 +333,4 @@
     padding: 20px;
 }
 </style>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('flashcard-form');
-    const flashcardsArea = document.getElementById('flashcards-area');
-    const loadingDiv = document.getElementById('loading');
-    const container = document.getElementById('flashcards-container');
-
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const disciplina = document.getElementById('disciplina').value;
-        const quantidade = document.getElementById('quantidade').value;
-        const conteudo = document.getElementById('conteudo').value;
-        const incluirImagens = document.getElementById('incluir_imagens').checked;
-        const incluirDicas = document.getElementById('incluir_dicas').checked;
-
-        if (!disciplina || !conteudo.trim()) {
-            alert('Por favor, preencha todos os campos obrigatórios.');
-            return;
-        }
-
-        // Mostrar loading
-        flashcardsArea.style.display = 'block';
-        container.style.display = 'none';
-        loadingDiv.style.display = 'block';
-
-        try {
-            const response = await fetch('/gerar_flashcards', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    disciplina: disciplina,
-                    quantidade: quantidade,
-                    conteudo: conteudo,
-                    incluir_imagens: incluirImagens,
-                    incluir_dicas: incluirDicas
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                renderFlashcards(data.flashcards);
-            } else {
-                container.innerHTML = `
-                    <div class="alert alert-danger">
-                        Desculpe, ocorreu um erro ao gerar os flashcards.
-                    </div>
-                `;
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            container.innerHTML = `
-                <div class="alert alert-danger">
-                    Desculpe, ocorreu um erro ao processar sua solicitação.
-                </div>
-            `;
-        } finally {
-            loadingDiv.style.display = 'none';
-            container.style.display = 'block';
-        }
-    });
-});
-
-function renderFlashcards(flashcards) {
-    const container = document.getElementById('flashcards-container');
-    container.innerHTML = '';
-
-    flashcards.forEach((card, index) => {
-        const div = document.createElement('div');
-        div.className = `carousel-item${index === 0 ? ' active' : ''}`;
-        div.innerHTML = `
-            <div class="flashcard" onclick="flipCard(this)">
-                <div class="flashcard-inner">
-                    <div class="flashcard-front">
-                        <div>
-                            <h5 class="mb-3">Pergunta ${index + 1}</h5>
-                            <p>${card.pergunta}</p>
-                            ${card.dica ? `<small class="text-muted mt-2 d-block">Dica: ${card.dica}</small>` : ''}
-                        </div>
-                    </div>
-                    <div class="flashcard-back">
-                        <div>
-                            <h5 class="mb-3">Resposta</h5>
-                            <p>${card.resposta}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-}
-
-function flipCard(card) {
-    card.classList.toggle('flipped');
-}
-
-function embaralharFlashcards() {
-    const container = document.getElementById('flashcards-container');
-    const items = Array.from(container.children);
-    
-    for (let i = items.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        container.appendChild(items[j]);
-    }
-    
-    // Atualizar classes active
-    items.forEach((item, index) => {
-        item.classList.remove('active');
-        if (index === 0) item.classList.add('active');
-    });
-}
-
-async function baixarFlashcards() {
-    try {
-        const response = await fetch('/download_flashcards', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            }
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'flashcards.pdf';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        } else {
-            alert('Erro ao gerar PDF');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro ao baixar PDF');
-    }
-}
-
-function compartilharFlashcards() {
-    if (navigator.share) {
-        navigator.share({
-            title: 'Meus Flashcards',
-            text: 'Confira estes flashcards que eu criei!',
-            url: window.location.href
-        })
-        .catch((error) => console.log('Erro ao compartilhar:', error));
-    } else {
-        alert('Seu navegador não suporta a função de compartilhamento.');
-    }
-}
-</script>
 {% endblock %}

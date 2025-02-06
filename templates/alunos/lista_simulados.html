@@ -1,0 +1,57 @@
+{% for simulado in simulados %}
+<div class="col-md-4 mb-4">
+    <div class="card h-100 simulado-card">
+        <!-- Status -->
+        <div class="simulado-status">
+            {% if simulado.status == 'em andamento' %}
+            <span class="badge bg-warning">Em Andamento</span>
+            {% elif simulado.status == 'respondido' %}
+            <span class="badge bg-success">Respondido</span>
+            {% else %}
+            <span class="badge bg-primary">Disponível</span>
+            {% endif %}
+        </div>
+
+        <div class="card-body">
+            <h5 class="card-title">{{ simulado.disciplina_nome }}</h5>
+            <p class="card-text">
+                <strong>Mês:</strong> {{ meses[simulado.mes_id - 1][1] }}<br>
+                <strong>Data de Envio:</strong> {{ simulado.data_envio }}
+            </p>
+            
+            {% if simulado.status == 'respondido' and simulado.nota is not none %}
+            <div class="alert alert-success">
+                <strong>Nota:</strong> {{ "%.1f"|format(simulado.nota) }}%
+                <div class="progress mt-2" style="height: 5px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: {{ simulado.nota }}%"></div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-3">
+                {% if simulado.status == 'não respondido' %}
+                <a href="{{ url_for('simulados.responder_simulado', simulado_id=simulado.id) }}" 
+                   class="btn btn-primary w-100">
+                    Responder
+                </a>
+                {% else %}
+                <a href="{{ url_for('simulados.responder_simulado', simulado_id=simulado.id) }}" 
+                   class="btn btn-secondary w-100">
+                    Visualizar
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% if not simulados %}
+<div class="col-12">
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle me-2"></i>
+        Nenhum simulado encontrado com os filtros selecionados.
+    </div>
+</div>
+{% endif %}

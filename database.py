@@ -5,7 +5,7 @@ import logging
 import click
 
 # Caminho do banco de dados que você quer usar
-DB_PATH = "educacional.db"  # 🔹 Altere para o nome correto do seu banco
+DB_PATH = 'educacional.db'  # 🔹 Altere para o nome correto do seu banco
 
 def get_db():
     """Obtém a conexão com o banco de dados"""

@@ -1,0 +1,220 @@
+{% extends "professores/base_professores.html" %}
+
+{% block title %}
+Relatório da Turma - {{ turma.serie }} {{ turma.turma }}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Relatório da Turma</h4>
+            <div class="btn-group">
+                <a href="{{ url_for('professores.relatorio_turma_pdf', turma_id=turma.id) }}" target="_blank" class="btn btn-light">
+                    <i class="fas fa-eye me-2"></i>
+                    Visualizar para Impressão
+                </a>
+                <a href="{{ url_for('professores.relatorio_turma_pdf', turma_id=turma.id, download='pdf') }}" class="btn btn-light">
+                    <i class="fas fa-file-pdf me-2"></i>
+                    Baixar PDF
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Informações da Turma -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h5>Informações Gerais</h5>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Série:</th>
+                            <td>{{ turma.serie }}</td>
+                        </tr>
+                        <tr>
+                            <th>Turma:</th>
+                            <td>{{ turma.turma }}</td>
+                        </tr>
+                        <tr>
+                            <th>Escola:</th>
+                            <td>{{ turma.escola }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total de Alunos:</th>
+                            <td>{{ total_alunos }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h6 class="card-title">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Resumo do Desempenho
+                            </h6>
+                            <p class="card-text">
+                                Média Geral da Turma: {{ "%.1f"|format(media_geral) }}%
+                            </p>
+                            <p class="card-text">
+                                Participação em Simulados: {{ "%.1f"|format(taxa_participacao) }}%
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráficos de Desempenho -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Desempenho por Disciplina</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="disciplinasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h6 class="mb-0">Distribuição de Notas</h6>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="distribuicaoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Análise Detalhada -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-brain me-2"></i>
+                        Análise Pedagógica
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-primary">Engajamento da Turma</h6>
+                        <p>{{ parecer.engajamento|safe }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary">Desempenho Geral</h6>
+                        <p>{{ parecer.desempenho|safe }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary">Pontos de Atenção</h6>
+                        <p>{{ parecer.pontos_atencao|safe }}</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="text-primary">Recomendações Metodológicas</h6>
+                        <p>{{ parecer.recomendacoes|safe }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Distribuição de Alunos -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Grupos de Desempenho
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success">Alto Desempenho</h6>
+                                    <p class="card-text">{{ grupos.alto_desempenho }} alunos</p>
+                                    <small>Média acima de 80%</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-warning">
+                                <div class="card-body">
+                                    <h6 class="card-title text-warning">Desempenho Médio</h6>
+                                    <p class="card-text">{{ grupos.medio_desempenho }} alunos</p>
+                                    <small>Média entre 60% e 80%</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="card border-danger">
+                                <div class="card-body">
+                                    <h6 class="card-title text-danger">Baixo Desempenho</h6>
+                                    <p class="card-text">{{ grupos.baixo_desempenho }} alunos</p>
+                                    <small>Média abaixo de 60%</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+// Gráfico de Desempenho por Disciplina
+const disciplinasCtx = document.getElementById('disciplinasChart').getContext('2d');
+new Chart(disciplinasCtx, {
+    type: 'bar',
+    data: {
+        labels: {{ disciplinas|tojson }},
+        datasets: [{
+            label: 'Média da Turma (%)',
+            data: {{ medias_disciplinas|tojson }},
+            backgroundColor: 'rgba(54, 162, 235, 0.5)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 100
+            }
+        }
+    }
+});
+
+// Gráfico de Distribuição de Notas
+const distribuicaoCtx = document.getElementById('distribuicaoChart').getContext('2d');
+new Chart(distribuicaoCtx, {
+    type: 'bar',
+    data: {
+        labels: ['0-20', '21-40', '41-60', '61-80', '81-100'],
+        datasets: [{
+            label: 'Quantidade de Alunos',
+            data: {{ distribuicao_notas|tojson }},
+            backgroundColor: 'rgba(75, 192, 192, 0.5)',
+            borderColor: 'rgba(75, 192, 192, 1)',
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}

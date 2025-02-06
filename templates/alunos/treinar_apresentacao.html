@@ -1,4 +1,9 @@
-{% extends "base.html" %}
+{% extends "alunos/base_alunos.html" %}
+
+{% block head %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<script src="{{ url_for('static', filename='js/apresentacao.js') }}" defer></script>
+{% endblock %}
 
 {% block title %}Treinar Apresentação{% endblock %}
 
@@ -83,22 +88,22 @@
                                 <!-- Tabs de feedback -->
                                 <ul class="nav nav-tabs" id="feedbackTabs" role="tablist">
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#estrutura">
+                                        <button class="nav-link active" id="estrutura-tab" data-bs-toggle="tab" data-bs-target="#estrutura-content" type="button" role="tab" aria-controls="estrutura-content" aria-selected="true">
                                             Estrutura
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#oratoria">
+                                        <button class="nav-link" id="oratoria-tab" data-bs-toggle="tab" data-bs-target="#oratoria-content" type="button" role="tab" aria-controls="oratoria-content" aria-selected="false">
                                             Oratória
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#slides">
+                                        <button class="nav-link" id="slides-tab" data-bs-toggle="tab" data-bs-target="#slides-content" type="button" role="tab" aria-controls="slides-content" aria-selected="false">
                                             Slides
                                         </button>
                                     </li>
                                     <li class="nav-item" role="presentation">
-                                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tempo">
+                                        <button class="nav-link" id="tempo-tab" data-bs-toggle="tab" data-bs-target="#tempo-content" type="button" role="tab" aria-controls="tempo-content" aria-selected="false">
                                             Tempo
                                         </button>
                                     </li>
@@ -106,23 +111,23 @@
 
                                 <div class="tab-content mt-3" id="feedbackContent">
                                     <!-- Estrutura -->
-                                    <div class="tab-pane fade show active" id="estrutura">
-                                        <div id="estrutura-content"></div>
+                                    <div class="tab-pane fade show active" id="estrutura-content" role="tabpanel" aria-labelledby="estrutura-tab">
+                                        <div id="estrutura-content-text"></div>
                                     </div>
 
                                     <!-- Oratória -->
-                                    <div class="tab-pane fade" id="oratoria">
-                                        <div id="oratoria-content"></div>
+                                    <div class="tab-pane fade" id="oratoria-content" role="tabpanel" aria-labelledby="oratoria-tab">
+                                        <div id="oratoria-content-text"></div>
                                     </div>
 
                                     <!-- Slides -->
-                                    <div class="tab-pane fade" id="slides">
-                                        <div id="slides-content"></div>
+                                    <div class="tab-pane fade" id="slides-content" role="tabpanel" aria-labelledby="slides-tab">
+                                        <div id="slides-content-text"></div>
                                     </div>
 
                                     <!-- Tempo -->
-                                    <div class="tab-pane fade" id="tempo">
-                                        <div id="tempo-content"></div>
+                                    <div class="tab-pane fade" id="tempo-content" role="tabpanel" aria-labelledby="tempo-tab">
+                                        <div id="tempo-content-text"></div>
                                     </div>
                                 </div>
 
@@ -146,116 +151,4 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('apresentacao-form');
-    const feedbackArea = document.getElementById('feedback-area');
-    const loadingDiv = document.getElementById('loading');
-
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const tipo = document.getElementById('tipo').value;
-        const duracao = document.getElementById('duracao').value;
-        const conteudo = document.getElementById('conteudo').value;
-        const incluirSlides = document.getElementById('incluir_slides').checked;
-        const incluirTecnicas = document.getElementById('incluir_tecnicas').checked;
-
-        if (!tipo || !conteudo.trim()) {
-            alert('Por favor, preencha todos os campos obrigatórios.');
-            return;
-        }
-
-        // Mostrar loading
-        feedbackArea.style.display = 'block';
-        document.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.querySelector('div').innerHTML = '';
-        });
-        loadingDiv.style.display = 'block';
-
-        try {
-            const response = await fetch('/feedback_apresentacao', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    tipo: tipo,
-                    duracao: duracao,
-                    conteudo: conteudo,
-                    incluir_slides: incluirSlides,
-                    incluir_tecnicas: incluirTecnicas
-                })
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                // Preencher as tabs com o feedback
-                document.getElementById('estrutura-content').innerHTML = data.feedback.estrutura;
-                document.getElementById('oratoria-content').innerHTML = data.feedback.oratoria;
-                document.getElementById('slides-content').innerHTML = data.feedback.slides;
-                document.getElementById('tempo-content').innerHTML = data.feedback.tempo;
-            } else {
-                alert('Erro ao gerar feedback');
-            }
-        } catch (error) {
-            console.error('Erro:', error);
-            alert('Erro ao processar sua solicitação');
-        } finally {
-            loadingDiv.style.display = 'none';
-        }
-    });
-});
-
-function copiarFeedback() {
-    const estrutura = document.getElementById('estrutura-content').innerText;
-    const oratoria = document.getElementById('oratoria-content').innerText;
-    const slides = document.getElementById('slides-content').innerText;
-    const tempo = document.getElementById('tempo-content').innerText;
-
-    const feedback = `FEEDBACK DA APRESENTAÇÃO\n\n` +
-                    `ESTRUTURA:\n${estrutura}\n\n` +
-                    `ORATÓRIA:\n${oratoria}\n\n` +
-                    `SLIDES:\n${slides}\n\n` +
-                    `TEMPO:\n${tempo}`;
-
-    navigator.clipboard.writeText(feedback)
-        .then(() => alert('Feedback copiado para a área de transferência!'))
-        .catch(err => alert('Erro ao copiar: ' + err));
-}
-
-async function baixarFeedback() {
-    try {
-        const response = await fetch('/download_feedback', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                estrutura: document.getElementById('estrutura-content').innerHTML,
-                oratoria: document.getElementById('oratoria-content').innerHTML,
-                slides: document.getElementById('slides-content').innerHTML,
-                tempo: document.getElementById('tempo-content').innerHTML
-            })
-        });
-        
-        if (response.ok) {
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'feedback_apresentacao.pdf';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        } else {
-            alert('Erro ao gerar PDF');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert('Erro ao baixar PDF');
-    }
-}
-</script>
 {% endblock %}

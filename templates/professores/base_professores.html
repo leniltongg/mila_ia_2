@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Portal dos Professores{% endblock %}
+
+{% block sidebar_title %}Portal dos Professores{% endblock %}
+
+{% block sidebar_content %}
+    <div class="nav flex-column">
+        <a class="nav-link {% if request.endpoint == 'portal_professores' %}active{% endif %}" href="{{ url_for('portal_professores') }}">
+            <i class="bi bi-house-door"></i> Início
+        </a>
+
+        <!-- Turmas -->
+        <a class="nav-link d-flex justify-content-between align-items-center" 
+            data-bs-toggle="collapse" 
+            href="#turmasMenu" 
+            role="button" 
+            aria-expanded="false" 
+            aria-controls="turmasMenu">
+            <span>
+                <i class="bi bi-people"></i> Minhas Turmas
+            </span>
+            <i class="bi bi-chevron-down"></i>
+        </a>
+        
+        <div class="collapse" id="turmasMenu">
+            <div class="nav flex-column ms-3">
+                <a class="nav-link" href="{{ url_for('professores.listar_turmas') }}">
+                    <i class="bi bi-list-check"></i> Listar Turmas
+                </a>
+            </div>
+        </div>
+
+        <!-- Simulados -->
+        <a class="nav-link d-flex justify-content-between align-items-center" 
+            data-bs-toggle="collapse" 
+            href="#simuladosMenu" 
+            role="button" 
+            aria-expanded="false" 
+            aria-controls="simuladosMenu">
+            <span>
+                <i class="bi bi-clipboard-check"></i> Simulados
+            </span>
+            <i class="bi bi-chevron-down"></i>
+        </a>
+        
+        <div class="collapse" id="simuladosMenu">
+            <div class="nav flex-column ms-3">
+                <a class="nav-link" href="{{ url_for('portal_professores') }}#criar_simulado">
+                    <i class="bi bi-plus-circle"></i> Criar Simulado
+                </a>
+                <a class="nav-link" href="{{ url_for('portal_professores') }}#meus_simulados">
+                    <i class="bi bi-list-check"></i> Meus Simulados
+                </a>
+                <a class="nav-link" href="{{ url_for('portal_professores') }}#banco_questoes">
+                    <i class="bi bi-journal-text"></i> Banco de Questões
+                </a>
+            </div>
+        </div>
+
+        <!-- Ferramentas MILA -->
+        <a class="nav-link d-flex justify-content-between align-items-center" 
+            data-bs-toggle="collapse" 
+            href="#ferramentasMila" 
+            role="button" 
+            aria-expanded="false" 
+            aria-controls="ferramentasMila">
+            <span>
+                <i class="bi bi-tools"></i> Ferramentas MILA
+            </span>
+            <i class="bi bi-chevron-down"></i>
+        </a>
+        
+        <div class="collapse" id="ferramentasMila">
+            <div class="nav flex-column ms-3">
+                <a class="nav-link" href="{{ url_for('conteudo.criar_plano_aula') }}">
+                    <i class="bi bi-journal-bookmark"></i> Plano de Aula
+                </a>
+                <a class="nav-link" href="{{ url_for('conteudo.criar_resumo') }}">
+                    <i class="bi bi-file-text"></i> Resumos
+                </a>
+                <a class="nav-link" href="{{ url_for('conteudo.criar_exercicios') }}">
+                    <i class="bi bi-journal-text"></i> Exercícios
+                </a>
+                <a class="nav-link" href="{{ url_for('conteudo.criar_material_complementar') }}">
+                    <i class="bi bi-book"></i> Material Complementar
+                </a>
+            </div>
+        </div>
+
+        <!-- Relatórios -->
+        <a class="nav-link {% if request.endpoint == 'relatorios' %}active{% endif %}" href="{{ url_for('relatorios') }}">
+            <i class="bi bi-graph-up"></i> Relatórios
+        </a>
+
+        <a class="nav-link {% if request.endpoint == 'alterar_senha' %}active{% endif %}" href="{{ url_for('alterar_senha') }}">
+            <i class="bi bi-key"></i> Alterar Senha
+        </a>
+
+        <!-- Sair -->
+        <a class="nav-link text-danger mt-4" href="{{ url_for('logout') }}">
+            <i class="bi bi-box-arrow-right"></i> Sair
+        </a>
+    </div>
+
+    <div class="list-group list-group-flush">
+        <a href="{{ url_for('professores.portal') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-home me-2"></i>
+            Portal
+        </a>
+        <a href="{{ url_for('professores.listar_turmas') }}" class="list-group-item list-group-item-action">
+            <i class="fas fa-chalkboard me-2"></i>
+            Listar Turmas
+        </a>
+    </div>
+{% endblock %}

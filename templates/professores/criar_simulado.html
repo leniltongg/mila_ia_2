@@ -1,0 +1,190 @@
+{% extends "professores/base_professores.html" %}
+
+{% block head %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
+<script src="{{ url_for('static', filename='js/criar_simulado.js') }}" defer></script>
+<style>
+    .questao-preview {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .questao-selecionada {
+        border-color: #0d6efd;
+        background-color: #f8f9fa;
+    }
+    .questao-preview .pontos-input {
+        width: 80px;
+    }
+    #questoes-selecionadas {
+        min-height: 200px;
+        border: 2px dashed #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1rem;
+    }
+    .questao-preview .ordem {
+        width: 40px;
+        text-align: center;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block title %}Criar Simulado{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Formulário do Simulado -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Dados do Simulado</h5>
+                </div>
+                <div class="card-body">
+                    <form id="simulado-form">
+                        <!-- Título -->
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="titulo" required>
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" rows="3"></textarea>
+                        </div>
+
+                        <!-- Disciplina -->
+                        <div class="mb-3">
+                            <label for="disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select select2" id="disciplina" required>
+                                <option value="">Selecione...</option>
+                                <option value="matematica">Matemática</option>
+                                <option value="portugues">Português</option>
+                                <option value="historia">História</option>
+                                <option value="geografia">Geografia</option>
+                                <option value="fisica">Física</option>
+                                <option value="quimica">Química</option>
+                                <option value="biologia">Biologia</option>
+                                <option value="ingles">Inglês</option>
+                            </select>
+                        </div>
+
+                        <!-- Duração -->
+                        <div class="mb-3">
+                            <label for="duracao" class="form-label">Duração (minutos)</label>
+                            <input type="number" class="form-control" id="duracao" min="15" max="240" value="60" required>
+                        </div>
+
+                        <!-- Período -->
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="data_inicio" class="form-label">Data Início</label>
+                                <input type="datetime-local" class="form-control" id="data_inicio" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="data_fim" class="form-label">Data Fim</label>
+                                <input type="datetime-local" class="form-control" id="data_fim" required>
+                            </div>
+                        </div>
+
+                        <!-- Botões -->
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-primary" onclick="salvarSimulado('publicado')">
+                                <i class="bi bi-send"></i> Publicar Simulado
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="salvarSimulado('rascunho')">
+                                <i class="bi bi-save"></i> Salvar como Rascunho
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Banco de Questões -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Banco de Questões</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <form id="pesquisa-form" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <select class="form-select select2" id="filtro-disciplina">
+                                    <option value="">Todas as Disciplinas</option>
+                                    <option value="matematica">Matemática</option>
+                                    <option value="portugues">Português</option>
+                                    <option value="historia">História</option>
+                                    <option value="geografia">Geografia</option>
+                                    <option value="fisica">Física</option>
+                                    <option value="quimica">Química</option>
+                                    <option value="biologia">Biologia</option>
+                                    <option value="ingles">Inglês</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control" id="filtro-assunto" placeholder="Assunto">
+                            </div>
+                        </div>
+                        <div class="row g-2 mt-2">
+                            <div class="col-md-6">
+                                <select class="form-select" id="filtro-nivel">
+                                    <option value="">Todos os Níveis</option>
+                                    <option value="facil">Fácil</option>
+                                    <option value="medio">Médio</option>
+                                    <option value="dificil">Difícil</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <select class="form-select" id="filtro-tipo">
+                                    <option value="">Todos os Tipos</option>
+                                    <option value="objetiva">Objetiva</option>
+                                    <option value="dissertativa">Dissertativa</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-grid mt-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Pesquisar
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Resultados -->
+                    <div id="resultados" class="overflow-auto" style="max-height: 500px;">
+                        <!-- Questões encontradas serão exibidas aqui -->
+                    </div>
+
+                    <!-- Paginação -->
+                    <nav aria-label="Navegação de páginas" class="mt-3">
+                        <ul class="pagination justify-content-center" id="paginacao">
+                            <!-- Links de paginação serão adicionados aqui -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+        <!-- Questões Selecionadas -->
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Questões do Simulado</h5>
+                    <span class="badge bg-light text-dark" id="total-pontos">Total: 0 pontos</span>
+                </div>
+                <div class="card-body">
+                    <div id="questoes-selecionadas">
+                        <!-- Questões selecionadas serão exibidas aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -6,14 +6,14 @@ def init_database():
     """Inicializa o banco de dados com as tabelas necessárias"""
     
     # Verifica se o banco de dados já existe
-    if os.path.exists('mila.db'):
+    if os.path.exists('educacional.db'):
         print("Banco de dados já existe. Fazendo backup...")
-        if os.path.exists('mila.db.bak'):
-            os.remove('mila.db.bak')
-        os.rename('mila.db', 'mila.db.bak')
+        if os.path.exists('educacional.db.bak'):
+            os.remove('educacional.db.bak')
+        os.rename('educacional.db', 'educacional.db.bak')
     
     # Conecta ao banco de dados
-    conn = sqlite3.connect('mila.db')
+    conn = sqlite3.connect('educacional.db')
     cursor = conn.cursor()
     
     try:

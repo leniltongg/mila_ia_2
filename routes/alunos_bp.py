@@ -1,15 +1,17 @@
-from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash, send_file, make_response, g
+from flask import Blueprint, render_template, request, jsonify, current_app, make_response, send_file, g, flash, redirect, url_for
 from flask_login import login_required, current_user
 from openai import OpenAI
-import sqlite3
 import json
 import os
 from dotenv import load_dotenv
 import re
+from weasyprint import HTML as WeasyHTML
+import sqlite3
 
 # Criar o blueprint
 alunos_bp = Blueprint('alunos_bp', __name__, url_prefix='/alunos')
 
+# Carregar variáveis de ambiente
 load_dotenv()
 client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
 
@@ -85,57 +87,74 @@ def criar_resumo():
     return render_template('alunos/criar_resumo.html')
 
 @alunos_bp.route('/gerar_resumo', methods=['POST'])
-@login_required
 def gerar_resumo():
     try:
         data = request.get_json()
-        print("Dados recebidos:", data)  # Log para debug
         
+        # Extrair dados do request
         disciplina = data.get('disciplina')
         nivel = data.get('nivel')
-        tipo = data.get('tipo')
+        tipo = data.get('tipo', 'completo')
         conteudo = data.get('conteudo')
-        incluir_exemplos = data.get('incluir_exemplos', False)
-        destacar_importante = data.get('destacar_importante', False)
+        incluir_exemplos = data.get('incluir_exemplos', True)
+        destacar_importante = data.get('destacar_importante', True)
         
-        # Criar o prompt base
-        base_prompt = f"""
-        Você é um professor especialista em {disciplina} do nível {nivel}.
-        Crie um resumo do seguinte conteúdo, seguindo estas diretrizes:
-        
-        1. Tipo de resumo: {tipo}
-        2. {'Inclua exemplos práticos e aplicações.' if incluir_exemplos else ''}
-        3. {'Destaque os conceitos mais importantes.' if destacar_importante else ''}
-        4. Mantenha uma linguagem clara e adequada ao nível {nivel}
-        5. Organize o conteúdo de forma lógica e estruturada
-        
-        Conteúdo para resumir:
-        {conteudo}
+        # Validar dados
+        if not all([disciplina, nivel, conteudo]):
+            return jsonify({'success': False, 'error': 'Dados incompletos'})
+            
+        # Construir o prompt baseado no tipo de resumo
+        prompt_base = f"""Você é um professor especialista em {disciplina} para o nível {nivel}. 
+        Crie um resumo conciso e objetivo do seguinte conteúdo, focando apenas nos pontos mais importantes. 
+        O resumo deve ter no máximo 30% do tamanho do texto original.
         """
         
-        # Ajustar o prompt baseado no tipo de resumo
-        if tipo == "topicos":
-            base_prompt += "\nOrganize o resumo em tópicos e subtópicos claros."
-        elif tipo == "mapa_conceitual":
-            base_prompt += "\nCrie um mapa conceitual textual mostrando as relações entre os conceitos."
-        elif tipo == "esquema":
-            base_prompt += "\nCrie um esquema de estudo com palavras-chave e conexões."
+        if tipo == 'completo':
+            prompt = prompt_base + """
+            Estruture o resumo em parágrafos curtos e objetivos.
+            Use linguagem clara e direta.
+            Destaque os conceitos principais em negrito.
+            """
+        elif tipo == 'topicos':
+            prompt = prompt_base + """
+            Crie uma lista com os tópicos principais.
+            Cada tópico deve ter no máximo 2 linhas.
+            Use marcadores para organizar os tópicos.
+            """
+        elif tipo == 'mapa_conceitual':
+            prompt = prompt_base + """
+            Crie um mapa conceitual em formato de texto.
+            Use → para indicar relações entre conceitos.
+            Organize os conceitos de forma hierárquica.
+            """
+        else:  # esquema
+            prompt = prompt_base + """
+            Crie um esquema resumido com títulos e subtítulos.
+            Use numeração para organizar os tópicos.
+            Mantenha cada item do esquema curto e direto.
+            """
             
-        print("Enviando prompt para GPT-4:", base_prompt)  # Log para debug
+        if incluir_exemplos:
+            prompt += "\nIncluir 1-2 exemplos breves para ilustrar os conceitos mais importantes."
             
-        # Gerar resumo usando GPT-4
-        completion = client.chat.completions.create(
-            model="gpt-4",
+        if destacar_importante:
+            prompt += "\nDestaque em negrito (**texto**) os conceitos mais importantes."
+            
+        prompt += f"\n\nConteúdo para resumir:\n{conteudo}"
+        
+        # Fazer a chamada para a API
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Você é um professor especialista em criar resumos educacionais."},
-                {"role": "user", "content": base_prompt}
-            ]
+                {"role": "system", "content": "Você é um assistente especializado em criar resumos educacionais concisos e objetivos."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=1000
         )
         
-        resumo = completion.choices[0].message.content
-        print("Resumo gerado:", resumo)  # Log para debug
-        
-        # Formatar o resumo com HTML
+        # Extrair e formatar o resumo
+        resumo = response.choices[0].message.content
         resumo_formatado = formatar_resumo_html(resumo, tipo)
         
         return jsonify({
@@ -147,35 +166,8 @@ def gerar_resumo():
         print(f"Erro ao gerar resumo: {str(e)}")
         return jsonify({
             'success': False,
-            'error': f'Erro ao gerar resumo: {str(e)}'
-        }), 500
-
-def formatar_resumo_html(resumo, tipo):
-    """Formata o resumo com HTML e estilos apropriados."""
-    if tipo == "topicos":
-        # Detectar e formatar listas
-        resumo = re.sub(r'^\s*[\-\*]\s+(.+)$', r'<li>\1</li>', resumo, flags=re.MULTILINE)
-        resumo = re.sub(r'((?:<li>.*?</li>\s*)+)', r'<ul class="mb-3">\1</ul>', resumo)
-        
-    elif tipo == "mapa_conceitual":
-        # Adicionar classes para estilização de mapa conceitual
-        resumo = f'<div class="mapa-conceitual">{resumo}</div>'
-        
-    elif tipo == "esquema":
-        # Formatar esquemas com indentação e cores
-        resumo = f'<div class="esquema-estudo">{resumo}</div>'
-    
-    # Formatar títulos
-    resumo = re.sub(r'^(.*?):$', r'<h4 class="mt-4 mb-3">\1</h4>', resumo, flags=re.MULTILINE)
-    
-    # Destacar palavras-chave
-    resumo = re.sub(r'\*\*(.*?)\*\*', r'<strong class="text-primary">\1</strong>', resumo)
-    
-    # Formatar parágrafos
-    resumo = re.sub(r'\n\n+', '</p><p class="mb-3">', resumo)
-    resumo = f'<p class="mb-3">{resumo}</p>'
-    
-    return resumo
+            'error': 'Erro ao gerar o resumo. Por favor, tente novamente.'
+        })
 
 @alunos_bp.route('/download_resumo', methods=['POST'])
 @login_required
@@ -224,6 +216,178 @@ def download_resumo():
 @login_required
 def criar_flashcards():
     return render_template('alunos/criar_flashcards.html')
+
+@alunos_bp.route('/gerar_flashcards', methods=['POST'])
+@login_required
+def gerar_flashcards():
+    try:
+        data = request.get_json()
+        print("Dados recebidos:", data)
+        
+        # Extrair dados do request
+        disciplina = data.get('disciplina')
+        quantidade = int(data.get('quantidade', 10))
+        conteudo = data.get('conteudo')
+        incluir_imagens = data.get('incluir_imagens', False)
+        incluir_dicas = data.get('incluir_dicas', True)
+        
+        print(f"Disciplina: {disciplina}")
+        print(f"Quantidade: {quantidade}")
+        print(f"Tamanho do conteúdo: {len(conteudo) if conteudo else 0}")
+        
+        # Validar dados
+        if not all([disciplina, conteudo]):
+            return jsonify({'success': False, 'error': 'Dados incompletos'})
+            
+        # Limitar quantidade
+        quantidade = min(max(quantidade, 5), 20)
+            
+        # Construir o prompt
+        prompt = f"""Você é um professor especialista em {disciplina}. 
+        Crie {quantidade} flashcards de estudo baseados no seguinte conteúdo.
+        Para cada flashcard, forneça:
+        1. Uma pergunta clara e específica
+        2. Uma resposta concisa e direta
+        3. {'Uma dica de memorização' if incluir_dicas else ''}
+        
+        Regras:
+        - As perguntas devem ser diretas e testar conceitos importantes
+        - As respostas devem ser curtas (máximo 3 linhas)
+        - {'As dicas devem ajudar a memorizar o conceito' if incluir_dicas else ''}
+        - Use uma linguagem apropriada para estudo
+        - Foque nos conceitos mais importantes
+        
+        Retorne os flashcards no seguinte formato JSON:
+        {{
+            "flashcards": [
+                {{
+                    "pergunta": "Pergunta 1?",
+                    "resposta": "Resposta 1",
+                    "dica": "Dica 1"
+                }},
+                // ... mais flashcards
+            ]
+        }}
+        
+        Conteúdo: {conteudo}"""
+        
+        print("Prompt construído")
+        
+        # Fazer a chamada para a API
+        try:
+            print("Chamando API OpenAI...")
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "Você é um assistente especializado em criar flashcards educacionais."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.7,
+                max_tokens=1500
+            )
+            print("Resposta da API recebida")
+            
+        except Exception as api_error:
+            print(f"Erro na chamada da API: {str(api_error)}")
+            raise api_error
+        
+        # Extrair e processar os flashcards
+        try:
+            content = response.choices[0].message.content
+            print("Conteúdo recebido:", content)
+            
+            # Encontrar o JSON na resposta
+            json_str = content[content.find('{'):content.rfind('}')+1]
+            print("JSON extraído:", json_str)
+            
+            flashcards = json.loads(json_str)
+            print("JSON decodificado com sucesso")
+            
+            return jsonify({
+                'success': True,
+                'flashcards': flashcards['flashcards']
+            })
+            
+        except json.JSONDecodeError as e:
+            print(f"Erro ao decodificar JSON: {str(e)}")
+            print(f"Conteúdo recebido: {content}")
+            return jsonify({
+                'success': False,
+                'error': 'Erro ao processar os flashcards. Por favor, tente novamente.'
+            })
+        
+    except Exception as e:
+        print(f"Erro ao gerar flashcards: {str(e)}")
+        import traceback
+        print("Traceback completo:", traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao gerar os flashcards. Por favor, tente novamente.'
+        })
+
+@alunos_bp.route('/download_flashcards', methods=['POST'])
+@login_required
+def download_flashcards():
+    try:
+        data = request.get_json()
+        flashcards = data.get('flashcards', '')
+        disciplina = data.get('disciplina', 'geral')
+        
+        # Criar HTML para PDF
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Flashcards - {disciplina}</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; }}
+                .flashcard {{
+                    border: 1px solid #ddd;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin: 10px 0;
+                    page-break-inside: avoid;
+                }}
+                .pergunta {{ 
+                    font-weight: bold;
+                    color: #2c3e50;
+                    margin-bottom: 10px;
+                }}
+                .resposta {{
+                    color: #34495e;
+                    margin-bottom: 8px;
+                }}
+                .dica {{
+                    color: #7f8c8d;
+                    font-style: italic;
+                    font-size: 0.9em;
+                }}
+            </style>
+        </head>
+        <body>
+            <h1>Flashcards - {disciplina}</h1>
+            {flashcards}
+        </body>
+        </html>
+        """
+        
+        # Criar PDF
+        pdf = WeasyHTML(string=html).write_pdf()
+        
+        # Retornar o PDF
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'attachment; filename=Flashcards_{disciplina}.pdf'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Erro ao gerar PDF: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao gerar o PDF. Por favor, tente novamente.'
+        }), 500
 
 @alunos_bp.route('/fazer-quiz')
 @login_required
@@ -530,7 +694,6 @@ def download_analise_redacao():
             'error': 'Erro ao gerar o arquivo da análise.'
         }), 500
 
-# Rotas para processamento de dados via AJAX
 @alunos_bp.route('/processar-chat', methods=['POST'])
 @login_required
 def processar_chat():
@@ -554,7 +717,7 @@ def processar_chat():
                 7. Se o aluno insistir em pedir a resposta, reforce a importância do processo de aprendizagem
 
                 Seu objetivo é desenvolver o pensamento crítico e a autonomia do aluno, não apenas fornecer respostas."""},
-                {"role": "user", "content": message}
+                {"role": "assistant", "content": message}
             ],
             max_tokens=500,
             temperature=0.7
@@ -637,11 +800,85 @@ def gerar_quiz():
 @alunos_bp.route('/avaliar-apresentacao', methods=['POST'])
 @login_required
 def avaliar_apresentacao():
-    data = request.get_json()
-    apresentacao = data.get('apresentacao', '')
-    # Avaliar apresentação
-    feedback = "Feedback da apresentação"  # Placeholder
-    return jsonify({'success': True, 'feedback': feedback})
+    try:
+        data = request.get_json()
+        tipo = data.get('tipo', '')
+        duracao = data.get('duracao', '')
+        conteudo = data.get('conteudo', '')
+        incluir_slides = data.get('incluir_slides', True)
+        incluir_tecnicas = data.get('incluir_tecnicas', True)
+
+        if not tipo or not conteudo.strip():
+            return jsonify({
+                'success': False,
+                'error': 'Por favor, preencha todos os campos obrigatórios.'
+            }), 400
+
+        # Prompt para o OpenAI
+        prompt = f"""Analise a apresentação abaixo e forneça feedback detalhado.
+
+Tipo de apresentação: {tipo}
+Duração prevista: {duracao} minutos
+Conteúdo:
+{conteudo}
+
+Por favor, forneça feedback estruturado em 4 áreas:
+
+1. Estrutura:
+- Análise da organização do conteúdo
+- Sugestões para melhorar a estrutura
+- Pontos fortes e fracos
+
+2. Oratória:
+- Dicas de comunicação verbal
+- Sugestões de linguagem corporal
+- Técnicas para engajar a audiência
+
+3. Slides (se aplicável):
+- Sugestões para organização visual
+- Dicas de design e formatação
+- Melhores práticas para apresentações
+
+4. Gestão do Tempo:
+- Como distribuir o conteúdo no tempo disponível
+- Pontos que podem precisar de mais ou menos tempo
+- Dicas para controle do tempo
+
+Forneça o feedback em formato HTML com tags <p> para parágrafos."""
+
+        # Chamar a API do OpenAI
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Você é um especialista em apresentações e oratória, com vasta experiência em avaliar e orientar alunos."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7
+        )
+
+        # Processar a resposta
+        feedback_text = response.choices[0].message.content
+
+        # Dividir o feedback em seções
+        sections = feedback_text.split('\n\n')
+        feedback = {
+            'estrutura': sections[0] if len(sections) > 0 else '',
+            'oratoria': sections[1] if len(sections) > 1 else '',
+            'slides': sections[2] if len(sections) > 2 else '',
+            'tempo': sections[3] if len(sections) > 3 else ''
+        }
+
+        return jsonify({
+            'success': True,
+            'feedback': feedback
+        })
+
+    except Exception as e:
+        print(f"Erro ao avaliar apresentação: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao avaliar a apresentação.'
+        }), 500
 
 @alunos_bp.route('/avaliar-entrevista', methods=['POST'])
 @login_required
@@ -813,3 +1050,182 @@ def finalizar_entrevista():
             'success': False,
             'error': 'Erro ao gerar avaliação da entrevista.'
         }), 500
+
+@alunos_bp.route('/feedback_apresentacao', methods=['POST'])
+@login_required
+def feedback_apresentacao():
+    try:
+        data = request.get_json()
+        
+        # Extrair dados do request
+        tipo = data.get('tipo')
+        duracao = int(data.get('duracao', 15))
+        conteudo = data.get('conteudo')
+        incluir_slides = data.get('incluir_slides', True)
+        incluir_tecnicas = data.get('incluir_tecnicas', True)
+        
+        # Validar dados
+        if not all([tipo, conteudo]):
+            return jsonify({'success': False, 'error': 'Dados incompletos'})
+            
+        # Construir o prompt
+        prompt = f"""Você é um professor especialista em apresentações e oratória.
+        Analise o conteúdo desta apresentação de {tipo} com duração prevista de {duracao} minutos.
+        
+        Forneça um feedback detalhado nos seguintes aspectos:
+        
+        1. Estrutura da Apresentação:
+        - Analise a organização do conteúdo
+        - Verifique se há introdução, desenvolvimento e conclusão claros
+        - Sugira melhorias na estrutura
+        
+        2. Técnicas de Oratória:
+        - Dê dicas de como apresentar cada parte
+        - Sugira técnicas para manter a atenção do público
+        - Indique momentos para pausas e ênfases
+        
+        3. Sugestões para Slides:
+        - Recomende como dividir o conteúdo em slides
+        - Sugira elementos visuais que podem ser usados
+        - Dê dicas de design e formatação
+        
+        4. Gestão do Tempo:
+        - Analise se o conteúdo é adequado para {duracao} minutos
+        - Sugira quanto tempo dedicar a cada parte
+        - Indique se algo deve ser removido ou expandido
+        
+        Retorne o feedback no seguinte formato JSON:
+        {{
+            "estrutura": "Feedback sobre estrutura em HTML",
+            "oratoria": "Feedback sobre oratória em HTML",
+            "slides": "Feedback sobre slides em HTML",
+            "tempo": "Feedback sobre gestão do tempo em HTML"
+        }}
+        
+        Use tags HTML para formatar o texto (h4, p, ul, li, etc).
+        Seja específico e dê exemplos práticos.
+        
+        Conteúdo da apresentação:
+        {conteudo}"""
+        
+        # Fazer a chamada para a API
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Você é um assistente especializado em dar feedback sobre apresentações."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=2000
+        )
+        
+        # Extrair e processar o feedback
+        try:
+            content = response.choices[0].message.content
+            # Encontrar o JSON na resposta
+            json_str = content[content.find('{'):content.rfind('}')+1]
+            feedback = json.loads(json_str)
+            
+            return jsonify({
+                'success': True,
+                'feedback': feedback
+            })
+            
+        except json.JSONDecodeError as e:
+            print(f"Erro ao decodificar JSON: {str(e)}")
+            print(f"Conteúdo recebido: {content}")
+            return jsonify({
+                'success': False,
+                'error': 'Erro ao processar o feedback. Por favor, tente novamente.'
+            })
+        
+    except Exception as e:
+        print(f"Erro ao gerar feedback: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao gerar o feedback. Por favor, tente novamente.'
+        })
+
+@alunos_bp.route('/download_feedback', methods=['POST'])
+@login_required
+def download_feedback():
+    try:
+        data = request.get_json()
+        
+        html = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                h1 {{ color: #2c3e50; }}
+                h2 {{ color: #34495e; margin-top: 20px; }}
+                .section {{ margin-bottom: 30px; }}
+            </style>
+        </head>
+        <body>
+            <h1>Feedback da Apresentação</h1>
+            <div class="section">
+                <h2>Estrutura</h2>
+                {data['estrutura']}
+            </div>
+            <div class="section">
+                <h2>Oratória</h2>
+                {data['oratoria']}
+            </div>
+            <div class="section">
+                <h2>Slides</h2>
+                {data['slides']}
+            </div>
+            <div class="section">
+                <h2>Gestão do Tempo</h2>
+                {data['tempo']}
+            </div>
+        </body>
+        </html>
+        """
+        
+        # Criar PDF
+        pdf = WeasyHTML(string=html).write_pdf()
+        
+        # Criar resposta com o PDF
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = 'attachment; filename=feedback_apresentacao.pdf'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Erro ao gerar PDF: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': 'Erro ao gerar PDF do feedback.'
+        }), 500
+
+def formatar_resumo_html(resumo, tipo):
+    """Formata o resumo com HTML e estilos apropriados."""
+    if tipo == "topicos":
+        # Detectar e formatar listas
+        resumo = re.sub(r'^\s*[\-\*]\s+(.+)$', r'<li>\1</li>', resumo, flags=re.MULTILINE)
+        resumo = re.sub(r'((?:<li>.*?</li>\s*)+)', r'<ul class="mb-3">\1</ul>', resumo)
+        
+    elif tipo == "mapa_conceitual":
+        # Adicionar classes para estilização de mapa conceitual
+        resumo = f'<div class="mapa-conceitual">{resumo}</div>'
+        
+    elif tipo == "esquema":
+        # Formatar esquemas com indentação e cores
+        resumo = f'<div class="esquema-estudo">{resumo}</div>'
+    
+    # Formatar títulos
+    resumo = re.sub(r'^(.*?):$', r'<h4 class="mt-4 mb-3">\1</h4>', resumo, flags=re.MULTILINE)
+    
+    # Destacar palavras-chave
+    resumo = re.sub(r'\*\*(.*?)\*\*', r'<strong class="text-primary">\1</strong>', resumo)
+    
+    # Formatar parágrafos
+    resumo = re.sub(r'\n\n+', '</p><p class="mb-3">', resumo)
+    resumo = f'<p class="mb-3">{resumo}</p>'
+    
+    return resumo
