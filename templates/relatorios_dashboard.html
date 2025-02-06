@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "secretaria/base_secretaria.html" %}
 
 {% block title %}
 Relatórios - Secretaria de Educação
@@ -100,10 +100,10 @@ Relatórios - Secretaria de Educação
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="section-title">
-            <i class="fas fa-chart-line me-2"></i>Dashboard Educacional
+            <i class="bi bi-graph-up me-2"></i>Dashboard Educacional
         </h1>
         <div class="d-flex align-items-center">
-            <i class="fas fa-sync-alt me-2"></i>
+            <i class="bi bi-arrow-repeat me-2"></i>
             <small class="text-muted">Atualizado em tempo real</small>
         </div>
     </div>
@@ -112,11 +112,11 @@ Relatórios - Secretaria de Educação
     <div class="row g-4 mb-4">
         <div class="col-md-3">
             <div class="stats-card highlight-card">
-                <i class="fas fa-users metric-icon"></i>
+                <i class="bi bi-people metric-icon"></i>
                 <div class="card-title">Total de Alunos</div>
                 <div class="card-value">{{ (faixa_0_20 + faixa_21_40 + faixa_41_60 + faixa_61_80 + faixa_81_100) }}</div>
                 <div class="trend-indicator">
-                    <i class="fas fa-chart-line"></i>
+                    <i class="bi bi-graph-up"></i>
                     <span>Alunos Ativos</span>
                 </div>
             </div>
@@ -124,11 +124,11 @@ Relatórios - Secretaria de Educação
         <div class="col-md-3">
             <a href="{{ url_for('detalhar_desempenho') }}" class="text-decoration-none">
                 <div class="stats-card">
-                    <i class="fas fa-chart-bar metric-icon"></i>
+                    <i class="bi bi-bar-chart metric-icon"></i>
                     <div class="card-title">Média Geral</div>
                     <div class="card-value">{{ "%.1f"|format(desempenho_geral) }}%</div>
                     <div class="trend-indicator">
-                        <i class="fas fa-chart-line"></i>
+                        <i class="bi bi-graph-up"></i>
                         <span>Desempenho Atual</span>
                     </div>
                 </div>
@@ -137,11 +137,11 @@ Relatórios - Secretaria de Educação
         <div class="col-md-3">
             <a href="{{ url_for('relatorio_escolas') }}" class="text-decoration-none">
                 <div class="stats-card">
-                    <i class="fas fa-graduation-cap metric-icon"></i>
+                    <i class="bi bi-building metric-icon"></i>
                     <div class="card-title">Melhor Escola</div>
                     <div class="card-value">{{ "%.1f"|format(melhor_escola[1]) }}%</div>
                     <div class="trend-indicator">
-                        <i class="fas fa-trophy"></i>
+                        <i class="bi bi-trophy"></i>
                         <span>{{ melhor_escola[0] }}</span>
                     </div>
                 </div>
@@ -149,11 +149,11 @@ Relatórios - Secretaria de Educação
         </div>
         <div class="col-md-3">
             <div class="stats-card">
-                <i class="fas fa-book-reader metric-icon"></i>
+                <i class="bi bi-book metric-icon"></i>
                 <div class="card-title">Alunos Acima da Média</div>
                 <div class="card-value">{{ "%.1f"|format((faixa_61_80 + faixa_81_100) / (faixa_0_20 + faixa_21_40 + faixa_41_60 + faixa_61_80 + faixa_81_100) * 100) }}%</div>
                 <div class="trend-indicator">
-                    <i class="fas fa-arrow-up"></i>
+                    <i class="bi bi-arrow-up"></i>
                     <span>Bom Desempenho</span>
                 </div>
             </div>
@@ -165,7 +165,7 @@ Relatórios - Secretaria de Educação
         <div class="card-header bg-white border-0">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">
-                    <i class="fas fa-chart-pie me-2 text-primary"></i>
+                    <i class="bi bi-pie-chart me-2 text-primary"></i>
                     Distribuição de Desempenho
                 </h5>
                 <div class="badge bg-light text-dark">
@@ -244,7 +244,7 @@ Relatórios - Secretaria de Educação
         <div class="card-header bg-white border-0">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Evolução do Desempenho</h5>
+                    <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Evolução do Desempenho</h5>
                     <small class="text-muted">Média mensal de todos os alunos</small>
                 </div>
             </div>
@@ -260,7 +260,7 @@ Relatórios - Secretaria de Educação
             <div class="card h-100 shadow">
                 <div class="card-header bg-white border-0">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-trophy me-2"></i>Ranking de Escolas</h5>
+                        <h5 class="mb-0"><i class="bi bi-trophy me-2"></i>Ranking de Escolas</h5>
                     </div>
                 </div>
                 <div class="card-body">
@@ -278,7 +278,7 @@ Relatórios - Secretaria de Educação
                                 <tr>
                                     <td class="text-center fw-bold">{{ loop.index }}º</td>
                                     <td>
-                                        <i class="fas fa-school me-2 text-primary"></i>
+                                        <i class="bi bi-school me-2 text-primary"></i>
                                         {{ escola[0] }}
                                     </td>
                                     <td class="text-end fw-bold">{{ "%.1f"|format(escola[1]) }}%</td>
@@ -296,7 +296,7 @@ Relatórios - Secretaria de Educação
             <div class="card h-100 shadow">
                 <div class="card-header bg-white border-0">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-star me-2"></i>Melhores Alunos</h5>
+                        <h5 class="mb-0"><i class="bi bi-star me-2"></i>Melhores Alunos</h5>
                     </div>
                 </div>
                 <div class="card-body">
@@ -317,11 +317,11 @@ Relatórios - Secretaria de Educação
                                     <td>
                                         {{ aluno[1] }}
                                         {% if loop.index == 1 %}
-                                            <i class="fas fa-medal ms-2" style="color: #FFD700; font-size: 1.2em;" data-bs-toggle="tooltip" title="1º Lugar"></i>
+                                            <i class="bi bi-medal ms-2" style="color: #FFD700; font-size: 1.2em;" data-bs-toggle="tooltip" title="1º Lugar"></i>
                                         {% elif loop.index == 2 %}
-                                            <i class="fas fa-medal ms-2" style="color: #C0C0C0; font-size: 1.1em;" data-bs-toggle="tooltip" title="2º Lugar"></i>
+                                            <i class="bi bi-medal ms-2" style="color: #C0C0C0; font-size: 1.1em;" data-bs-toggle="tooltip" title="2º Lugar"></i>
                                         {% elif loop.index == 3 %}
-                                            <i class="fas fa-medal ms-2" style="color: #CD7F32; font-size: 1em;" data-bs-toggle="tooltip" title="3º Lugar"></i>
+                                            <i class="bi bi-medal ms-2" style="color: #CD7F32; font-size: 1em;" data-bs-toggle="tooltip" title="3º Lugar"></i>
                                         {% endif %}
                                     </td>
                                     <td>{{ aluno[0] }}</td>
