@@ -1,0 +1,130 @@
+{% extends "admin_v2/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Editar Escola</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome da Escola</label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="{{ escola.nome }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="codigo_inep" class="form-label">Código INEP</label>
+                    <input type="text" class="form-control" id="codigo_inep" name="codigo_inep" value="{{ escola.codigo_inep }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="cep" class="form-label">CEP</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="cep" name="cep" maxlength="8" value="{{ escola.cep }}" required>
+                        <button type="button" class="btn btn-secondary" onclick="buscarCEP()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="logradouro" class="form-label">Logradouro</label>
+                    <input type="text" class="form-control" id="logradouro" name="logradouro" value="{{ escola.logradouro }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="numero" class="form-label">Número</label>
+                    <input type="text" class="form-control" id="numero" name="numero" value="{{ escola.numero }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="complemento" class="form-label">Complemento</label>
+                    <input type="text" class="form-control" id="complemento" name="complemento" value="{{ escola.complemento }}">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="bairro" class="form-label">Bairro</label>
+                    <input type="text" class="form-control" id="bairro" name="bairro" value="{{ escola.bairro }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="cidade_id" class="form-label">Cidade</label>
+                    <select class="form-select" id="cidade_id" name="cidade_id" required>
+                        <option value="">Selecione a cidade...</option>
+                        {% for cidade in cidades %}
+                        <option value="{{ cidade.id }}" {% if cidade.id == escola.cidade_id %}selected{% endif %}>
+                            {{ cidade.nome }} - {{ cidade.uf }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label">Tipos de Ensino</label>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tem_fundamental_1" name="tem_fundamental_1" {% if escola.tem_fundamental_1 %}checked{% endif %}>
+                        <label class="form-check-label" for="tem_fundamental_1">Ensino Fundamental I (1º ao 5º ano)</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tem_fundamental_2" name="tem_fundamental_2" {% if escola.tem_fundamental_2 %}checked{% endif %}>
+                        <label class="form-check-label" for="tem_fundamental_2">Ensino Fundamental II (6º ao 9º ano)</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tem_medio" name="tem_medio" {% if escola.tem_medio %}checked{% endif %}>
+                        <label class="form-check-label" for="tem_medio">Ensino Médio</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tem_eja" name="tem_eja" {% if escola.tem_eja %}checked{% endif %}>
+                        <label class="form-check-label" for="tem_eja">EJA (Educação de Jovens e Adultos)</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="tem_tecnico" name="tem_tecnico" {% if escola.tem_tecnico %}checked{% endif %}>
+                        <label class="form-check-label" for="tem_tecnico">Ensino Técnico</label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                <a href="{{ url_for('admin_v2.escolas_list') }}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function buscarCEP() {
+    const cep = document.getElementById('cep').value.replace(/\D/g, '');
+    if (cep.length !== 8) {
+        alert('CEP inválido');
+        return;
+    }
+    
+    fetch(`/admin/v2/buscar-cep/${cep}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+            
+            document.getElementById('logradouro').value = data.logradouro;
+            document.getElementById('bairro').value = data.bairro;
+            
+            const cidadeSelect = document.getElementById('cidade_id');
+            if (data.cidade_id) {
+                cidadeSelect.value = data.cidade_id;
+            } else {
+                alert(`Cidade ${data.cidade_nome}-${data.uf} não encontrada no sistema. Por favor, cadastre-a primeiro.`);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao buscar CEP');
+        });
+}
+
+// Adiciona máscara ao CEP
+document.getElementById('cep').addEventListener('input', function(e) {
+    e.target.value = e.target.value.replace(/\D/g, '');
+});
+</script>
+{% endblock %}

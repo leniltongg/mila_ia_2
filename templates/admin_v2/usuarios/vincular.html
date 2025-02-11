@@ -1,0 +1,87 @@
+{% extends "admin_v2/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Vincular Usuários</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="tipo_vinculo" class="form-label">Tipo de Vinculação</label>
+                    <select class="form-select" id="tipo_vinculo" name="tipo_vinculo" onchange="toggleVinculoOptions()">
+                        <option value="">Selecione o tipo...</option>
+                        <option value="escola">Professor → Escola</option>
+                        <option value="cidade">Secretário → Cidade</option>
+                    </select>
+                </div>
+                
+                <!-- Seleção de Usuário -->
+                <div class="mb-3" id="professor_select" style="display: none;">
+                    <label for="usuario_id_professor" class="form-label">Professor</label>
+                    <select class="form-select" name="usuario_id" id="usuario_id_professor">
+                        <option value="">Selecione o professor...</option>
+                        {% for professor in professores %}
+                        <option value="{{ professor.id }}">{{ professor.nome }} ({{ professor.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3" id="secretario_select" style="display: none;">
+                    <label for="usuario_id_secretario" class="form-label">Secretário</label>
+                    <select class="form-select" name="usuario_id" id="usuario_id_secretario">
+                        <option value="">Selecione o secretário...</option>
+                        {% for secretario in secretarios %}
+                        <option value="{{ secretario.id }}">{{ secretario.nome }} ({{ secretario.email }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <!-- Seleção de Vínculo -->
+                <div class="mb-3" id="escola_select" style="display: none;">
+                    <label for="vinculo_id_escola" class="form-label">Escola</label>
+                    <select class="form-select" name="vinculo_id" id="vinculo_id_escola">
+                        <option value="">Selecione a escola...</option>
+                        {% for escola in escolas %}
+                        <option value="{{ escola.id }}">{{ escola.nome }} ({{ escola.codigo_inep }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3" id="cidade_select" style="display: none;">
+                    <label for="vinculo_id_cidade" class="form-label">Cidade</label>
+                    <select class="form-select" name="vinculo_id" id="vinculo_id_cidade">
+                        <option value="">Selecione a cidade...</option>
+                        {% for cidade in cidades %}
+                        <option value="{{ cidade.id }}">{{ cidade.nome }} - {{ cidade.uf }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Vincular</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleVinculoOptions() {
+    const tipoVinculo = document.getElementById('tipo_vinculo').value;
+    
+    // Esconder todos os selects
+    document.getElementById('professor_select').style.display = 'none';
+    document.getElementById('secretario_select').style.display = 'none';
+    document.getElementById('escola_select').style.display = 'none';
+    document.getElementById('cidade_select').style.display = 'none';
+    
+    // Mostrar os selects relevantes
+    if (tipoVinculo === 'escola') {
+        document.getElementById('professor_select').style.display = 'block';
+        document.getElementById('escola_select').style.display = 'block';
+    } else if (tipoVinculo === 'cidade') {
+        document.getElementById('secretario_select').style.display = 'block';
+        document.getElementById('cidade_select').style.display = 'block';
+    }
+}
+</script>
+{% endblock %}

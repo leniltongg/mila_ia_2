@@ -17,7 +17,7 @@
                     {% elif current_user.tipo_usuario_id == 4 %}
                         <a href="{{ url_for('alunos_bp.portal_alunos') }}" class="btn btn-primary">Portal do Aluno</a>
                     {% elif current_user.tipo_usuario_id == 5 %}
-                        <a href="{{ url_for('portal_secretaria_educacao') }}" class="btn btn-primary">Portal da Secretaria</a>
+                        <a href="{{ url_for('secretaria_educacao.portal_secretaria_educacao') }}" class="btn btn-primary">Portal da Secretaria</a>
                     {% endif %}
                 </div>
             {% else %}

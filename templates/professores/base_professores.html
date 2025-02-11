@@ -2,11 +2,15 @@
 
 {% block title %}Portal dos Professores{% endblock %}
 
+{% block head %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+{% endblock %}
+
 {% block sidebar_title %}Portal dos Professores{% endblock %}
 
 {% block sidebar_content %}
     <div class="nav flex-column">
-        <a class="nav-link {% if request.endpoint == 'portal_professores' %}active{% endif %}" href="{{ url_for('portal_professores') }}">
+        <a class="nav-link {% if request.endpoint == 'professores.portal_professores' %}active{% endif %}" href="{{ url_for('professores.portal_professores') }}">
             <i class="bi bi-house-door"></i> Início
         </a>
 
@@ -46,13 +50,13 @@
         
         <div class="collapse" id="simuladosMenu">
             <div class="nav flex-column ms-3">
-                <a class="nav-link" href="{{ url_for('portal_professores') }}#criar_simulado">
+                <a class="nav-link" href="{{ url_for('simulados.criar_simulado') }}">
                     <i class="bi bi-plus-circle"></i> Criar Simulado
                 </a>
-                <a class="nav-link" href="{{ url_for('portal_professores') }}#meus_simulados">
+                <a class="nav-link" href="{{ url_for('simulados.listar_simulados_professor') }}">
                     <i class="bi bi-list-check"></i> Meus Simulados
                 </a>
-                <a class="nav-link" href="{{ url_for('portal_professores') }}#banco_questoes">
+                <a class="nav-link" href="{{ url_for('simulados.banco_questoes') }}">
                     <i class="bi bi-journal-text"></i> Banco de Questões
                 </a>
             </div>
@@ -104,7 +108,7 @@
     </div>
 
     <div class="list-group list-group-flush">
-        <a href="{{ url_for('professores.portal') }}" class="list-group-item list-group-item-action">
+        <a href="{{ url_for('professores.portal_professores') }}" class="list-group-item list-group-item-action">
             <i class="fas fa-home me-2"></i>
             Portal
         </a>

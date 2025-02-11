@@ -1,103 +1,116 @@
-import sqlite3
-import os
-from werkzeug.security import generate_password_hash
+from create_app import create_app
+from models import db, User, Cidade, Escola
 
-def init_database():
-    """Inicializa o banco de dados com as tabelas necessárias"""
-    
-    # Verifica se o banco de dados já existe
-    if os.path.exists('educacional.db'):
-        print("Banco de dados já existe. Fazendo backup...")
-        if os.path.exists('educacional.db.bak'):
-            os.remove('educacional.db.bak')
-        os.rename('educacional.db', 'educacional.db.bak')
-    
-    # Conecta ao banco de dados
-    conn = sqlite3.connect('educacional.db')
-    cursor = conn.cursor()
-    
-    try:
-        # Cria tabela de usuários
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS usuarios (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                senha_hash TEXT NOT NULL,
-                tipo_usuario_id TEXT NOT NULL,
-                escola_id INTEGER,
-                serie_id INTEGER,
-                turma_id INTEGER,
-                codigo_ibge TEXT,
-                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                data_atualizacao_senha TIMESTAMP,
-                ultimo_login TIMESTAMP,
-                tentativas_login INTEGER DEFAULT 0,
-                bloqueado INTEGER DEFAULT 0
-            )
-        """)
-        
-        # Cria índices
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)")
-        cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_tipo ON usuarios(tipo_usuario_id)")
-        
-        # Cria usuário administrador padrão
-        admin_password = "admin123"  # Você deve alterar isso após o primeiro login
-        cursor.execute("""
-            INSERT INTO usuarios (
-                nome, email, senha_hash, tipo_usuario_id
-            ) VALUES (?, ?, ?, ?)
-        """, (
-            "Administrador",
-            "admin@mila.com",
-            generate_password_hash(admin_password),
-            "Administrador"
-        ))
-        
-        # Cria outras tabelas necessárias
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS escolas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                codigo_ibge TEXT,
-                data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS series (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                escola_id INTEGER,
-                FOREIGN KEY (escola_id) REFERENCES escolas (id)
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS turmas (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                nome TEXT NOT NULL,
-                serie_id INTEGER,
-                escola_id INTEGER,
-                tipo_ensino TEXT,
-                FOREIGN KEY (serie_id) REFERENCES series (id),
-                FOREIGN KEY (escola_id) REFERENCES escolas (id)
-            )
-        """)
-        
-        conn.commit()
-        print("Banco de dados inicializado com sucesso!")
-        print("Usuário admin criado:")
-        print("Email: admin@mila.com")
-        print("Senha: admin123")
-        print("IMPORTANTE: Altere a senha do administrador após o primeiro login!")
-        
-    except Exception as e:
-        conn.rollback()
-        print(f"Erro ao inicializar o banco de dados: {str(e)}")
-        raise
-    finally:
-        conn.close()
+def create_initial_data():
+    # Criando cidades
+    recife = Cidade(
+        nome='Recife',
+        codigo_ibge='2611606',
+        uf='PE'
+    )
+    olinda = Cidade(
+        nome='Olinda',
+        codigo_ibge='2609600',
+        uf='PE'
+    )
+    db.session.add(recife)
+    db.session.add(olinda)
+    db.session.commit()
+
+    # Criando usuário admin
+    admin = User(
+        nome='Administrador',
+        email='admin@example.com',
+        senha='admin123',
+        tipo_usuario_id=1
+    )
+    db.session.add(admin)
+    db.session.commit()
+
+    # Criando escolas
+    escola1 = Escola(
+        nome='Escola Municipal João da Silva',
+        codigo_inep='26123456',
+        cep='50000000',
+        logradouro='Rua das Flores',
+        numero='123',
+        bairro='Centro',
+        cidade_id=1,
+        tem_fundamental_1=True,
+        tem_fundamental_2=True,
+        tem_medio=False,
+        tem_eja=False,
+        tem_tecnico=False
+    )
+    escola2 = Escola(
+        nome='Escola Municipal Maria dos Santos',
+        codigo_inep='26123457',
+        cep='50100000',
+        logradouro='Av Principal',
+        numero='456',
+        complemento='Bloco A',
+        bairro='Boa Vista',
+        cidade_id=2,
+        tem_fundamental_1=True,
+        tem_fundamental_2=True,
+        tem_medio=True,
+        tem_eja=True,
+        tem_tecnico=False
+    )
+    db.session.add(escola1)
+    db.session.add(escola2)
+    db.session.commit()
+
+    # Criando usuário secretaria
+    secretaria = User(
+        nome='Secretaria de Educação',
+        email='secretaria@example.com',
+        senha='secretaria123',
+        tipo_usuario_id=5,
+        cidade_id=1
+    )
+    db.session.add(secretaria)
+    db.session.commit()
+
+    # Criando usuário escola
+    escola_user = User(
+        nome='Diretor João da Silva',
+        email='escola@example.com',
+        senha='escola123',
+        tipo_usuario_id=2,
+        escola_id=1
+    )
+    db.session.add(escola_user)
+    db.session.commit()
+
+    # Criando usuário professor
+    professor = User(
+        nome='Professor José Santos',
+        email='professor@example.com',
+        senha='professor123',
+        tipo_usuario_id=3,
+        escola_id=1
+    )
+    db.session.add(professor)
+    db.session.commit()
+
+    # Criando usuário aluno
+    aluno = User(
+        nome='Aluno Pedro Silva',
+        email='aluno@example.com',
+        senha='aluno123',
+        tipo_usuario_id=4,
+        escola_id=1
+    )
+    db.session.add(aluno)
+    db.session.commit()
+
+def init_db():
+    app = create_app()
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+        create_initial_data()
 
 if __name__ == '__main__':
-    init_database()
+    init_db()

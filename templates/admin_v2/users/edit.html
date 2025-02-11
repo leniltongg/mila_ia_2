@@ -1,0 +1,57 @@
+{% extends "admin_v2/base.html" %}
+
+{% block title %}Editar Usuário - Portal Administrativo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card shadow">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h6 class="m-0 font-weight-bold text-primary">Editar Usuário</h6>
+            <a href="{{ url_for('admin_v2.users_list') }}" class="btn btn-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+        <div class="card-body">
+            <form method="POST">
+                <!-- Informações Básicas -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5>Informações Básicas</h5>
+                        <hr>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="nome" class="form-label">Nome Completo *</label>
+                        <input type="text" class="form-control" id="nome" name="nome" value="{{ user.nome }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email" value="{{ user.email }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="nova_senha" class="form-label">Nova Senha</label>
+                        <input type="password" class="form-control" id="nova_senha" name="nova_senha">
+                        <small class="text-muted">Deixe em branco para manter a senha atual</small>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="tipo_usuario_id" class="form-label">Tipo de Usuário *</label>
+                        <select class="form-select" id="tipo_usuario_id" name="tipo_usuario_id" required>
+                            <option value="">Selecione...</option>
+                            <option value="1" {% if user.tipo_usuario_id == 1 %}selected{% endif %}>Administrador</option>
+                            <option value="2" {% if user.tipo_usuario_id == 2 %}selected{% endif %}>Professor</option>
+                            <option value="3" {% if user.tipo_usuario_id == 3 %}selected{% endif %}>Secretaria de Educação</option>
+                            <option value="4" {% if user.tipo_usuario_id == 4 %}selected{% endif %}>Aluno</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-12">
+                        <a href="{{ url_for('admin_v2.users_list') }}" class="btn btn-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

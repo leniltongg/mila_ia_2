@@ -1,0 +1,284 @@
+{% extends "professores/base_professores.html" %}
+
+{% block title %}Meus Simulados{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Meus Simulados</h5>
+                    <a href="{{ url_for('simulados.criar_simulado') }}" class="btn btn-light">
+                        <i class="bi bi-plus-circle"></i> Criar Novo Simulado
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Tabela de Simulados -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Disciplina</th>
+                                    <th>Mês</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="simulados-lista">
+                                {% for simulado in simulados %}
+                                <tr>
+                                    <td>{{ simulado.disciplina_nome }}</td>
+                                    <td>{{ simulado.mes_nome }}</td>
+                                    <td>
+                                        {% if simulado.status == 'enviado' %}
+                                            <span class="badge bg-success">Enviado</span>
+                                        {% else %}
+                                            <span class="badge bg-warning text-dark">Gerado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-info" onclick="visualizarSimulado({{ simulado.id }})">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        {% if simulado.status == 'gerado' %}
+                                        <button class="btn btn-sm btn-success" onclick="enviarParaAlunos({{ simulado.id }})">
+                                            <i class="bi bi-send"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button class="btn btn-sm btn-danger" onclick="excluirSimulado({{ simulado.id }})">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% if not simulados %}
+                    <div class="text-center text-muted mt-5">
+                        <i class="bi bi-journal-x" style="font-size: 3rem;"></i>
+                        <h4 class="mt-3">Nenhum simulado encontrado</h4>
+                        <p>Clique no botão "Criar Novo Simulado" para começar.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Visualização -->
+<div class="modal fade" id="modalVisualizarSimulado" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Simulado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="simulado-detalhes">
+                    <!-- Detalhes serão inseridos aqui -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Envio para Alunos -->
+<div class="modal fade" id="modalEnviarSimulado" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Enviar Simulado para Alunos</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-enviar-simulado">
+                    <input type="hidden" id="simulado-id-envio">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Selecione as Turmas</label>
+                        <div id="lista-turmas" class="list-group">
+                            <!-- Turmas serão inseridas aqui -->
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="data-limite" class="form-label">Data Limite para Resposta</label>
+                        <input type="date" class="form-control" id="data-limite" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarEnvio()">Enviar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializa os tooltips do Bootstrap
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+});
+
+// Função para visualizar simulado
+async function visualizarSimulado(simuladoId) {
+    try {
+        const response = await fetch(`/professores/visualizar-simulado/${simuladoId}`);
+        if (!response.ok) throw new Error('Erro ao carregar detalhes do simulado');
+        
+        const detalhes = await response.json();
+        const modalBody = document.getElementById('simulado-detalhes');
+        
+        // Atualiza o conteúdo do modal
+        modalBody.innerHTML = `
+            <h6>Disciplina: ${detalhes.disciplina_nome}</h6>
+            <h6>Mês: ${detalhes.mes_nome}</h6>
+            <hr>
+            <div class="questoes-lista">
+                ${detalhes.questoes.map((q, index) => `
+                    <div class="questao mb-3">
+                        <strong>Questão ${index + 1}:</strong>
+                        <p>${q.enunciado}</p>
+                        <div class="alternativas ms-3">
+                            ${q.alternativas.map(alt => `
+                                <div class="alternativa ${alt.correta ? 'text-success fw-bold' : ''}">
+                                    ${alt.letra}) ${alt.texto}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Abre o modal
+        const modal = new bootstrap.Modal(document.getElementById('modalVisualizarSimulado'));
+        modal.show();
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao carregar detalhes do simulado');
+    }
+}
+
+// Função para enviar simulado para alunos
+async function enviarParaAlunos(simuladoId) {
+    try {
+        const response = await fetch(`/professores/buscar-turmas/${simuladoId}`);
+        if (!response.ok) throw new Error('Erro ao carregar turmas');
+        
+        const turmas = await response.json();
+        const listaTurmas = document.getElementById('lista-turmas');
+        document.getElementById('simulado-id-envio').value = simuladoId;
+        
+        // Atualiza a lista de turmas
+        listaTurmas.innerHTML = turmas.map(turma => `
+            <div class="list-group-item">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${turma.id}" id="turma-${turma.id}">
+                    <label class="form-check-label" for="turma-${turma.id}">
+                        ${turma.nome}
+                    </label>
+                </div>
+            </div>
+        `).join('');
+        
+        // Define a data mínima como hoje
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('data-limite').min = hoje;
+        
+        // Abre o modal
+        const modal = new bootstrap.Modal(document.getElementById('modalEnviarSimulado'));
+        modal.show();
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao carregar turmas');
+    }
+}
+
+// Função para confirmar envio do simulado
+async function confirmarEnvio() {
+    const simuladoId = document.getElementById('simulado-id-envio').value;
+    const dataLimite = document.getElementById('data-limite').value;
+    const turmasSelecionadas = Array.from(document.querySelectorAll('#lista-turmas input[type="checkbox"]:checked'))
+        .map(cb => cb.value);
+    
+    if (!dataLimite) {
+        alert('Por favor, selecione uma data limite');
+        return;
+    }
+    
+    if (turmasSelecionadas.length === 0) {
+        alert('Por favor, selecione pelo menos uma turma');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/professores/enviar-simulado', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                simulado_id: simuladoId,
+                turmas: turmasSelecionadas,
+                data_limite: dataLimite
+            })
+        });
+        
+        if (!response.ok) throw new Error('Erro ao enviar simulado');
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('Simulado enviado com sucesso!');
+            // Fechar o modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEnviarSimulado'));
+            modal.hide();
+            // Recarregar a página
+            window.location.reload();
+        } else {
+            throw new Error(result.error || 'Erro ao enviar simulado');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao enviar simulado: ' + error.message);
+    }
+}
+
+// Função para excluir simulado
+async function excluirSimulado(simuladoId) {
+    if (!confirm('Tem certeza que deseja excluir este simulado?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/professores/excluir-simulado/${simuladoId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) throw new Error('Erro ao excluir simulado');
+        
+        const result = await response.json();
+        if (result.success) {
+            alert('Simulado excluído com sucesso!');
+            location.reload();
+        } else {
+            throw new Error(result.error || 'Erro ao excluir simulado');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao excluir simulado: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

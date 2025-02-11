@@ -1,0 +1,149 @@
+{% extends "admin_v2/base.html" %}
+
+{% block title %}Usuários - Portal Administrativo{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Cabeçalho -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Gerenciar Usuários</h1>
+        <a href="{{ url_for('admin_v2.user_create') }}" class="btn btn-primary">
+            <i class="fas fa-user-plus"></i> Novo Usuário
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Buscar</label>
+                    <input type="text" class="form-control" id="search" name="search" 
+                           value="{{ request.args.get('search', '') }}" 
+                           placeholder="Nome ou email...">
+                </div>
+                <div class="col-md-4">
+                    <label for="type" class="form-label">Tipo de Usuário</label>
+                    <select class="form-select" id="type" name="type">
+                        <option value="">Todos</option>
+                        <option value="1" {% if request.args.get('type') == '1' %}selected{% endif %}>Administrador</option>
+                        <option value="2" {% if request.args.get('type') == '2' %}selected{% endif %}>Administração da Escola</option>
+                        <option value="3" {% if request.args.get('type') == '3' %}selected{% endif %}>Professor</option>
+                        <option value="4" {% if request.args.get('type') == '4' %}selected{% endif %}>Aluno</option>
+                        <option value="5" {% if request.args.get('type') == '5' %}selected{% endif %}>Secretaria de Educação</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('admin_v2.users_list') }}" class="btn btn-secondary">
+                        <i class="fas fa-undo"></i> Limpar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Usuários -->
+    <div class="card shadow">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Email</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.nome }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                {% if user.tipo == 1 %}
+                                    <span class="badge bg-danger">Administrador</span>
+                                {% elif user.tipo == 2 %}
+                                    <span class="badge bg-warning">Adm. Escola</span>
+                                {% elif user.tipo == 3 %}
+                                    <span class="badge bg-success">Professor</span>
+                                {% elif user.tipo == 4 %}
+                                    <span class="badge bg-info">Aluno</span>
+                                {% elif user.tipo == 5 %}
+                                    <span class="badge bg-primary">Sec. Educação</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.ativo %}
+                                    <span class="badge bg-success">Ativo</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Inativo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{{ url_for('admin_v2.user_edit', user_id=user.id) }}" 
+                                   class="btn btn-sm btn-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-sm btn-danger" 
+                                        onclick="confirmDelete({{ user.id }})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação de Exclusão -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir este usuário?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <form id="deleteForm" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">Excluir</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(userId) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const form = document.getElementById('deleteForm');
+    form.action = `/admin/v2/users/${userId}/delete`;
+    modal.show();
+}
+
+// Inicializar DataTable
+$(document).ready(function() {
+    $('#usersTable').DataTable({
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
+        }
+    });
+});
+</script>
+{% endblock %}

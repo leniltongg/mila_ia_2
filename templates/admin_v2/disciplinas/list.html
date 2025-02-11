@@ -1,0 +1,40 @@
+{% extends "admin_v2/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Disciplinas</h2>
+        <a href="{{ url_for('admin_v2.disciplina_create') }}" class="btn btn-primary">Nova Disciplina</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nome</th>
+                            <th>Descrição</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for disciplina in disciplinas %}
+                        <tr>
+                            <td>{{ disciplina.id }}</td>
+                            <td>{{ disciplina.nome }}</td>
+                            <td>{{ disciplina.descricao }}</td>
+                            <td>
+                                <a href="#" class="btn btn-sm btn-info">Editar</a>
+                                <a href="#" class="btn btn-sm btn-danger">Excluir</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

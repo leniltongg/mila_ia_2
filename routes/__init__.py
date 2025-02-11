@@ -1,15 +1,17 @@
-from flask import Blueprint
-
-# Importar as rotas
-from . import conteudo
-from . import professores
-from . import alunos_bp
-from . import simulados
-
-# Exportar os blueprints
+# Importar os blueprints
 from .conteudo import conteudo_bp
 from .professores import professores_bp
 from .alunos_bp import alunos_bp
 from .simulados import simulados_bp
+from .secretaria_educacao import secretaria_educacao_bp
+from .admin_v2 import admin_v2
 
-__all__ = ['conteudo_bp', 'professores_bp', 'alunos_bp', 'simulados_bp']
+# Exportar os blueprints
+__all__ = [
+    'conteudo_bp',
+    'professores_bp',
+    'alunos_bp',
+    'simulados_bp',
+    'secretaria_educacao_bp',
+    'admin_v2'
+]

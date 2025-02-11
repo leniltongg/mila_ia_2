@@ -1,0 +1,28 @@
+{% extends "admin_v2/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Nova Disciplina</h2>
+        <a href="{{ url_for('admin_v2.disciplinas_list') }}" class="btn btn-secondary">Voltar</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome da Disciplina</label>
+                    <input type="text" class="form-control" id="nome" name="nome" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="descricao" class="form-label">Descrição</label>
+                    <textarea class="form-control" id="descricao" name="descricao" rows="3"></textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Criar Disciplina</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,224 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="mb-4">Banco de Questões</h2>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="filtroForm" method="GET">
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label for="serie_id" class="form-label">Ano Escolar</label>
+                        <select class="form-select" id="serie_id" name="serie_id">
+                            <option value="">Todos</option>
+                            {% for serie in series %}
+                            <option value="{{ serie.id }}" {% if serie.id == request.args.get('serie_id', '')|int %}selected{% endif %}>
+                                {{ serie.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label for="disciplina_id" class="form-label">Componente Curricular</label>
+                        <select class="form-select" id="disciplina_id" name="disciplina_id">
+                            <option value="">Todos</option>
+                            {% for disciplina in disciplinas %}
+                            <option value="{{ disciplina.id }}" {% if disciplina.id == request.args.get('disciplina_id', '')|int %}selected{% endif %}>
+                                {{ disciplina.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="busca" class="form-label">Buscar</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="busca" name="busca" 
+                                   placeholder="Digite para buscar..." value="{{ request.args.get('busca', '') }}">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-3 d-flex align-items-end">
+                        <a href="{{ url_for('secretaria_educacao.banco_questoes') }}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Limpar
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Botão para abrir modal de cadastro -->
+    <button type="button" class="btn btn-primary mb-4" data-bs-toggle="modal" data-bs-target="#modalCadastroQuestao">
+        <i class="bi bi-plus-circle"></i> Nova Questão
+    </button>
+
+    <!-- Modal de Cadastro -->
+    <div class="modal fade" id="modalCadastroQuestao" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Cadastrar Nova Questão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ url_for('secretaria_educacao.banco_questoes_post') }}">
+                        <div class="mb-3">
+                            <label for="questao" class="form-label">Enunciado da Questão</label>
+                            <textarea class="form-control" id="questao" name="questao" rows="3" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="alternativa_a" class="form-label">Alternativa A</label>
+                            <input type="text" class="form-control" id="alternativa_a" name="alternativa_a" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="alternativa_b" class="form-label">Alternativa B</label>
+                            <input type="text" class="form-control" id="alternativa_b" name="alternativa_b" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="alternativa_c" class="form-label">Alternativa C</label>
+                            <input type="text" class="form-control" id="alternativa_c" name="alternativa_c" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="alternativa_d" class="form-label">Alternativa D</label>
+                            <input type="text" class="form-control" id="alternativa_d" name="alternativa_d" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="alternativa_e" class="form-label">Alternativa E (Opcional)</label>
+                            <input type="text" class="form-control" id="alternativa_e" name="alternativa_e">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="questao_correta" class="form-label">Alternativa Correta</label>
+                            <select class="form-select" id="questao_correta" name="questao_correta" required>
+                                <option value="">Selecione...</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                                <option value="E">E</option>
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="serie_id" class="form-label">Ano Escolar</label>
+                                <select class="form-select" id="serie_id" name="serie_id" required>
+                                    <option value="">Selecione...</option>
+                                    {% for serie in series %}
+                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="disciplina_id" class="form-label">Componente Curricular</label>
+                                <select class="form-select" id="disciplina_id" name="disciplina_id" required>
+                                    <option value="">Selecione...</option>
+                                    {% for disciplina in disciplinas %}
+                                    <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="assunto" class="form-label">Assunto</label>
+                                <input type="text" class="form-control" id="assunto" name="assunto" required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="mes_id" class="form-label">Mês (Opcional)</label>
+                                <select class="form-select" id="mes_id" name="mes_id">
+                                    <option value="">Selecione...</option>
+                                    {% for mes in meses %}
+                                    <option value="{{ mes[0] }}">{{ mes[1] }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Cadastrar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Questões -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Questão</th>
+                            <th>Ano Escolar</th>
+                            <th>Componente Curricular</th>
+                            <th>Assunto</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for questao in questoes %}
+                        <tr>
+                            <td>{{ questao.questao[:100] }}...</td>
+                            <td>{{ questao.serie_nome }}</td>
+                            <td>{{ questao.disciplina_nome }}</td>
+                            <td>{{ questao.assunto }}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info" onclick="visualizarQuestao({{ questao.id }})">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="excluirQuestao({{ questao.id }})">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if not questoes %}
+                <div class="text-center py-4">
+                    <p class="text-muted">Nenhuma questão encontrada.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+function visualizarQuestao(id) {
+    window.location.href = "{{ url_for('secretaria_educacao.visualizar_questao', id=0) }}".replace('0', id);
+}
+
+function excluirQuestao(id) {
+    if (confirm('Tem certeza que deseja excluir esta questão?')) {
+        window.location.href = "{{ url_for('secretaria_educacao.delete_questao', id=0) }}".replace('0', id);
+    }
+}
+
+// Atualizar filtros ao mudar os selects
+document.querySelectorAll('#filtroForm select').forEach(select => {
+    select.addEventListener('change', () => {
+        document.getElementById('filtroForm').submit();
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

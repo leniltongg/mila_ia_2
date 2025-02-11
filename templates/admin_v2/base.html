@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Novo Portal Administrativo{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin_v2/css/styles.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="wrapper d-flex">
+        <!-- Sidebar -->
+        <nav id="sidebar" class="bg-dark text-white">
+            <div class="sidebar-header">
+                <h3>Portal Admin</h3>
+            </div>
+
+            <ul class="list-unstyled components">
+                <li {% if request.endpoint == 'admin_v2.dashboard' %}class="active"{% endif %}>
+                    <a href="{{ url_for('admin_v2.dashboard') }}">
+                        <i class="fas fa-tachometer-alt"></i> Dashboard
+                    </a>
+                </li>
+                <li {% if 'users' in request.endpoint %}class="active"{% endif %}>
+                    <a href="{{ url_for('admin_v2.users_list') }}">
+                        <i class="fas fa-users"></i> Usuários
+                    </a>
+                    <a href="{{ url_for('admin_v2.vincular_usuario') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-link"></i> Vincular Usuários
+                    </a>
+                </li>
+                <li {% if 'escolas' in request.endpoint %}class="active"{% endif %}>
+                    <a href="{{ url_for('admin_v2.escolas_list') }}">
+                        <i class="fas fa-school"></i> Escolas
+                    </a>
+                </li>
+                <li {% if 'disciplinas' in request.endpoint %}class="active"{% endif %}>
+                    <a href="{{ url_for('admin_v2.disciplinas_list') }}">
+                        <i class="fas fa-book"></i> Disciplinas
+                    </a>
+                </li>
+                <li {% if 'turmas' in request.endpoint %}class="active"{% endif %}>
+                    <a href="{{ url_for('admin_v2.turmas_list') }}">
+                        <i class="fas fa-chalkboard"></i> Turmas
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Page Content -->
+        <div id="content" class="flex-grow-1">
+            <!-- Top Navigation -->
+            <nav class="navbar navbar-expand-lg navbar-light bg-light">
+                <div class="container-fluid">
+                    <button type="button" id="sidebarCollapse" class="btn btn-dark">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    
+                    <div class="ms-auto">
+                        <div class="dropdown">
+                            <button class="btn btn-secondary dropdown-toggle" type="button" id="userDropdown" data-bs-toggle="dropdown">
+                                <i class="fas fa-user"></i> {{ current_user.nome }}
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="{{ url_for('logout') }}">Sair</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Flash Messages -->
+            <div class="container-fluid mt-3">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'message' else 'info' }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Main Content -->
+            <div class="container-fluid py-4">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='admin_v2/js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

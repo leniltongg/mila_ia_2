@@ -21,7 +21,8 @@ import pdfplumber  # se precisar deste para outra funcionalidade
 from werkzeug.security import generate_password_hash
 from flask import send_file
 import tempfile
-from routes import conteudo_bp, professores_bp, alunos_bp, simulados_bp
+from routes import conteudo_bp, professores_bp, alunos_bp, simulados_bp, secretaria_educacao_bp
+
 
 
 # Configuração básica do app
@@ -32,15 +33,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///educacional.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'  # pasta onde os PDFs serão temporariamente salvos
 # Certifique-se que a pasta existe
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
     os.makedirs(app.config['UPLOAD_FOLDER'])
 app.secret_key = os.getenv('SECRET_KEY', 'chave-secreta-temporaria')
+
+from models import db
+
+db.init_app(app)
+
 app.register_blueprint(conteudo_bp)
 app.register_blueprint(professores_bp)
 app.register_blueprint(alunos_bp)
 app.register_blueprint(simulados_bp)
+app.register_blueprint(secretaria_educacao_bp)
 
 # Adicionando `enumerate` ao contexto Jinja2
 @app.context_processor
@@ -559,7 +568,7 @@ def home():
     elif tipo_usuario_id == "Administração da Escola":
         return redirect(url_for("portal_administracao"))
     elif tipo_usuario_id == "Secretaria de Educação":
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
     else:
         return redirect(url_for("login"))
 
@@ -606,7 +615,7 @@ def login():
                     2: 'portal_administracao',
                     3: 'portal_professores',
                     4: 'alunos_bp.portal_alunos',  # Alterado para usar o endpoint do blueprint
-                    5: 'portal_secretaria_educacao'
+                    5: 'secretaria_educacao.portal_secretaria_educacao'
                 }.get(tipo_usuario_id, 'login')
 
                 return redirect(url_for(next_page))
@@ -822,18 +831,18 @@ def upload_questoes_ia():
     file = request.files.get("file")
     if not file:
         flash("Nenhum arquivo enviado!", "danger")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     if not file.filename.endswith(".pdf"):
         flash("Formato de arquivo inválido! Apenas arquivos PDF são permitidos.", "danger")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     try:
         # Extração de texto do PDF
         text = extract_text_from_pdf(file)
         if not text:
             flash("Não foi possível extrair texto do PDF.", "danger")
-            return redirect(url_for("portal_secretaria_educacao"))
+            return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
         # Dividir o texto em chunks
         chunks = split_text_into_chunks(text)
@@ -849,7 +858,7 @@ def upload_questoes_ia():
 
         if not all_questions:
             flash("Não foi possível gerar questões do PDF. Verifique o conteúdo do arquivo.", "danger")
-            return redirect(url_for("portal_secretaria_educacao"))
+            return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
         # Salvar questões no banco de dados
         salvar_questoes_no_banco(all_questions)
@@ -859,7 +868,7 @@ def upload_questoes_ia():
         print(f"[DEBUG] Erro ao processar PDF: {e}")
         flash(f"Erro ao processar o arquivo: {e}", "danger")
 
-    return redirect(url_for("portal_secretaria_educacao"))
+    return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 from openai import OpenAI
 
@@ -1253,169 +1262,169 @@ def extract_text_from_pdf(file):
         return None
 
 
-@app.route("/portal_secretaria_educacao", methods=["GET", "POST"])
-@login_required
-def portal_secretaria_educacao():
-    if current_user.tipo_usuario_id != 5:  # Verifica se é uma Secretaria de Educação
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("index"))
+# @app.route("/portal_secretaria_educacao", methods=["GET", "POST"])
+# @login_required
+# def portal_secretaria_educacao():
+#     if current_user.tipo_usuario_id != 5:  # Verifica se é uma Secretaria de Educação
+#         flash("Acesso não autorizado.", "danger")
+#         return redirect(url_for("index"))
 
-    db = get_db()
-    cursor = db.cursor()
+#     db = get_db()
+#     cursor = db.cursor()
 
-    # Buscar todas as séries disponíveis
-    print("[DEBUG] Buscando séries disponíveis...")
-    cursor.execute("SELECT id, nome FROM series")
-    series = cursor.fetchall()
-    print(f"[DEBUG] Séries encontradas: {series}")
+#     # Buscar todas as séries disponíveis
+#     print("[DEBUG] Buscando séries disponíveis...")
+#     cursor.execute("SELECT id, nome FROM series")
+#     series = cursor.fetchall()
+#     print(f"[DEBUG] Séries encontradas: {series}")
 
-    # Buscar os meses disponíveis
-    meses = [
-        (1, "Janeiro"), (2, "Fevereiro"), (3, "Março"),
-        (4, "Abril"), (5, "Maio"), (6, "Junho"),
-        (7, "Julho"), (8, "Agosto"), (9, "Setembro"),
-        (10, "Outubro"), (11, "Novembro"), (12, "Dezembro")
-    ]
-    print("[DEBUG] Meses carregados.")
+#     # Buscar os meses disponíveis
+#     meses = [
+#         (1, "Janeiro"), (2, "Fevereiro"), (3, "Março"),
+#         (4, "Abril"), (5, "Maio"), (6, "Junho"),
+#         (7, "Julho"), (8, "Agosto"), (9, "Setembro"),
+#         (10, "Outubro"), (11, "Novembro"), (12, "Dezembro")
+#     ]
+#     print("[DEBUG] Meses carregados.")
 
-    # Buscar simulados já gerados
-    print("[DEBUG] Buscando simulados gerados...")
-    cursor.execute("""
-        SELECT sg.id, s.nome AS serie_nome, sg.mes_id, d.nome AS disciplina_nome, 
-           sg.data_envio, sg.status
-        FROM simulados_gerados sg
-        JOIN series s ON sg.serie_id = s.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        ORDER BY sg.data_envio DESC
-    """)
-    simulados_gerados = cursor.fetchall()
-    print(f"[DEBUG] Simulados já gerados: {simulados_gerados}")
+#     # Buscar simulados já gerados
+#     print("[DEBUG] Buscando simulados gerados...")
+#     cursor.execute("""
+#         SELECT sg.id, s.nome AS serie_nome, sg.mes_id, d.nome AS disciplina_nome, 
+#            sg.data_envio, sg.status
+#         FROM simulados_gerados sg
+#         JOIN series s ON sg.serie_id = s.id
+#         JOIN disciplinas d ON sg.disciplina_id = d.id
+#         ORDER BY sg.data_envio DESC
+#     """)
+#     simulados_gerados = cursor.fetchall()
+#     print(f"[DEBUG] Simulados já gerados: {simulados_gerados}")
 
-    # Buscar o codigo_ibge do usuário atual (Secretaria de Educação)
-    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
-    codigo_ibge = cursor.fetchone()[0]
+#     # Buscar o codigo_ibge do usuário atual (Secretaria de Educação)
+#     cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+#     codigo_ibge = cursor.fetchone()[0]
 
-    # Buscar escolas que têm o mesmo codigo_ibge
-    cursor.execute("""
-        SELECT id, nome_da_escola
-        FROM escolas
-        WHERE codigo_ibge = ?
-    """, (codigo_ibge,))
-    escolas = cursor.fetchall()
+#     # Buscar escolas que têm o mesmo codigo_ibge
+#     cursor.execute("""
+#         SELECT id, nome_da_escola
+#         FROM escolas
+#         WHERE codigo_ibge = ?
+#     """, (codigo_ibge,))
+#     escolas = cursor.fetchall()
 
-    # Buscar o número total de escolas
-    total_escolas = len(escolas)
+#     # Buscar o número total de escolas
+#     total_escolas = len(escolas)
 
-    # Buscar o número de alunos na mesma codigo_ibge
-    cursor.execute("SELECT COUNT(*) FROM usuarios WHERE tipo_usuario_id = 4 AND codigo_ibge = ?", (codigo_ibge,))
-    numero_alunos = cursor.fetchone()[0]
+#     # Buscar o número de alunos na mesma codigo_ibge
+#     cursor.execute("SELECT COUNT(*) FROM usuarios WHERE tipo_usuario_id = 4 AND codigo_ibge = ?", (codigo_ibge,))
+#     numero_alunos = cursor.fetchone()[0]
 
-    # Buscar o número de simulados gerados na mesma codigo_ibge
-    cursor.execute("""
-        SELECT COUNT(*)
-        FROM simulados_gerados sg
-        JOIN usuarios u ON sg.serie_id = u.serie_id
-        WHERE u.codigo_ibge = ?
-    """, (codigo_ibge,))
-    numero_simulados_gerados = cursor.fetchone()[0]
+#     # Buscar o número de simulados gerados na mesma codigo_ibge
+#     cursor.execute("""
+#         SELECT COUNT(*)
+#         FROM simulados_gerados sg
+#         JOIN usuarios u ON sg.serie_id = u.serie_id
+#         WHERE u.codigo_ibge = ?
+#     """, (codigo_ibge,))
+#     numero_simulados_gerados = cursor.fetchone()[0]
 
-    # Calcular a média geral de desempenho dos simulados respondidos na mesma codigo_ibge
-    cursor.execute("""
-        SELECT AVG(d.desempenho)
-        FROM desempenho_simulado d
-        JOIN usuarios u ON d.aluno_id = u.id
-        WHERE u.codigo_ibge = ?
-    """, (codigo_ibge,))
-    media_geral = cursor.fetchone()[0] or 0
+#     # Calcular a média geral de desempenho dos simulados respondidos na mesma codigo_ibge
+#     cursor.execute("""
+#         SELECT AVG(d.desempenho)
+#         FROM desempenho_simulado d
+#         JOIN usuarios u ON d.aluno_id = u.id
+#         WHERE u.codigo_ibge = ?
+#     """, (codigo_ibge,))
+#     media_geral = cursor.fetchone()[0] or 0
 
-    # Buscar disciplinas disponíveis
-    print("[DEBUG] Buscando disciplinas disponíveis...")
-    cursor.execute("""
-        SELECT DISTINCT d.id, d.nome
-        FROM disciplinas d
-        JOIN banco_questoes bq ON bq.disciplina_id = d.id
-    """)
-    disciplinas = cursor.fetchall()
-    print(f"[DEBUG] Disciplinas encontradas: {disciplinas}")
+#     # Buscar disciplinas disponíveis
+#     print("[DEBUG] Buscando disciplinas disponíveis...")
+#     cursor.execute("""
+#         SELECT DISTINCT d.id, d.nome
+#         FROM disciplinas d
+#         JOIN banco_questoes bq ON bq.disciplina_id = d.id
+#     """)
+#     disciplinas = cursor.fetchall()
+#     print(f"[DEBUG] Disciplinas encontradas: {disciplinas}")
 
-    if request.method == "POST":
-        print("[DEBUG] Processando requisição POST...")
-        serie_id = request.form.get("serie_id")
-        mes_id = request.form.get("mes_id")
-        disciplina_id = request.form.get("disciplina_id")
-        print(f"[DEBUG] Dados recebidos do formulário - Série: {serie_id}, Mês: {mes_id}, Disciplina ID: {disciplina_id}")
+#     if request.method == "POST":
+#         print("[DEBUG] Processando requisição POST...")
+#         serie_id = request.form.get("serie_id")
+#         mes_id = request.form.get("mes_id")
+#         disciplina_id = request.form.get("disciplina_id")
+#         print(f"[DEBUG] Dados recebidos do formulário - Série: {serie_id}, Mês: {mes_id}, Disciplina ID: {disciplina_id}")
 
-        if not serie_id or not mes_id or not disciplina_id:
-            flash("Ano escolar, Mês e Componente Curricular são obrigatórios para gerar o simulado.", "danger")
-            print("[DEBUG] Ano escolar, Mês ou Componente curricular não fornecidos.")
-            return render_template(
-                "portal_secretaria_educacao.html",
-                series=series,
-                meses=meses,
-                simulados_gerados=simulados_gerados,
-                total_escolas=total_escolas,
-                total_alunos=numero_alunos,
-                total_simulados=numero_simulados_gerados,
-                media_geral=media_geral,
-                disciplinas=disciplinas
-            )
+#         if not serie_id or not mes_id or not disciplina_id:
+#             flash("Ano escolar, Mês e Componente Curricular são obrigatórios para gerar o simulado.", "danger")
+#             print("[DEBUG] Ano escolar, Mês ou Componente curricular não fornecidos.")
+#             return render_template(
+#                 "portal_secretaria_educacao.html",
+#                 series=series,
+#                 meses=meses,
+#                 simulados_gerados=simulados_gerados,
+#                 total_escolas=total_escolas,
+#                 total_alunos=numero_alunos,
+#                 total_simulados=numero_simulados_gerados,
+#                 media_geral=media_geral,
+#                 disciplinas=disciplinas
+#             )
 
-        try:
-            # Verificar se o simulado já foi gerado para a série, mês e disciplina selecionados
-            cursor.execute("""
-                SELECT 1 FROM simulados_gerados 
-                WHERE serie_id = ? AND mes_id = ? AND disciplina_id = ?
-            """, (serie_id, mes_id, disciplina_id))
-            if cursor.fetchone():
-                flash("Simulado já gerado para esta série, mês e disciplina.", "danger")
-                print(f"[DEBUG] Simulado já existente para série {serie_id}, mês {mes_id} e disciplina {disciplina_id}.")
-            else:
-                # Buscar questões do banco para a série, mês e disciplina selecionados
-                print("[DEBUG] Buscando questões para o simulado...")
-                cursor.execute("""
-                    SELECT id FROM banco_questoes 
-                    WHERE serie_id = ? AND mes_id = ? AND disciplina_id = ?
-                """, (serie_id, mes_id, disciplina_id))
-                questoes = cursor.fetchall()
-                print(f"[DEBUG] Questões encontradas: {questoes}")
+#         try:
+#             # Verificar se o simulado já foi gerado para a série, mês e disciplina selecionados
+#             cursor.execute("""
+#                 SELECT 1 FROM simulados_gerados 
+#                 WHERE serie_id = ? AND mes_id = ? AND disciplina_id = ?
+#             """, (serie_id, mes_id, disciplina_id))
+#             if cursor.fetchone():
+#                 flash("Simulado já gerado para esta série, mês e disciplina.", "danger")
+#                 print(f"[DEBUG] Simulado já existente para série {serie_id}, mês {mes_id} e disciplina {disciplina_id}.")
+#             else:
+#                 # Buscar questões do banco para a série, mês e disciplina selecionados
+#                 print("[DEBUG] Buscando questões para o simulado...")
+#                 cursor.execute("""
+#                     SELECT id FROM banco_questoes 
+#                     WHERE serie_id = ? AND mes_id = ? AND disciplina_id = ?
+#                 """, (serie_id, mes_id, disciplina_id))
+#                 questoes = cursor.fetchall()
+#                 print(f"[DEBUG] Questões encontradas: {questoes}")
 
-                if not questoes:
-                    flash("Não há questões disponíveis para esta série, mês e disciplina.", "warning")
-                    print("[DEBUG] Nenhuma questão encontrada para a série, mês e disciplina fornecidos.")
-                else:
-                    # Inserir o simulado no banco
-                    print("[DEBUG] Inserindo simulado no banco...")
-                    cursor.execute("""
-                        INSERT INTO simulados_gerados (serie_id, mes_id, disciplina_id, status, data_envio) 
-                        VALUES (?, ?, ?, 'gerado', datetime('now'))
-                    """, (serie_id, mes_id, disciplina_id))
-                    simulado_id = cursor.lastrowid
-                    print(f"[DEBUG] Simulado gerado com ID: {simulado_id}")
+#                 if not questoes:
+#                     flash("Não há questões disponíveis para esta série, mês e disciplina.", "warning")
+#                     print("[DEBUG] Nenhuma questão encontrada para a série, mês e disciplina fornecidos.")
+#                 else:
+#                     # Inserir o simulado no banco
+#                     print("[DEBUG] Inserindo simulado no banco...")
+#                     cursor.execute("""
+#                         INSERT INTO simulados_gerados (serie_id, mes_id, disciplina_id, status, data_envio) 
+#                         VALUES (?, ?, ?, 'gerado', datetime('now'))
+#                     """, (serie_id, mes_id, disciplina_id))
+#                     simulado_id = cursor.lastrowid
+#                     print(f"[DEBUG] Simulado gerado com ID: {simulado_id}")
 
-                    # Associar as questões ao simulado gerado
-                    print("[DEBUG] Associando questões ao simulado...")
-                    for questao in questoes:
-                        cursor.execute("INSERT INTO simulado_questoes (simulado_id, questao_id) VALUES (?, ?)", (simulado_id, questao[0]))
-                    db.commit()
-                    flash("Simulado gerado com sucesso!", "success")
-                    print("[DEBUG] Simulado gerado com sucesso e questões associadas.")
+#                     # Associar as questões ao simulado gerado
+#                     print("[DEBUG] Associando questões ao simulado...")
+#                     for questao in questoes:
+#                         cursor.execute("INSERT INTO simulado_questoes (simulado_id, questao_id) VALUES (?, ?)", (simulado_id, questao[0]))
+#                     db.commit()
+#                     flash("Simulado gerado com sucesso!", "success")
+#                     print("[DEBUG] Simulado gerado com sucesso e questões associadas.")
 
-        except Exception as e:
-            db.rollback()
-            print(f"[DEBUG] Erro ao gerar simulado: {e}")
-            flash(f"Erro ao gerar simulado: {e}", "danger")
+#         except Exception as e:
+#             db.rollback()
+#             print(f"[DEBUG] Erro ao gerar simulado: {e}")
+#             flash(f"Erro ao gerar simulado: {e}", "danger")
 
-    return render_template(
-        "portal_secretaria_educacao.html",
-        series=series,
-        meses=meses,
-        simulados_gerados=simulados_gerados,
-        total_escolas=total_escolas,
-        total_alunos=numero_alunos,
-        total_simulados=numero_simulados_gerados,
-        media_geral=media_geral,
-        disciplinas=disciplinas
-    )
+#     return render_template(
+#         "portal_secretaria_educacao.html",
+#         series=series,
+#         meses=meses,
+#         simulados_gerados=simulados_gerados,
+#         total_escolas=total_escolas,
+#         total_alunos=numero_alunos,
+#         total_simulados=numero_simulados_gerados,
+#         media_geral=media_geral,
+#         disciplinas=disciplinas
+#     )
 
 
 @app.route("/visualizar_simulado/<int:simulado_id>", methods=["GET", "POST"])
@@ -1448,7 +1457,7 @@ def visualizar_simulado(simulado_id):
 
     if not questoes:
         flash("Nenhuma questão encontrada para este simulado.", "danger")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     # Formatar questões para o template
     questoes_formatadas = [
@@ -1494,7 +1503,7 @@ def visualizar_simulado(simulado_id):
 
         db.commit()
         flash("Simulado enviado com sucesso para os alunos!", "success")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     return render_template("simulado_gerado.html", questoes=questoes_formatadas, simulado_id=simulado_id)
 
@@ -1529,7 +1538,7 @@ def cancelar_simulado(simulado_id):
         db.rollback()
         flash(f"Erro ao cancelar simulado: {str(e)}", "danger")
     
-    return redirect(url_for("portal_secretaria_educacao"))
+    return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 @app.route('/visualizar_simulado/<int:simulado_id>/editar-campo', methods=['POST'])
 @login_required
@@ -2170,12 +2179,12 @@ def revisar_simulado(simulado_id):
 def enviar_simulado():
     if current_user.tipo_usuario_id != 5:  # Garantir que apenas a Secretaria de Educação acesse
         flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     serie_id = request.form.get("serie_id")
     if not serie_id:
         flash("Por favor, selecione uma série.", "warning")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     # Lógica para gerar e enviar simulados para os alunos da série selecionada
     try:
@@ -2191,7 +2200,7 @@ def enviar_simulado():
 
         if not alunos:
             flash("Nenhum aluno encontrado para a série selecionada.", "info")
-            return redirect(url_for("portal_secretaria_educacao"))
+            return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
         for aluno in alunos:
             # Lógica para vincular o simulado aos alunos
@@ -2206,7 +2215,7 @@ def enviar_simulado():
         db.rollback()
         flash(f"Erro ao enviar simulado: {e}", "danger")
 
-    return redirect(url_for("portal_secretaria_educacao"))
+    return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 @app.route('/enviar_respostas', methods=['POST'])
 @login_required
@@ -2514,7 +2523,7 @@ def enviar_simulado_para_alunos(simulado_id, serie_id):
 # def gerar_simulado():
 #     if not current_user.tipo_usuario_id == 5:  # Apenas Secretaria de Educação
 #         flash("Acesso não autorizado.", "danger")
-#         return redirect(url_for("portal_secretaria_educacao"))
+#         return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 #     titulo = request.form.get("titulo")
 #     escola_id = request.form.get("escola_id")
@@ -2538,7 +2547,7 @@ def enviar_simulado_para_alunos(simulado_id, serie_id):
 
 #     if not escola:
 #         flash("Acesso não autorizado à escola selecionada.", "danger")
-#         return redirect(url_for("portal_secretaria_educacao"))
+#         return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 #     # Selecionar questões da série e escola
 #     cursor.execute(
@@ -2556,7 +2565,7 @@ def enviar_simulado_para_alunos(simulado_id, serie_id):
 
 #     if not questoes:
 #         flash("Nenhuma questão encontrada para a série selecionada.", "danger")
-#         return redirect(url_for("portal_secretaria_educacao"))
+#         return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 #     try:
 #         # Inserir o simulado na tabela simulados
@@ -2589,7 +2598,7 @@ def enviar_simulado_para_alunos(simulado_id, serie_id):
 #         db.rollback()
 #         flash(f"Erro ao gerar o simulado: {e}", "danger")
 
-#     return redirect(url_for("portal_secretaria_educacao"))
+#     return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 
 # @app.route('/turma/<int:turma_id>/gerar_simulado', methods=['GET', 'POST'])
@@ -2830,7 +2839,7 @@ def gerar_simulado(serie_id, mes_id, disciplina):
     
     if not disciplina_result:
         flash(f"Disciplina '{disciplina}' não encontrada.", "danger")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
         
     disciplina_id = disciplina_result[0]
 
@@ -2843,7 +2852,7 @@ def gerar_simulado(serie_id, mes_id, disciplina):
 
     if simulado_existente:
         flash("Já existe um simulado gerado para esta série, mês e disciplina.", "warning")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     # Buscar questões disponíveis para a série, mês e disciplina
     cursor.execute("""
@@ -2854,7 +2863,7 @@ def gerar_simulado(serie_id, mes_id, disciplina):
 
     if not questoes:
         flash("Nenhuma questão disponível para esta série, mês e disciplina.", "warning")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
     # Criar um novo simulado
     cursor.execute("""
@@ -2872,7 +2881,7 @@ def gerar_simulado(serie_id, mes_id, disciplina):
     db.commit()
 
     flash(f"Simulado para o ano escolar {serie_id}, mês {mes_id} e componente curricular '{disciplina}' gerado com sucesso!", "success")
-    return redirect(url_for("portal_secretaria_educacao"))
+    return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 
 @app.route('/listar_disciplinas/<int:serie_id>/<int:mes_id>')
@@ -3176,7 +3185,7 @@ def ver_relatorio_secretaria():
     except Exception as e:
         print(f"[ERRO] Erro ao gerar relatório: {e}")
         flash("Erro ao gerar relatório.", "danger")
-        return redirect(url_for("portal_secretaria_educacao"))
+        return redirect(url_for("secretaria_educacao.portal_secretaria_educacao"))
 
 @app.route('/relatorios_dashboard', methods=['GET'])
 @login_required
@@ -6224,7 +6233,14 @@ def confirmar_cadastro_usuarios():
         return jsonify({"status": "error", "message": erro_msg})
 # Inicialização do Banco e Servidor
 
-if __name__ == "__main__":
-    init_db()
-    app.run(debug=True)
+# if __name__ == "__main__":
+#     init_db()
+#     app.run(debug=True)
 
+import logging
+
+if __name__ == "__main__":
+    app.debug = True
+    app.config["PROPAGATE_EXCEPTIONS"] = True  # Força o Flask a exibir erros
+    logging.basicConfig(level=logging.DEBUG)  # Ativa logging detalhado
+    app.run(debug=True)

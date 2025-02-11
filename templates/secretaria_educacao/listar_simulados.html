@@ -1,0 +1,158 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block title %}Meus Simulados{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Filtros -->
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros</h5>
+                </div>
+                <div class="card-body">
+                    <form id="filtro-form">
+                        <div class="mb-3">
+                            <label for="filtro-serie" class="form-label">Série</label>
+                            <select class="form-select" id="filtro-serie">
+                                <option value="">Todas</option>
+                                {% for serie in series %}
+                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="filtro-disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="filtro-disciplina">
+                                <option value="">Todas</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="filtro-mes" class="form-label">Mês</label>
+                            <select class="form-select" id="filtro-mes">
+                                <option value="">Todos</option>
+                                {% for mes in meses %}
+                                <option value="{{ mes.id }}">{{ mes.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search me-2"></i>Buscar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lista de Simulados -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-list me-2"></i>Simulados</h5>
+                    <a href="{{ url_for('secretaria_educacao.criar_simulado') }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus me-1"></i>Novo Simulado
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if simulados %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Série</th>
+                                        <th>Disciplina</th>
+                                        <th>Mês</th>
+                                        <th>Data Envio</th>
+                                        <th>Status</th>
+                                        <th class="text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for simulado in simulados %}
+                                    <tr>
+                                        <td>{{ simulado.serie_nome }}</td>
+                                        <td>{{ simulado.disciplina_nome }}</td>
+                                        <td>{{ simulado.mes_nome }}</td>
+                                        <td>{{ simulado.data_envio }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if simulado.status == 'enviado' else 'warning' }}">
+                                                {{ simulado.status }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            <a href="{{ url_for('secretaria_educacao.visualizar_simulado', simulado_id=simulado.id) }}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye me-1"></i>Visualizar
+                                            </a>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="excluirSimulado({{ simulado.id }})">
+                                                <i class="fas fa-trash me-1"></i>Excluir
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Nenhum simulado encontrado.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('filtro-form');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        buscarSimulados();
+    });
+});
+
+async function buscarSimulados() {
+    const serie = document.getElementById('filtro-serie').value;
+    const disciplina = document.getElementById('filtro-disciplina').value;
+    const mes = document.getElementById('filtro-mes').value;
+    
+    try {
+        const response = await fetch(`/secretaria_educacao/filtrar-simulados?serie_id=${serie}&disciplina_id=${disciplina}&mes_id=${mes}`);
+        const data = await response.json();
+        
+        window.location.reload();
+    } catch (error) {
+        console.error('Erro ao buscar simulados:', error);
+        alert('Erro ao buscar simulados');
+    }
+}
+
+function excluirSimulado(simuladoId) {
+    if (!confirm('Tem certeza que deseja excluir este simulado?')) return;
+    
+    fetch(`/secretaria_educacao/excluir-simulado/${simuladoId}`, { method: 'DELETE' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('Erro ao excluir simulado: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao excluir simulado:', error);
+            alert('Erro ao excluir simulado');
+        });
+}
+</script>
+{% endblock %}

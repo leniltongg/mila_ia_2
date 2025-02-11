@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, g, abort, redirect, url_for
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g, abort
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import json
@@ -22,21 +22,21 @@ def close_db(error):
 @simulados_bp.route('/professores/banco-questoes')
 @login_required
 def banco_questoes():
-    if current_user.tipo_usuario_id != 1:  # 1 = professor
+    if current_user.tipo_usuario_id != 3:  # 1 = professor
         abort(403)
     return render_template('professores/banco_questoes.html')
 
 @simulados_bp.route('/professores/criar-simulado')
 @login_required
 def criar_simulado():
-    if current_user.tipo_usuario_id != 1:  # 1 = professor
+    if current_user.tipo_usuario_id != 3:  # 1 = professor
         abort(403)
     return render_template('professores/criar_simulado.html')
 
 @simulados_bp.route('/professores/salvar-questao', methods=['POST'])
 @login_required
 def salvar_questao():
-    if current_user.tipo_usuario_id != 1:  # 1 = professor
+    if current_user.tipo_usuario_id != 3:  # 1 = professor
         abort(403)
     
     try:
@@ -74,7 +74,7 @@ def salvar_questao():
 @simulados_bp.route('/professores/pesquisar-questoes')
 @login_required
 def pesquisar_questoes():
-    if current_user.tipo_usuario_id != 1:  # 1 = professor
+    if current_user.tipo_usuario_id != 3:  # 1 = professor
         abort(403)
     
     try:
@@ -140,7 +140,7 @@ def pesquisar_questoes():
 @simulados_bp.route('/professores/salvar-simulado', methods=['POST'])
 @login_required
 def salvar_simulado():
-    if current_user.tipo_usuario_id != 1:  # 1 = professor
+    if current_user.tipo_usuario_id != 3:  # 1 = professor
         abort(403)
     
     try:
@@ -197,14 +197,15 @@ def listar_simulados():
     
     # Buscar simulados do aluno, ordenando por status (não respondido primeiro) e data
     simulados = db.execute("""
-        SELECT sg.id, d.nome AS disciplina_nome, sg.mes_id, 
-               strftime('%d-%m-%Y', date(sg.data_envio)) as data_envio,
-               am.status,
+        SELECT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
+               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
+               am.status, u.nome as professor_nome,
                ds.desempenho as nota
         FROM aluno_simulado am
-        JOIN simulados_gerados sg ON am.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sg.id 
+        JOIN simulados_gerados_professor sgp ON am.simulado_id = sgp.id
+        JOIN disciplinas d ON sgp.disciplina_id = d.id
+        JOIN usuarios u ON sgp.professor_id = u.id
+        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
             AND ds.aluno_id = am.aluno_id
         WHERE am.aluno_id = ?
         ORDER BY 
@@ -212,7 +213,7 @@ def listar_simulados():
                 WHEN 'não respondido' THEN 0
                 ELSE 1
             END,
-            sg.data_envio DESC
+            sgp.data_criacao DESC
     """, [current_user.id]).fetchall()
     
     # Lista de meses para exibição
@@ -260,7 +261,6 @@ def iniciar_simulado(simulado_id):
         return redirect(url_for('simulados.fazer_simulado', simulado_id=simulado_id))
         
     except Exception as e:
-        db.rollback()
         return f'Erro ao iniciar simulado: {str(e)}', 500
 
 @simulados_bp.route('/alunos/fazer-simulado/<int:simulado_id>')
@@ -271,6 +271,16 @@ def fazer_simulado(simulado_id):
     
     try:
         db = get_db()
+        
+        # Verificar se o aluno já iniciou o simulado
+        aluno_simulado = db.execute("""
+            SELECT status FROM aluno_simulado
+            WHERE simulado_id = ? AND aluno_id = ?
+        """, [simulado_id, current_user.id]).fetchone()
+
+        if not aluno_simulado:
+            flash("Você precisa iniciar o simulado primeiro.", "warning")
+            return redirect(url_for('simulados.listar_simulados'))
         
         # Buscar informações do simulado e status
         simulado = db.execute('''
@@ -486,6 +496,49 @@ def responder_simulado(simulado_id):
         return redirect(url_for("index"))
 
     db = get_db()
+    origem = request.args.get('origem', 'secretaria')
+    
+    # Verificar se o aluno já iniciou o simulado
+    aluno_simulado = db.execute("""
+        SELECT status FROM aluno_simulado
+        WHERE simulado_id = ? AND aluno_id = ?
+    """, [simulado_id, current_user.id]).fetchone()
+
+    if not aluno_simulado:
+        try:
+            # Tenta iniciar o simulado automaticamente
+            db.execute('''
+                INSERT INTO aluno_simulado (aluno_id, simulado_id, status)
+                VALUES (?, ?, 'em andamento')
+            ''', [current_user.id, simulado_id])
+            db.commit()
+        except Exception as e:
+            flash("Erro ao iniciar o simulado. Por favor, tente novamente.", "danger")
+            if origem == 'professor':
+                return redirect(url_for('simulados.listar_simulados_professores'))
+            else:
+                return redirect(url_for('simulados.listar_simulados'))
+    
+    # Buscar informações do simulado
+    if origem == 'professor':
+        simulado = db.execute("""
+            SELECT sgp.id, d.nome as disciplina_nome, u.nome as professor_nome
+            FROM simulados_gerados_professor sgp
+            JOIN disciplinas d ON sgp.disciplina_id = d.id
+            JOIN usuarios u ON sgp.professor_id = u.id
+            WHERE sgp.id = ?
+        """, [simulado_id]).fetchone()
+    else:
+        simulado = db.execute("""
+            SELECT sg.id, d.nome as disciplina_nome
+            FROM simulados_gerados sg
+            JOIN disciplinas d ON sg.disciplina_id = d.id
+            WHERE sg.id = ?
+        """, [simulado_id]).fetchone()
+
+    if not simulado:
+        flash("Simulado não encontrado.", "danger")
+        return redirect(url_for("simulados.listar_simulados"))
     
     # Verificar se o aluno já respondeu este simulado
     desempenho = db.execute("""
@@ -495,16 +548,28 @@ def responder_simulado(simulado_id):
     """, [current_user.id, simulado_id]).fetchone()
 
     # Buscar questões do simulado com nome da disciplina
-    questoes = db.execute("""
-        SELECT q.id, q.disciplina_id, d.nome as disciplina_nome, q.questao, 
-               q.alternativa_a, q.alternativa_b, q.alternativa_c, 
-               q.alternativa_d, q.alternativa_e, q.questao_correta
-        FROM simulado_questoes sq
-        JOIN banco_questoes q ON sq.questao_id = q.id
-        JOIN disciplinas d ON q.disciplina_id = d.id
-        WHERE sq.simulado_id = ?
-        ORDER BY q.disciplina_id
-    """, [simulado_id]).fetchall()
+    if origem == 'professor':
+        questoes = db.execute("""
+            SELECT q.id, q.disciplina_id, d.nome as disciplina_nome, q.questao, 
+                   q.alternativa_a, q.alternativa_b, q.alternativa_c, 
+                   q.alternativa_d, q.alternativa_e, q.questao_correta
+            FROM simulado_questoes_professor sq
+            JOIN banco_questoes q ON sq.questao_id = q.id
+            JOIN disciplinas d ON q.disciplina_id = d.id
+            WHERE sq.simulado_id = ?
+            ORDER BY q.disciplina_id
+        """, [simulado_id]).fetchall()
+    else:
+        questoes = db.execute("""
+            SELECT q.id, q.disciplina_id, d.nome as disciplina_nome, q.questao, 
+                   q.alternativa_a, q.alternativa_b, q.alternativa_c, 
+                   q.alternativa_d, q.alternativa_e, q.questao_correta
+            FROM simulado_questoes sq
+            JOIN banco_questoes q ON sq.questao_id = q.id
+            JOIN disciplinas d ON q.disciplina_id = d.id
+            WHERE sq.simulado_id = ?
+            ORDER BY q.disciplina_id
+        """, [simulado_id]).fetchall()
 
     if not questoes:
         flash("Nenhuma questão encontrada para este simulado.", "danger")
@@ -550,19 +615,14 @@ def responder_simulado(simulado_id):
                 acertos += 1
             resultados.append(resultado)
         
-        percentual_acertos = (acertos / total_questoes) * 100 if total_questoes > 0 else 0
-        
-        return render_template(
-            "alunos/responder_simulado.html",
-            simulado_id=simulado_id,
-            questoes_por_disciplina=questoes_por_disciplina,
-            modo_visualizacao=True,
-            resultados=resultados,
-            total_questoes=total_questoes,
-            acertos=acertos,
-            percentual_acertos=percentual_acertos
-        )
-
+        return render_template('alunos/responder_simulado.html',
+                             modo_visualizacao=True,
+                             resultados=resultados,
+                             total_questoes=total_questoes,
+                             acertos=acertos,
+                             percentual_acertos=desempenho['desempenho'],
+                             simulado=simulado)
+    
     if request.method == "POST":
         # Converte as respostas do aluno de números para letras (1->A, 2->B, etc)
         respostas = {}
@@ -594,8 +654,11 @@ def responder_simulado(simulado_id):
 
         # Inserir dados na tabela desempenho_simulado
         db.execute("""
-            INSERT INTO desempenho_simulado (aluno_id, simulado_id, escola_id, serie_id, codigo_ibge, respostas_aluno, respostas_corretas, desempenho)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO desempenho_simulado (
+                aluno_id, simulado_id, escola_id, serie_id, codigo_ibge,
+                respostas_aluno, respostas_corretas, desempenho, tipo_usuario_id
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             current_user.id,
             simulado_id,
@@ -604,27 +667,26 @@ def responder_simulado(simulado_id):
             current_user.codigo_ibge,
             json.dumps(respostas),
             json.dumps(respostas_corretas),
-            desempenho
+            desempenho,
+            3 if origem == 'professor' else 5
         ])
         
         # Atualizar status do simulado
         db.execute("""
             UPDATE aluno_simulado
-            SET status = 'respondido'
+            SET status = 'finalizado'
             WHERE simulado_id = ? AND aluno_id = ?
         """, [simulado_id, current_user.id])
         
         db.commit()
 
         flash(f"Simulado respondido com sucesso! Você acertou {respostas_certas} de {total_questoes} questões.", "success")
-        return redirect(url_for("simulados.listar_simulados"))
-
-    return render_template(
-        "alunos/responder_simulado.html",
-        simulado_id=simulado_id,
-        questoes_por_disciplina=questoes_por_disciplina,
-        modo_visualizacao=False
-    )
+        return redirect(url_for('simulados.responder_simulado', simulado_id=simulado_id, origem=origem))
+    
+    return render_template('alunos/responder_simulado.html',
+                         modo_visualizacao=False,
+                         questoes_por_disciplina=questoes_por_disciplina,
+                         simulado=simulado)
 
 @simulados_bp.route('/alunos/simulados-professores')
 @login_required
@@ -637,24 +699,29 @@ def listar_simulados_professores():
     
     # Buscar simulados do aluno, ordenando por status (não respondido primeiro) e data
     simulados = db.execute("""
-        SELECT sg.id, d.nome AS disciplina_nome, sg.mes_id, 
-               strftime('%d-%m-%Y', date(sg.data_envio)) as data_envio,
-               am.status, u.nome as professor_nome,
+        SELECT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
+               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
+               CASE 
+                   WHEN ds.id IS NOT NULL THEN 'respondido'
+                   WHEN am.status IS NOT NULL THEN am.status
+                   ELSE 'não respondido'
+               END as status,
+               u.nome as professor_nome,
                ds.desempenho as nota
-        FROM aluno_simulado am
-        JOIN simulados_gerados sg ON am.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        JOIN usuarios u ON sg.professor_id = u.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sg.id 
-            AND ds.aluno_id = am.aluno_id
-        WHERE am.aluno_id = ?
+        FROM simulados_gerados_professor sgp
+        JOIN disciplinas d ON sgp.disciplina_id = d.id
+        JOIN usuarios u ON sgp.professor_id = u.id
+        LEFT JOIN aluno_simulado am ON am.simulado_id = sgp.id AND am.aluno_id = ?
+        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
+            AND ds.aluno_id = ? AND ds.tipo_usuario_id = 3
         ORDER BY 
-            CASE am.status
-                WHEN 'não respondido' THEN 0
+            CASE 
+                WHEN ds.id IS NOT NULL THEN 1
+                WHEN am.status = 'não respondido' THEN 0
                 ELSE 1
             END,
-            sg.data_envio DESC
-    """, [current_user.id]).fetchall()
+            sgp.data_criacao DESC
+    """, [current_user.id, current_user.id]).fetchall()
     
     # Lista de meses para exibição
     meses = [
@@ -678,33 +745,38 @@ def filtrar_simulados_professores():
     
     # Construir query base
     query = """
-        SELECT sg.id, d.nome AS disciplina_nome, sg.mes_id, 
-               strftime('%d-%m-%Y', date(sg.data_envio)) as data_envio,
-               am.status, u.nome as professor_nome,
+        SELECT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
+               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
+               CASE 
+                   WHEN ds.id IS NOT NULL THEN 'respondido'
+                   WHEN am.status IS NOT NULL THEN am.status
+                   ELSE 'não respondido'
+               END as status,
+               u.nome as professor_nome,
                ds.desempenho as nota
-        FROM aluno_simulado am
-        JOIN simulados_gerados sg ON am.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        JOIN usuarios u ON sg.professor_id = u.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sg.id 
-            AND ds.aluno_id = am.aluno_id
-        WHERE am.aluno_id = ?
+        FROM simulados_gerados_professor sgp
+        JOIN disciplinas d ON sgp.disciplina_id = d.id
+        JOIN usuarios u ON sgp.professor_id = u.id
+        LEFT JOIN aluno_simulado am ON am.simulado_id = sgp.id AND am.aluno_id = ?
+        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
+            AND ds.aluno_id = ? AND ds.tipo_usuario_id = 3
     """
-    params = [current_user.id]
+    params = [current_user.id, current_user.id]
     
     # Adicionar filtros
     if mes:
-        query += " AND sg.mes_id = ?"
+        query += " AND sgp.mes_id = ?"
         params.append(mes)
     
     # Adicionar ordenação
     query += """
         ORDER BY 
-            CASE am.status
-                WHEN 'não respondido' THEN 0
+            CASE 
+                WHEN ds.id IS NOT NULL THEN 1
+                WHEN am.status = 'não respondido' THEN 0
                 ELSE 1
             END,
-            sg.data_envio DESC
+            sgp.data_criacao DESC
     """
     
     simulados = db.execute(query, params).fetchall()
@@ -723,32 +795,38 @@ def filtrar_simulados():
     
     # Construir query base
     query = """
-        SELECT sg.id, d.nome AS disciplina_nome, sg.mes_id, 
-               strftime('%d-%m-%Y', date(sg.data_envio)) as data_envio,
-               am.status,
+        SELECT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
+               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
+               CASE 
+                   WHEN ds.id IS NOT NULL THEN 'respondido'
+                   WHEN am.status IS NOT NULL THEN am.status
+                   ELSE 'não respondido'
+               END as status,
+               u.nome as professor_nome,
                ds.desempenho as nota
-        FROM aluno_simulado am
-        JOIN simulados_gerados sg ON am.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sg.id 
-            AND ds.aluno_id = am.aluno_id
-        WHERE am.aluno_id = ?
+        FROM simulados_gerados_professor sgp
+        JOIN disciplinas d ON sgp.disciplina_id = d.id
+        JOIN usuarios u ON sgp.professor_id = u.id
+        LEFT JOIN aluno_simulado am ON am.simulado_id = sgp.id AND am.aluno_id = ?
+        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
+            AND ds.aluno_id = ? AND ds.tipo_usuario_id = 3
     """
-    params = [current_user.id]
+    params = [current_user.id, current_user.id]
     
     # Adicionar filtros
     if mes:
-        query += " AND sg.mes_id = ?"
+        query += " AND sgp.mes_id = ?"
         params.append(mes)
     
     # Adicionar ordenação
     query += """
         ORDER BY 
-            CASE am.status
-                WHEN 'não respondido' THEN 0
+            CASE 
+                WHEN ds.id IS NOT NULL THEN 1
+                WHEN am.status = 'não respondido' THEN 0
                 ELSE 1
             END,
-            sg.data_envio DESC
+            sgp.data_criacao DESC
     """
     
     simulados = db.execute(query, params).fetchall()

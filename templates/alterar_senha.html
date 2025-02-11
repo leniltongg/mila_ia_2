@@ -1,30 +1,50 @@
-{% extends "base.html" %}
+{% if current_user.tipo_usuario_id == 5 %}
+    {% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+{% elif current_user.tipo_usuario_id == 3 %}
+    {% extends "professores/base_professores.html" %}
+{% elif current_user.tipo_usuario_id == 4 %}
+    {% extends "alunos/base_alunos.html" %}
+{% endif %}
 
 {% block title %}
 Alterar Senha
 {% endblock %}
 
 {% block content %}
-<h1>Alterar Senha</h1>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow mt-4">
+                <div class="card-header">
+                    <h5 class="m-0 font-weight-bold text-primary">Alterar Senha</h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('alterar_senha') }}" method="post">
+                        <!-- Exibir mensagens de erro ou sucesso -->
+                        {% if error %}
+                        <div style="color: red; margin-top: 10px;">{{ error }}</div>
+                        {% endif %}
+                        {% if success %}
+                        <div style="color: green; margin-top: 10px;">{{ success }}</div>
+                        {% endif %}
 
-<!-- Exibir mensagens de erro ou sucesso -->
-{% if error %}
-<div style="color: red; margin-top: 10px;">{{ error }}</div>
-{% endif %}
-{% if success %}
-<div style="color: green; margin-top: 10px;">{{ success }}</div>
-{% endif %}
-
-<form action="{{ url_for('alterar_senha') }}" method="post">
-    <label for="senha_atual">Senha Atual:</label>
-    <input type="password" id="senha_atual" name="senha_atual" required><br>
-
-    <label for="nova_senha">Nova Senha:</label>
-    <input type="password" id="nova_senha" name="nova_senha" required><br>
-
-    <label for="confirmar_senha">Confirmar Nova Senha:</label>
-    <input type="password" id="confirmar_senha" name="confirmar_senha" required><br>
-
-    <button type="submit">Alterar Senha</button>
-</form>
+                        <div class="mb-3">
+                            <label for="senha_atual" class="form-label">Senha Atual</label>
+                            <input type="password" class="form-control" id="senha_atual" name="senha_atual" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="nova_senha" class="form-label">Nova Senha</label>
+                            <input type="password" class="form-control" id="nova_senha" name="nova_senha" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="confirmar_senha" class="form-label">Confirmar Nova Senha</label>
+                            <input type="password" class="form-control" id="confirmar_senha" name="confirmar_senha" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Alterar Senha</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

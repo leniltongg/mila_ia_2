@@ -150,3 +150,14 @@ def require_fresh_login(max_age=30):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+def admin_required(f):
+    """Requer que o usuário seja um administrador (tipo 1)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            abort(401)  # Unauthorized
+        if current_user.tipo_usuario_id != 1:  # 1 é o tipo de usuário administrador
+            abort(403)  # Forbidden
+        return f(*args, **kwargs)
+    return decorated_function

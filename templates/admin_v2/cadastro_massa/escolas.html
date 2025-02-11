@@ -1,0 +1,45 @@
+{% extends "admin_v2/base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Upload em Massa de Escolas</h2>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-info">
+                <h5>Instruções:</h5>
+                <p>O arquivo CSV deve conter as seguintes colunas:</p>
+                <ul>
+                    <li><strong>nome</strong>: Nome da escola</li>
+                    <li><strong>codigo_inep</strong>: Código INEP da escola</li>
+                    <li><strong>cep</strong>: CEP da escola (somente números)</li>
+                    <li><strong>logradouro</strong>: Logradouro da escola</li>
+                    <li><strong>numero</strong>: Número do endereço</li>
+                    <li><strong>complemento</strong>: Complemento do endereço (opcional)</li>
+                    <li><strong>bairro</strong>: Bairro da escola</li>
+                    <li><strong>cidade_id</strong>: ID da cidade no sistema</li>
+                    <li><strong>tem_fundamental_1</strong>: true/false - Tem Ensino Fundamental I</li>
+                    <li><strong>tem_fundamental_2</strong>: true/false - Tem Ensino Fundamental II</li>
+                    <li><strong>tem_medio</strong>: true/false - Tem Ensino Médio</li>
+                    <li><strong>tem_eja</strong>: true/false - Tem EJA</li>
+                    <li><strong>tem_tecnico</strong>: true/false - Tem Ensino Técnico</li>
+                </ul>
+                <p>Exemplo de conteúdo:</p>
+                <pre>nome,codigo_inep,cep,logradouro,numero,complemento,bairro,cidade_id,tem_fundamental_1,tem_fundamental_2,tem_medio,tem_eja,tem_tecnico
+Escola Municipal João da Silva,26123456,50000000,Rua das Flores,123,,Centro,1,true,true,false,false,false
+Escola Municipal Maria dos Santos,26123457,50100000,Av Principal,456,Bloco A,Boa Vista,2,true,true,true,true,false</pre>
+            </div>
+            
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="file" class="form-label">Arquivo CSV</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".csv" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Enviar</button>
+                <a href="{{ url_for('admin_v2.escolas_list') }}" class="btn btn-secondary">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

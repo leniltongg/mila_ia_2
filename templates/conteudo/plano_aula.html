@@ -16,21 +16,18 @@
                             <label for="disciplina" class="form-label">Disciplina</label>
                             <select class="form-select" id="disciplina" name="disciplina" required>
                                 <option value="">Selecione a disciplina</option>
-                                <option value="matematica">Matemática</option>
-                                <option value="portugues">Português</option>
-                                <option value="ciencias">Ciências</option>
-                                <option value="historia">História</option>
-                                <option value="geografia">Geografia</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina|lower }}">{{ disciplina }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="mb-3">
                             <label for="serie" class="form-label">Série</label>
                             <select class="form-select" id="serie" name="serie" required>
                                 <option value="">Selecione a série</option>
-                                <option value="6">6º ano</option>
-                                <option value="7">7º ano</option>
-                                <option value="8">8º ano</option>
-                                <option value="9">9º ano</option>
+                                {% for serie_id, serie_nome in series %}
+                                <option value="{{ serie_id }}">{{ serie_nome }}</option>
+                                {% endfor %}
                             </select>
                         </div>
                         <div class="mb-3">

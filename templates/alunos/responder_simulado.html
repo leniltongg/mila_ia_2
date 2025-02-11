@@ -8,91 +8,182 @@ Responder Simulado
 {% endif %}
 {% endblock %}
 
+{% block styles %}
+<style>
+    .card {
+        margin-bottom: 20px;
+    }
+    .questao {
+        margin-bottom: 30px;
+        padding: 20px;
+        border-radius: 5px;
+    }
+    .alternativa {
+        margin: 10px 0;
+    }
+    
+    /* Estilos para simulado do professor */
+    .simulado-professor {
+        border-left: 5px solid #007bff;
+    }
+    .simulado-professor .tipo-simulado {
+        color: #007bff;
+    }
+    
+    /* Estilos para simulado institucional */
+    .simulado-institucional {
+        border-left: 5px solid #28a745;
+    }
+    .simulado-institucional .tipo-simulado {
+        color: #28a745;
+    }
+    
+    .tipo-simulado {
+        font-size: 0.9em;
+        font-weight: bold;
+        margin-bottom: 15px;
+    }
+
+    .resultado-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     {% if modo_visualizacao %}
-        <h2 class="text-center mb-4">Resultado do Simulado</h2>
-        <div class="card mb-4">
+        <div class="card {% if request.args.get('origem') == 'professor' %}simulado-professor{% else %}simulado-institucional{% endif %}">
             <div class="card-body">
-                <h4 class="card-title">Resumo do Desempenho</h4>
-                <p class="card-text">Total de Questões: {{ total_questoes }}</p>
-                <p class="card-text">Acertos: {{ acertos }}</p>
-                <p class="card-text">Percentual de Acertos: {{ "%.2f"|format(percentual_acertos) }}%</p>
-            </div>
-        </div>
-
-        {% for resultado in resultados %}
-        <div class="card mb-3 {% if resultado.acertou %}border-success{% else %}border-danger{% endif %}">
-            <div class="card-header">
-                <strong>Questão {{ resultado.numero_questao }} - {{ resultado.disciplina }}</strong>
-                <span class="float-end">
-                    {% if resultado.acertou %}
-                        <span class="badge bg-success">Correta</span>
-                    {% else %}
-                        <span class="badge bg-danger">Incorreta</span>
-                    {% endif %}
-                </span>
-            </div>
-            <div class="card-body">
-                <h5 class="card-title">{{ resultado.questao }}</h5>
-                <div class="list-group">
-                    {% for alternativa in resultado.alternativas %}
-                        <div class="list-group-item {% if (loop.index + 64)|chr == resultado.resposta_correta %}bg-success text-white{% endif %}
-                            {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}bg-danger text-white{% endif %}
-                            {% if (loop.index + 64)|chr == resultado.resposta_aluno %}fw-bold{% endif %}">
-                            {{ (loop.index + 64)|chr }}) {{ alternativa }}
-                            {% if (loop.index + 64)|chr == resultado.resposta_correta %}
-                                <span class="float-end"><i class="fas fa-check-circle"></i> Resposta Correta</span>
-                            {% endif %}
-                            {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}
-                                <span class="float-end"><i class="fas fa-times-circle"></i> Sua Resposta</span>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
+                <div class="resultado-header">
+                    <h2>Resultado do Simulado</h2>
+                    <div class="tipo-simulado">
+                        {% if request.args.get('origem') == 'professor' %}
+                        <i class="fas fa-chalkboard-teacher"></i> Simulado do Professor
+                        {% else %}
+                        <i class="fas fa-university"></i> Simulado Institucional
+                        {% endif %}
+                    </div>
                 </div>
-                <div class="mt-2">
-                    <strong>Sua resposta:</strong> {{ resultado.resposta_aluno }}
-                    <strong class="ms-3">Resposta correta:</strong> {{ resultado.resposta_correta }}
-                </div>
-            </div>
-        </div>
-        {% endfor %}
 
-        <div class="text-center mt-4 mb-4">
-            <a href="{{ url_for('simulados.listar_simulados') }}" class="btn btn-primary">Voltar para Simulados</a>
-        </div>
-
-    {% else %}
-        <h2 class="text-center mb-4">Responder Simulado</h2>
-        <form method="POST">
-            {% for disciplina, questoes in questoes_por_disciplina.items() %}
                 <div class="card mb-4">
-                    <div class="card-header bg-primary text-white">
-                        {{ disciplina }}
+                    <div class="card-body">
+                        <h4 class="card-title">Resumo do Desempenho</h4>
+                        <p class="card-text">Total de Questões: {{ total_questoes }}</p>
+                        <p class="card-text">Acertos: {{ acertos }}</p>
+                        <p class="card-text">Percentual de Acertos: {{ "%.2f"|format(percentual_acertos) }}%</p>
+                    </div>
+                </div>
+
+                {% for resultado in resultados %}
+                <div class="card mb-3 {% if resultado.acertou %}border-success{% else %}border-danger{% endif %}">
+                    <div class="card-header">
+                        <strong>Questão {{ resultado.numero_questao }} - {{ resultado.disciplina }}</strong>
+                        <span class="float-end">
+                            {% if resultado.acertou %}
+                                <span class="badge bg-success">Correta</span>
+                            {% else %}
+                                <span class="badge bg-danger">Incorreta</span>
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="card-body">
-                        {% for questao in questoes %}
-                            <div class="mb-4">
-                                <p class="fw-bold">{{ loop.index }}. {{ questao.questao }}</p>
-                                <div class="list-group">
-                                    {% for alternativa in [questao.alternativa_a, questao.alternativa_b, questao.alternativa_c, questao.alternativa_d, questao.alternativa_e] %}
-                                        <label class="list-group-item">
-                                            <input type="radio" name="resposta_{{ questao.id }}" value="{{ loop.index }}" required>
-                                            {{ (loop.index + 64)|chr }}) {{ alternativa }}
-                                        </label>
-                                    {% endfor %}
+                        <h5 class="card-title">{{ resultado.questao }}</h5>
+                        <div class="list-group">
+                            {% for alternativa in resultado.alternativas %}
+                                <div class="list-group-item {% if (loop.index + 64)|chr == resultado.resposta_correta %}bg-success text-white{% endif %}
+                                    {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}bg-danger text-white{% endif %}
+                                    {% if (loop.index + 64)|chr == resultado.resposta_aluno %}fw-bold{% endif %}">
+                                    {{ (loop.index + 64)|chr }}) {{ alternativa }}
+                                    {% if (loop.index + 64)|chr == resultado.resposta_correta %}
+                                        <span class="float-end"><i class="fas fa-check-circle"></i> Resposta Correta</span>
+                                    {% endif %}
+                                    {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}
+                                        <span class="float-end"><i class="fas fa-times-circle"></i> Sua Resposta</span>
+                                    {% endif %}
                                 </div>
-                            </div>
-                        {% endfor %}
+                            {% endfor %}
+                        </div>
+                        <div class="mt-2">
+                            <strong>Sua resposta:</strong> {{ resultado.resposta_aluno }}
+                            <strong class="ms-3">Resposta correta:</strong> {{ resultado.resposta_correta }}
+                        </div>
                     </div>
                 </div>
-            {% endfor %}
-            
-            <div class="text-center mt-4 mb-4">
-                <button type="submit" class="btn btn-primary">Enviar Respostas</button>
-                <a href="{{ url_for('simulados.listar_simulados') }}" class="btn btn-secondary">Voltar</a>
+                {% endfor %}
+
+                <div class="d-flex justify-content-end mb-3">
+                    {% if request.args.get('origem') == 'professor' %}
+                    <a href="{{ url_for('simulados.listar_simulados_professores') }}" class="btn btn-secondary">
+                        Voltar para Simulados
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('simulados.listar_simulados') }}" class="btn btn-secondary">
+                        Voltar para Simulados
+                    </a>
+                    {% endif %}
+                </div>
+
             </div>
-        </form>
+        </div>
+    {% else %}
+        <h2 class="text-center mb-4">Responder Simulado</h2>
+        <div class="card {% if request.args.get('origem') == 'professor' %}simulado-professor{% else %}simulado-institucional{% endif %}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>{{ simulado.disciplina_nome }}</h2>
+                    <div class="tipo-simulado">
+                        {% if request.args.get('origem') == 'professor' %}
+                        <i class="fas fa-chalkboard-teacher"></i> Simulado do Professor
+                        {% else %}
+                        <i class="fas fa-university"></i> Simulado Institucional
+                        {% endif %}
+                    </div>
+                </div>
+                <form method="POST">
+                    {% for disciplina, questoes in questoes_por_disciplina.items() %}
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                {{ disciplina }}
+                            </div>
+                            <div class="card-body">
+                                {% for questao in questoes %}
+                                    <div class="mb-4">
+                                        <p class="fw-bold">{{ loop.index }}. {{ questao.questao }}</p>
+                                        <div class="list-group">
+                                            {% for alternativa in [questao.alternativa_a, questao.alternativa_b, questao.alternativa_c, questao.alternativa_d, questao.alternativa_e] %}
+                                                <label class="list-group-item">
+                                                    <input type="radio" name="resposta_{{ questao.id }}" value="{{ loop.index }}" required>
+                                                    {{ (loop.index + 64)|chr }}) {{ alternativa }}
+                                                </label>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    
+                    <div class="d-flex justify-content-end mb-3">
+                        {% if request.args.get('origem') == 'professor' %}
+                        <a href="{{ url_for('simulados.listar_simulados_professores') }}" class="btn btn-secondary">
+                            Voltar para Simulados
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('simulados.listar_simulados') }}" class="btn btn-secondary">
+                            Voltar para Simulados
+                        </a>
+                        {% endif %}
+                    </div>
+                    <div class="text-center mt-4 mb-4">
+                        <button type="submit" class="btn btn-primary">Enviar Respostas</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     {% endif %}
 </div>
 {% endblock %}

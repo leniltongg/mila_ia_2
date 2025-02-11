@@ -1,0 +1,136 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Simulado Gerado</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <p><strong>Série:</strong> {{ simulado.serie_nome }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Disciplina:</strong> {{ simulado.disciplina_nome }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Mês:</strong> {{ simulado.mes_nome }}</p>
+                </div>
+                <div class="col-md-3">
+                    <p><strong>Total de Questões:</strong> {{ questoes|length }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-list-check me-2"></i>Questões</h5>
+        </div>
+        <div class="card-body">
+            <ol>
+                {% for questao in questoes %}
+                <li class="mb-4">
+                    <div class="pergunta-container">
+                        <p class="mb-3">{{ questao.questao }}</p>
+                    </div>
+                    <ul class="list-unstyled ms-4">
+                        <li class="mb-2">A) {{ questao.alternativa_a }}</li>
+                        <li class="mb-2">B) {{ questao.alternativa_b }}</li>
+                        <li class="mb-2">C) {{ questao.alternativa_c }}</li>
+                        <li class="mb-2">D) {{ questao.alternativa_d }}</li>
+                        <li class="mb-2">E) {{ questao.alternativa_e }}</li>
+                    </ul>
+                    <p><strong>Resposta Correta:</strong> {{ questao.questao_correta }}</p>
+                </li>
+                {% endfor %}
+            </ol>
+        </div>
+    </div>
+
+    {% if simulado.status == 'gerado' %}
+    <div class="card mt-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-star me-2"></i>Avaliação e Envio</h5>
+        </div>
+        <div class="card-body text-center">
+            <div class="star-rating mb-4">
+                {% for i in range(5, 0, -1) %}
+                <input type="radio" id="star{{ i }}" name="avaliacao" value="{{ i }}" {% if i == 3 %}checked{% endif %}>
+                <label for="star{{ i }}" title="{{ i }} estrelas">&#9733;</label>
+                {% endfor %}
+            </div>
+
+            <button class="btn btn-primary" onclick="enviarSimulado({{ simulado.id }})">
+                <i class="bi bi-send me-2"></i>Enviar Simulado
+            </button>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="mt-4">
+        <a href="{{ url_for('secretaria_educacao.meus_simulados') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left me-2"></i>Voltar
+        </a>
+    </div>
+</div>
+
+<style>
+    .star-rating {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: center;
+        margin-top: 10px;
+    }
+
+    .star-rating input[type="radio"] {
+        display: none;
+    }
+
+    .star-rating label {
+        font-size: 2rem;
+        color: gray;
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .star-rating label:hover,
+    .star-rating label:hover ~ label,
+    .star-rating input[type="radio"]:checked ~ label {
+        color: gold;
+    }
+</style>
+
+<script>
+function enviarSimulado(simuladoId) {
+    if (confirm('Tem certeza que deseja enviar este simulado?')) {
+        const avaliacao = document.querySelector('input[name="avaliacao"]:checked').value;
+        
+        fetch(`/secretaria_educacao/enviar_simulado/${simuladoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                avaliacao: parseInt(avaliacao)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Simulado enviado com sucesso!');
+                window.location.href = '/secretaria_educacao/meus_simulados';
+            } else {
+                alert(data.message || 'Erro ao enviar simulado');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erro ao enviar simulado');
+        });
+    }
+}
+</script>
+{% endblock %}

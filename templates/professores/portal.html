@@ -1,0 +1,94 @@
+{% extends "professores/base_professores.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Portal do Professor</h1>
+    <p>Bem-vindo(a), {{ current_user.nome }}!</p>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Minhas Turmas</h5>
+                </div>
+                <div class="card-body">
+                    {% if turmas %}
+                        <ul class="list-group">
+                            {% for turma in turmas %}
+                            <li class="list-group-item">
+                                <h6>{{ turma.turma }}</h6>
+                                <p class="mb-0">{{ turma.serie_nome }} - {{ turma.escola_nome }}</p>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p>Nenhuma turma atribuída.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Ferramentas MILA</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('conteudo.criar_plano_aula') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-journal-bookmark"></i> Plano de Aula
+                        </a>
+                        <a href="{{ url_for('conteudo.criar_resumo') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-file-text"></i> Resumos
+                        </a>
+                        <a href="{{ url_for('conteudo.criar_exercicios') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-journal-text"></i> Exercícios
+                        </a>
+                        <a href="{{ url_for('conteudo.criar_material_complementar') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-book"></i> Material Complementar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Simulados</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('simulados.criar_simulado') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-plus-circle"></i> Criar Simulado
+                        </a>
+                        <a href="{{ url_for('simulados.listar_simulados_professor') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-list-check"></i> Meus Simulados
+                        </a>
+                        <a href="{{ url_for('simulados.banco_questoes') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-journal-text"></i> Banco de Questões
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Relatórios</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('relatorios') }}" class="btn btn-outline-primary">
+                            <i class="bi bi-graph-up"></i> Ver Relatórios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

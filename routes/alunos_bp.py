@@ -270,7 +270,7 @@ def gerar_flashcards():
         }}
         
         Conteúdo: {conteudo}"""
-        
+
         print("Prompt construído")
         
         # Fazer a chamada para a API
@@ -1202,6 +1202,60 @@ def download_feedback():
             'success': False,
             'error': 'Erro ao gerar PDF do feedback.'
         }), 500
+
+@alunos_bp.route('/simulados')
+@login_required
+def simulados():
+    try:
+        db = get_db()
+        cursor = db.cursor()
+
+        # Primeiro, pegar a série do aluno logado
+        cursor.execute("""
+            SELECT serie_id 
+            FROM usuarios 
+            WHERE id = ?
+        """, (current_user.id,))
+        serie_id = cursor.fetchone()[0]
+
+        # Buscar apenas simulados da série do aluno
+        cursor.execute("""
+            SELECT 
+                sg.id,
+                sg.mes_id,
+                sg.status,
+                sg.data_envio,
+                d.nome as disciplina_nome,
+                m.nome as mes_nome
+            FROM simulados_gerados sg
+            JOIN disciplinas d ON sg.disciplina_id = d.id
+            JOIN meses m ON sg.mes_id = m.id
+            WHERE sg.serie_id = ?
+            AND sg.status = 'enviado'
+            ORDER BY sg.data_envio DESC
+        """, (serie_id,))
+        
+        simulados = cursor.fetchall()
+
+        # Buscar simulados já respondidos pelo aluno (tipo_usuario_id = 5 para secretaria)
+        cursor.execute("""
+            SELECT 
+                simulado_id,
+                desempenho
+            FROM desempenho_simulado
+            WHERE aluno_id = ? AND tipo_usuario_id = 5
+        """, (current_user.id,))
+        
+        # Criar um dicionário com os simulados respondidos
+        desempenho_simulado = {row[0]: {'desempenho': row[1]} for row in cursor.fetchall()}
+        
+        return render_template('alunos/simulados.html', 
+                             simulados=simulados,
+                             desempenho_simulado=desempenho_simulado)
+    except Exception as e:
+        print(f"Erro ao buscar simulados: {str(e)}")
+        flash('Erro ao carregar simulados', 'danger')
+        return redirect(url_for('alunos_bp.portal_alunos'))
 
 def formatar_resumo_html(resumo, tipo):
     """Formata o resumo com HTML e estilos apropriados."""

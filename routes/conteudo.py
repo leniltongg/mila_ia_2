@@ -11,6 +11,9 @@ import tempfile
 import json
 import graphviz
 import re
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from database import get_db
 
 # Criar o blueprint
 conteudo_bp = Blueprint('conteudo', __name__)
@@ -78,15 +81,61 @@ def gerar_mapa_mental(tema, conteudo):
 @conteudo_bp.route('/criar_plano_aula', methods=['GET', 'POST'])
 @login_required
 def criar_plano_aula():
-    if request.method == 'POST':
+    # Verificar se é professor
+    if current_user.tipo_usuario_id != 3:  # 3 = Professor
+        return jsonify({'error': 'Acesso não autorizado'}), 403
+
+    db = get_db()
+
+    # Buscar disciplinas e séries que o professor tem acesso
+    disciplinas_series = db.execute('''
+        SELECT DISTINCT 
+            d.id as disciplina_id,
+            d.nome as disciplina_nome,
+            s.id as serie_id,
+            s.nome as serie_nome
+        FROM simulados_gerados_professor sgp
+        JOIN disciplinas d ON sgp.disciplina_id = d.id
+        JOIN series s ON sgp.serie_id = s.id
+        WHERE sgp.professor_id = ?
+        ORDER BY d.nome, s.nome
+    ''', [current_user.id]).fetchall()
+
+    if request.method == 'GET':
+        # Organizar dados para o template
+        disciplinas = {}
+        series = set()
+        
+        for item in disciplinas_series:
+            disciplinas[item['disciplina_nome']] = item['disciplina_nome']
+            series.add((item['serie_id'], item['serie_nome']))
+        
+        return render_template('conteudo/plano_aula.html', 
+                             disciplinas=sorted(disciplinas.keys()),
+                             series=sorted(series, key=lambda x: x[1]))
+
+    elif request.method == 'POST':
         disciplina = request.form.get('disciplina')
         serie = request.form.get('serie')
         tema = request.form.get('tema')
         duracao = request.form.get('duracao')
         
+        # Verificar se o professor tem acesso à disciplina e série selecionadas
+        tem_acesso = False
+        for item in disciplinas_series:
+            if item['disciplina_nome'].lower() == disciplina.lower() and str(item['serie_id']) == serie:
+                tem_acesso = True
+                break
+        
+        if not tem_acesso:
+            return jsonify({
+                'success': False,
+                'error': 'Você não tem acesso a esta combinação de disciplina e série'
+            }), 403
+        
         prompt = f"""Crie um plano de aula detalhado para:
         Disciplina: {disciplina}
-        Série: {serie}
+        Série: {serie}º ano
         Tema: {tema}
         Duração: {duracao} minutos
 
@@ -114,8 +163,6 @@ def criar_plano_aula():
             return jsonify({'success': True, 'plano_aula': plano_aula})
         except Exception as e:
             return jsonify({'success': False, 'error': str(e)})
-
-    return render_template('conteudo/plano_aula.html')
 
 @conteudo_bp.route('/criar_resumo', methods=['GET', 'POST'])
 @login_required

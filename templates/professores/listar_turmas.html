@@ -47,13 +47,14 @@ Minhas Turmas
                                             <h5 class="mb-0">Alunos da Turma</h5>
                                         </div>
                                         <div class="card-body">
-                                            <div id="lista-alunos-{{ turma[0] }}">
+                                            <div id="loading-{{ turma[0] }}" style="display: none;">
                                                 <div class="text-center">
                                                     <div class="spinner-border text-primary" role="status">
                                                         <span class="visually-hidden">Carregando...</span>
                                                     </div>
                                                 </div>
                                             </div>
+                                            <div id="alunos-lista-{{ turma[0] }}"></div>
                                         </div>
                                     </div>
                                 </td>
@@ -63,9 +64,9 @@ Minhas Turmas
                     </table>
                 </div>
             {% else %}
-                <div class="alert alert-info" role="alert">
+                <div class="alert alert-info">
                     <i class="fas fa-info-circle me-2"></i>
-                    Você ainda não está vinculado a nenhuma turma.
+                    Você ainda não possui turmas cadastradas.
                 </div>
             {% endif %}
         </div>
@@ -75,59 +76,80 @@ Minhas Turmas
 <script>
 function carregarAlunos(turmaId, botao) {
     const row = document.getElementById(`alunos-turma-${turmaId}`);
-    const listaAlunos = document.getElementById(`lista-alunos-${turmaId}`);
+    const loading = document.getElementById(`loading-${turmaId}`);
+    const lista = document.getElementById(`alunos-lista-${turmaId}`);
     
-    if (row.style.display === 'none') {
-        // Mostrar a linha e carregar os alunos
-        row.style.display = 'table-row';
-        botao.classList.remove('btn-primary');
-        botao.classList.add('btn-secondary');
-        
-        fetch(`/professores/get_alunos_turma/${turmaId}`)
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.error || `HTTP error! status: ${response.status}`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.alunos && data.alunos.length > 0) {
-                    let html = '<div class="table-responsive"><table class="table table-sm">';
-                    html += '<thead><tr><th>Nome</th><th>Email</th><th>Ações</th></tr></thead><tbody>';
-                    
-                    data.alunos.forEach(aluno => {
-                        html += `<tr>
-                            <td>${aluno.nome || ''}</td>
-                            <td>${aluno.email || ''}</td>
-                            <td>
-                                <a href="/professores/relatorio_aluno/${aluno.id}" class="btn btn-info btn-sm">
-                                    <i class="fas fa-chart-line"></i> Relatório
-                                </a>
-                            </td>
-                        </tr>`;
-                    });
-                    
-                    html += '</tbody></table></div>';
-                    listaAlunos.innerHTML = html;
-                } else {
-                    listaAlunos.innerHTML = '<div class="alert alert-warning">Nenhum aluno encontrado nesta turma.</div>';
-                }
-            })
-            .catch(error => {
-                console.error('Erro:', error);
-                listaAlunos.innerHTML = `<div class="alert alert-danger">
-                    <strong>Erro ao carregar alunos:</strong><br>
-                    ${error.message}
-                </div>`;
-            });
-    } else {
-        // Esconder a linha
+    // Se já estiver mostrando, apenas esconde
+    if (row.style.display !== 'none') {
         row.style.display = 'none';
-        botao.classList.remove('btn-secondary');
-        botao.classList.add('btn-primary');
+        return;
     }
+    
+    // Mostra a linha e o loading
+    row.style.display = '';
+    loading.style.display = '';
+    lista.innerHTML = '';
+    
+    // Faz a requisição AJAX
+    fetch(`/portal_professores/api/turma/${turmaId}/alunos`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.error) {
+                lista.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                lista.innerHTML = '<div class="alert alert-info">Nenhum aluno encontrado nesta turma.</div>';
+                return;
+            }
+            
+            // Cria a tabela de alunos
+            let html = `
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            data.forEach(aluno => {
+                html += `
+                    <tr>
+                        <td>${aluno.nome}</td>
+                        <td class="text-center">
+                            <a href="/portal_professores/relatorio_aluno/${aluno.id}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-chart-line me-1"></i>
+                                Ver Relatório
+                            </a>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            lista.innerHTML = html;
+        })
+        .catch(error => {
+            lista.innerHTML = `<div class="alert alert-danger">Erro ao carregar alunos: ${error.message}</div>`;
+        })
+        .finally(() => {
+            loading.style.display = 'none';
+        });
 }
 </script>
 {% endblock %}

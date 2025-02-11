@@ -1,0 +1,60 @@
+{% extends "admin_v2/base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Nova Turma</h2>
+        <a href="{{ url_for('admin_v2.turmas_list') }}" class="btn btn-secondary">Voltar</a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="mb-3">
+                    <label for="nome" class="form-label">Nome da Turma</label>
+                    <input type="text" class="form-control" id="nome" name="nome" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="escola_id" class="form-label">Escola</label>
+                    <select class="form-select" id="escola_id" name="escola_id" required>
+                        <option value="">Selecione uma escola</option>
+                        {% for escola in escolas %}
+                        <option value="{{ escola.id }}">{{ escola.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="serie" class="form-label">Série</label>
+                    <select class="form-select" id="serie" name="serie" required>
+                        <option value="">Selecione uma série</option>
+                        <option value="1º Ano">1º Ano</option>
+                        <option value="2º Ano">2º Ano</option>
+                        <option value="3º Ano">3º Ano</option>
+                        <option value="4º Ano">4º Ano</option>
+                        <option value="5º Ano">5º Ano</option>
+                        <option value="6º Ano">6º Ano</option>
+                        <option value="7º Ano">7º Ano</option>
+                        <option value="8º Ano">8º Ano</option>
+                        <option value="9º Ano">9º Ano</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="turno" class="form-label">Turno</label>
+                    <select class="form-select" id="turno" name="turno" required>
+                        <option value="">Selecione um turno</option>
+                        <option value="Manhã">Manhã</option>
+                        <option value="Tarde">Tarde</option>
+                        <option value="Noite">Noite</option>
+                        <option value="Integral">Integral</option>
+                    </select>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Criar Turma</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

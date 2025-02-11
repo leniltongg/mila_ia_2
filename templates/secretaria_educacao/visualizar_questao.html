@@ -1,0 +1,235 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Visualizar Questão</h5>
+            <a href="{{ url_for('secretaria_educacao.banco_questoes') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Voltar
+            </a>
+        </div>
+        <div class="card-body">
+            <form id="editForm" method="POST" action="{{ url_for('secretaria_educacao.editar_questao', id=questao.id) }}">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Ano Escolar:</strong> {{ questao.serie_nome }}
+                            </div>
+                            <button type="button" class="btn btn-link text-primary" onclick="editarCampo('serie')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                        <select class="form-select mt-2 d-none" id="serie_id" name="serie_id">
+                            {% for serie in series %}
+                            <option value="{{ serie.id }}" {% if serie.id == questao.serie_id %}selected{% endif %}>
+                                {{ serie.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>Componente Curricular:</strong> {{ questao.disciplina_nome }}
+                            </div>
+                            <button type="button" class="btn btn-link text-primary" onclick="editarCampo('disciplina')">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                        </div>
+                        <select class="form-select mt-2 d-none" id="disciplina_id" name="disciplina_id">
+                            {% for disciplina in disciplinas %}
+                            <option value="{{ disciplina.id }}" {% if disciplina.id == questao.disciplina_id %}selected{% endif %}>
+                                {{ disciplina.nome }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Assunto:</strong> {{ questao.assunto }}
+                        </div>
+                        <button type="button" class="btn btn-link text-primary" onclick="editarCampo('assunto')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <input type="text" class="form-control mt-2 d-none" id="assunto" name="assunto" 
+                           value="{{ questao.assunto }}">
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Enunciado:</h6>
+                        <button type="button" class="btn btn-link text-primary" onclick="editarCampo('questao')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <p class="p-3 bg-light rounded" id="questao_texto">{{ questao.questao }}</p>
+                    <textarea class="form-control d-none" id="questao" name="questao" rows="4">{{ questao.questao }}</textarea>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0">Alternativas:</h6>
+                        <button type="button" class="btn btn-link text-primary" onclick="editarCampo('alternativas')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <div class="list-group" id="alternativas_texto">
+                        <div class="list-group-item {% if questao.questao_correta == 'A' %}list-group-item-success{% endif %}">
+                            <strong>A)</strong> {{ questao.alternativa_a }}
+                            {% if questao.questao_correta == 'A' %}<span class="badge bg-success ms-2">Correta</span>{% endif %}
+                        </div>
+                        <div class="list-group-item {% if questao.questao_correta == 'B' %}list-group-item-success{% endif %}">
+                            <strong>B)</strong> {{ questao.alternativa_b }}
+                            {% if questao.questao_correta == 'B' %}<span class="badge bg-success ms-2">Correta</span>{% endif %}
+                        </div>
+                        <div class="list-group-item {% if questao.questao_correta == 'C' %}list-group-item-success{% endif %}">
+                            <strong>C)</strong> {{ questao.alternativa_c }}
+                            {% if questao.questao_correta == 'C' %}<span class="badge bg-success ms-2">Correta</span>{% endif %}
+                        </div>
+                        <div class="list-group-item {% if questao.questao_correta == 'D' %}list-group-item-success{% endif %}">
+                            <strong>D)</strong> {{ questao.alternativa_d }}
+                            {% if questao.questao_correta == 'D' %}<span class="badge bg-success ms-2">Correta</span>{% endif %}
+                        </div>
+                        {% if questao.alternativa_e %}
+                        <div class="list-group-item {% if questao.questao_correta == 'E' %}list-group-item-success{% endif %}">
+                            <strong>E)</strong> {{ questao.alternativa_e }}
+                            {% if questao.questao_correta == 'E' %}<span class="badge bg-success ms-2">Correta</span>{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div id="alternativas_edit" class="d-none">
+                        <div class="mb-2">
+                            <label class="form-label">A)</label>
+                            <input type="text" class="form-control" name="alternativa_a" value="{{ questao.alternativa_a }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">B)</label>
+                            <input type="text" class="form-control" name="alternativa_b" value="{{ questao.alternativa_b }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">C)</label>
+                            <input type="text" class="form-control" name="alternativa_c" value="{{ questao.alternativa_c }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">D)</label>
+                            <input type="text" class="form-control" name="alternativa_d" value="{{ questao.alternativa_d }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">E) (Opcional)</label>
+                            <input type="text" class="form-control" name="alternativa_e" value="{{ questao.alternativa_e }}">
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Alternativa Correta:</label>
+                            <select class="form-select" name="questao_correta">
+                                <option value="A" {% if questao.questao_correta == 'A' %}selected{% endif %}>A</option>
+                                <option value="B" {% if questao.questao_correta == 'B' %}selected{% endif %}>B</option>
+                                <option value="C" {% if questao.questao_correta == 'C' %}selected{% endif %}>C</option>
+                                <option value="D" {% if questao.questao_correta == 'D' %}selected{% endif %}>D</option>
+                                <option value="E" {% if questao.questao_correta == 'E' %}selected{% endif %}>E</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Mês:</strong>
+                            {% if questao.mes_id %}
+                                {% set meses = {
+                                    1: "Janeiro", 2: "Fevereiro", 3: "Março",
+                                    4: "Abril", 5: "Maio", 6: "Junho",
+                                    7: "Julho", 8: "Agosto", 9: "Setembro",
+                                    10: "Outubro", 11: "Novembro", 12: "Dezembro"
+                                } %}
+                                {{ meses[questao.mes_id] }}
+                            {% else %}
+                                Não definido
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-link text-primary" onclick="editarCampo('mes')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <select class="form-select mt-2 d-none" id="mes_id" name="mes_id">
+                        <option value="">Selecione...</option>
+                        {% for mes in meses %}
+                        <option value="{{ mes[0] }}" {% if mes[0] == questao.mes_id %}selected{% endif %}>
+                            {{ mes[1] }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mt-4">
+                    <a href="{{ url_for('secretaria_educacao.banco_questoes') }}" class="btn btn-secondary">
+                        <i class="bi bi-arrow-left"></i> Voltar ao Banco de Questões
+                    </a>
+                    <button type="button" class="btn btn-danger ms-2" onclick="excluirQuestao({{ questao.id }})">
+                        <i class="bi bi-trash"></i> Excluir Questão
+                    </button>
+                    <button type="submit" class="btn btn-success ms-2 d-none" id="btnSalvar">
+                        <i class="bi bi-check-lg"></i> Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+let campoAtual = null;
+
+function editarCampo(campo) {
+    // Se já estiver editando outro campo, salva primeiro
+    if (campoAtual && campoAtual !== campo) {
+        salvarCampo(campoAtual);
+    }
+
+    // Mostra/esconde os elementos do campo atual
+    const elementos = {
+        'serie': ['serie_id'],
+        'disciplina': ['disciplina_id'],
+        'assunto': ['assunto'],
+        'questao': ['questao', 'questao_texto'],
+        'alternativas': ['alternativas_edit', 'alternativas_texto'],
+        'mes': ['mes_id']
+    };
+
+    elementos[campo].forEach(id => {
+        const elemento = document.getElementById(id);
+        if (elemento) {
+            if (elemento.classList.contains('d-none')) {
+                elemento.classList.remove('d-none');
+            } else {
+                elemento.classList.add('d-none');
+            }
+        }
+    });
+
+    // Atualiza o botão de salvar
+    const btnSalvar = document.getElementById('btnSalvar');
+    if (campoAtual === campo) {
+        campoAtual = null;
+        btnSalvar.classList.add('d-none');
+    } else {
+        campoAtual = campo;
+        btnSalvar.classList.remove('d-none');
+    }
+}
+
+function excluirQuestao(id) {
+    if (confirm('Tem certeza que deseja excluir esta questão?')) {
+        window.location.href = "{{ url_for('secretaria_educacao.delete_questao', id=0) }}".replace('0', id);
+    }
+}
+</script>
+{% endblock %}
+{% endblock %}

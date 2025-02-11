@@ -20,9 +20,9 @@ def hash_password(password):
     """Gera um hash seguro da senha"""
     return generate_password_hash(password, method='pbkdf2:sha256:260000')
 
-def check_password(hashed_password, password):
+def check_password(password, hashed_password):
     """Verifica se a senha está correta"""
-    return check_password_hash(hashed_password, password)
+    return check_password_hash(hashed_password, password)  # Usa o check_password_hash do Werkzeug
 
 def check_login_attempts(email):
     """Verifica tentativas de login para prevenir brute force"""

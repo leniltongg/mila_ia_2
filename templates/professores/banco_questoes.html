@@ -1,21 +1,38 @@
 {% extends "professores/base_professores.html" %}
 
 {% block head %}
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js" defer></script>
-<script src="{{ url_for('static', filename='js/banco_questoes.js') }}" defer></script>
 <style>
+    .questao-container {
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background-color: #fff;
+    }
     .questao-preview {
         border: 1px solid #dee2e6;
         border-radius: 0.25rem;
         padding: 1rem;
         margin-bottom: 1rem;
     }
-    .alternativa-input {
+    .alternativa {
         margin-bottom: 0.5rem;
     }
-    .btn-remove-alternativa {
-        margin-left: 0.5rem;
+    .btn-action {
+        color: #0d6efd;
+        cursor: pointer;
+        padding: 0.25rem;
+        margin: 0 0.25rem;
+        transition: color 0.2s;
+    }
+    .btn-action:hover {
+        color: #0a58ca;
+    }
+    .btn-remove {
+        color: #dc3545;
+    }
+    .btn-remove:hover {
+        color: #bb2d3b;
     }
 </style>
 {% endblock %}
@@ -23,165 +40,297 @@
 {% block title %}Banco de Questões{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <!-- Formulário de Cadastro -->
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Cadastrar Nova Questão</h5>
-                </div>
-                <div class="card-body">
-                    <form id="questao-form">
-                        <!-- Disciplina e Assunto -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="disciplina" class="form-label">Disciplina</label>
-                                <select class="form-select select2" id="disciplina" required>
-                                    <option value="">Selecione...</option>
-                                    <option value="matematica">Matemática</option>
-                                    <option value="portugues">Português</option>
-                                    <option value="historia">História</option>
-                                    <option value="geografia">Geografia</option>
-                                    <option value="fisica">Física</option>
-                                    <option value="quimica">Química</option>
-                                    <option value="biologia">Biologia</option>
-                                    <option value="ingles">Inglês</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="assunto" class="form-label">Assunto</label>
-                                <input type="text" class="form-control" id="assunto" required>
-                            </div>
-                        </div>
-
-                        <!-- Nível e Tipo -->
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label for="nivel" class="form-label">Nível</label>
-                                <select class="form-select" id="nivel" required>
-                                    <option value="facil">Fácil</option>
-                                    <option value="medio">Médio</option>
-                                    <option value="dificil">Difícil</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="tipo" class="form-label">Tipo</label>
-                                <select class="form-select" id="tipo" required>
-                                    <option value="objetiva">Objetiva</option>
-                                    <option value="dissertativa">Dissertativa</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <!-- Enunciado -->
-                        <div class="mb-3">
-                            <label for="enunciado" class="form-label">Enunciado</label>
-                            <textarea class="form-control" id="enunciado" rows="4" required></textarea>
-                        </div>
-
-                        <!-- Alternativas (para questões objetivas) -->
-                        <div id="alternativas-container" class="mb-3" style="display: none;">
-                            <label class="form-label">Alternativas</label>
-                            <div id="alternativas-list">
-                                <!-- Alternativas serão adicionadas aqui -->
-                            </div>
-                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="adicionarAlternativa()">
-                                <i class="bi bi-plus-circle"></i> Adicionar Alternativa
-                            </button>
-                        </div>
-
-                        <!-- Resposta Correta -->
-                        <div class="mb-3">
-                            <label for="resposta" class="form-label">Resposta Correta</label>
-                            <textarea class="form-control" id="resposta" rows="2" required></textarea>
-                        </div>
-
-                        <!-- Explicação -->
-                        <div class="mb-3">
-                            <label for="explicacao" class="form-label">Explicação</label>
-                            <textarea class="form-control" id="explicacao" rows="3"></textarea>
-                        </div>
-
-                        <!-- Botões -->
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-save"></i> Salvar Questão
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="limparFormulario()">
-                                <i class="bi bi-eraser"></i> Limpar
-                            </button>
-                        </div>
-                    </form>
-                </div>
+<div class="container-fluid mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2>Banco de Questões</h2>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAdicionarQuestao">
+                    <i class="bi bi-plus-circle me-2"></i>Adicionar Questão
+                </button>
             </div>
         </div>
+    </div>
 
-        <!-- Pesquisa de Questões -->
-        <div class="col-md-6">
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Pesquisar Questões</h5>
-                </div>
                 <div class="card-body">
-                    <!-- Filtros -->
-                    <form id="pesquisa-form" class="mb-3">
-                        <div class="row g-2">
-                            <div class="col-md-6">
-                                <select class="form-select select2" id="filtro-disciplina">
-                                    <option value="">Todas as Disciplinas</option>
-                                    <option value="matematica">Matemática</option>
-                                    <option value="portugues">Português</option>
-                                    <option value="historia">História</option>
-                                    <option value="geografia">Geografia</option>
-                                    <option value="fisica">Física</option>
-                                    <option value="quimica">Química</option>
-                                    <option value="biologia">Biologia</option>
-                                    <option value="ingles">Inglês</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <input type="text" class="form-control" id="filtro-assunto" placeholder="Assunto">
-                            </div>
+                    <form id="filtroForm" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="filtro-serie" class="form-label">Série</label>
+                            <select class="form-select" id="filtro-serie">
+                                <option value="">Todas</option>
+                                {% for serie in series %}
+                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="row g-2 mt-2">
-                            <div class="col-md-6">
-                                <select class="form-select" id="filtro-nivel">
-                                    <option value="">Todos os Níveis</option>
-                                    <option value="facil">Fácil</option>
-                                    <option value="medio">Médio</option>
-                                    <option value="dificil">Difícil</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <select class="form-select" id="filtro-tipo">
-                                    <option value="">Todos os Tipos</option>
-                                    <option value="objetiva">Objetiva</option>
-                                    <option value="dissertativa">Dissertativa</option>
-                                </select>
-                            </div>
+                        <div class="col-md-4">
+                            <label for="filtro-disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="filtro-disciplina">
+                                <option value="">Todas</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                        <div class="d-grid mt-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-search"></i> Pesquisar
-                            </button>
+                        <div class="col-md-4">
+                            <label for="filtro-assunto" class="form-label">Assunto</label>
+                            <input type="text" class="form-control" id="filtro-assunto" placeholder="Digite o assunto">
                         </div>
                     </form>
-
-                    <!-- Resultados -->
-                    <div id="resultados">
-                        <!-- Questões encontradas serão exibidas aqui -->
-                    </div>
-
-                    <!-- Paginação -->
-                    <nav aria-label="Navegação de páginas" class="mt-3">
-                        <ul class="pagination justify-content-center" id="paginacao">
-                            <!-- Links de paginação serão adicionados aqui -->
-                        </ul>
-                    </nav>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Lista de Questões -->
+    <div class="row">
+        <div class="col-12">
+            <div id="questoes-lista"></div>
+            <div id="paginacao" class="d-flex justify-content-center mt-4"></div>
+        </div>
+    </div>
 </div>
+
+<!-- Modal Adicionar Questão -->
+<div class="modal fade" id="modalAdicionarQuestao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adicionar Nova Questão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="questaoForm">
+                    <!-- Série e Disciplina -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="serie_id" class="form-label">Série</label>
+                            <select class="form-select" id="serie_id" name="serie_id" required>
+                                <option value="">Selecione...</option>
+                                {% for serie in series %}
+                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="disciplina_id" class="form-label">Disciplina</label>
+                            <select class="form-select" id="disciplina_id" name="disciplina_id" required>
+                                <option value="">Selecione...</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Assunto -->
+                    <div class="mb-3">
+                        <label for="assunto" class="form-label">Assunto</label>
+                        <input type="text" class="form-control" id="assunto" name="assunto" required>
+                    </div>
+
+                    <!-- Questão -->
+                    <div class="mb-3">
+                        <label for="questao" class="form-label">Questão</label>
+                        <textarea class="form-control" id="questao" name="questao" rows="4" required></textarea>
+                    </div>
+
+                    <!-- Alternativas -->
+                    <div class="mb-3">
+                        <label class="form-label">Alternativas</label>
+                        <div class="alternativa">
+                            <label for="alternativa_a" class="form-label">A)</label>
+                            <input type="text" class="form-control" id="alternativa_a" name="alternativa_a" required>
+                        </div>
+                        <div class="alternativa">
+                            <label for="alternativa_b" class="form-label">B)</label>
+                            <input type="text" class="form-control" id="alternativa_b" name="alternativa_b" required>
+                        </div>
+                        <div class="alternativa">
+                            <label for="alternativa_c" class="form-label">C)</label>
+                            <input type="text" class="form-control" id="alternativa_c" name="alternativa_c" required>
+                        </div>
+                        <div class="alternativa">
+                            <label for="alternativa_d" class="form-label">D)</label>
+                            <input type="text" class="form-control" id="alternativa_d" name="alternativa_d" required>
+                        </div>
+                        <div class="alternativa">
+                            <label for="alternativa_e" class="form-label">E)</label>
+                            <input type="text" class="form-control" id="alternativa_e" name="alternativa_e">
+                        </div>
+                    </div>
+
+                    <!-- Resposta Correta -->
+                    <div class="mb-3">
+                        <label for="questao_correta" class="form-label">Alternativa Correta</label>
+                        <select class="form-select" id="questao_correta" name="questao_correta" required>
+                            <option value="">Selecione...</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                            <option value="E">E</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarQuestao()">Salvar Questão</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Visualizar Questão -->
+<div class="modal fade" id="modalVisualizarQuestao" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Visualizar Questão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="questao-preview" class="questao-preview"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Carregar questões quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    buscarQuestoes();
+    
+    // Event listeners para filtros
+    document.getElementById('filtro-serie').addEventListener('change', buscarQuestoes);
+    document.getElementById('filtro-disciplina').addEventListener('change', buscarQuestoes);
+    document.getElementById('filtro-assunto').addEventListener('change', buscarQuestoes);
+});
+
+async function buscarQuestoes() {
+    const serie = document.getElementById('filtro-serie').value;
+    const disciplina = document.getElementById('filtro-disciplina').value;
+    const assunto = document.getElementById('filtro-assunto').value;
+    
+    try {
+        const response = await fetch(`/professores/buscar-questoes?serie_id=${serie}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        const questoes = await response.json();
+        
+        const questoesLista = document.getElementById('questoes-lista');
+        questoesLista.innerHTML = questoes.map(questao => {
+            const questaoJSON = JSON.stringify(questao).replace(/"/g, '&quot;');
+            return `
+                <div class="questao-container">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="questao-texto">${questao.questao.substring(0, 100)}...</div>
+                            <small class="text-muted">
+                                ${questao.disciplina_nome} | ${questao.serie_nome} | ${questao.assunto}
+                            </small>
+                        </div>
+                        <div>
+                            <i class="bi bi-eye btn-action" onclick="visualizarQuestao(${questaoJSON})"></i>
+                            <i class="bi bi-trash btn-action btn-remove" onclick="excluirQuestao(${questao.id})"></i>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Erro ao buscar questões:', error);
+        alert('Erro ao buscar questões');
+    }
+}
+
+async function salvarQuestao() {
+    const formData = {
+        serie_id: parseInt(document.getElementById('serie_id').value),
+        disciplina_id: parseInt(document.getElementById('disciplina_id').value),
+        assunto: document.getElementById('assunto').value,
+        questao: document.getElementById('questao').value,
+        alternativa_a: document.getElementById('alternativa_a').value,
+        alternativa_b: document.getElementById('alternativa_b').value,
+        alternativa_c: document.getElementById('alternativa_c').value,
+        alternativa_d: document.getElementById('alternativa_d').value,
+        alternativa_e: document.getElementById('alternativa_e').value || null,
+        questao_correta: document.getElementById('questao_correta').value
+    };
+
+    try {
+        const response = await fetch('/professores/salvar-questao', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Questão salva com sucesso!');
+            document.getElementById('questaoForm').reset();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalAdicionarQuestao'));
+            modal.hide();
+            buscarQuestoes();  // Atualizar lista de questões
+        } else {
+            alert('Erro ao salvar questão: ' + data.error);
+        }
+    } catch (error) {
+        alert('Erro ao salvar questão: ' + error.message);
+    }
+}
+
+function visualizarQuestao(questao) {
+    const preview = document.getElementById('questao-preview');
+    preview.innerHTML = `
+        <div class="questao-header mb-3">
+            <div class="questao-info">
+                <strong>Disciplina:</strong> ${questao.disciplina_nome} |
+                <strong>Série:</strong> ${questao.serie_nome} |
+                <strong>Assunto:</strong> ${questao.assunto}
+            </div>
+        </div>
+        <div class="questao-texto mb-3">${questao.questao}</div>
+        <div class="alternativas">
+            <div class="alternativa">A) ${questao.alternativa_a}</div>
+            <div class="alternativa">B) ${questao.alternativa_b}</div>
+            <div class="alternativa">C) ${questao.alternativa_c}</div>
+            <div class="alternativa">D) ${questao.alternativa_d}</div>
+            ${questao.alternativa_e ? `<div class="alternativa">E) ${questao.alternativa_e}</div>` : ''}
+        </div>
+    `;
+    
+    const modal = new bootstrap.Modal(document.getElementById('modalVisualizarQuestao'));
+    modal.show();
+}
+
+async function excluirQuestao(id) {
+    if (!confirm('Tem certeza que deseja excluir esta questão?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/professores/excluir-questao/${id}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('Questão excluída com sucesso!');
+            buscarQuestoes();  // Atualizar lista de questões
+        } else {
+            alert('Erro ao excluir questão: ' + data.error);
+        }
+    } catch (error) {
+        alert('Erro ao excluir questão: ' + error.message);
+    }
+}
+</script>
 {% endblock %}
