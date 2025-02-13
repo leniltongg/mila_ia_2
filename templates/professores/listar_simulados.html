@@ -37,18 +37,32 @@
                                             <span class="badge bg-warning text-dark">Gerado</span>
                                         {% endif %}
                                     </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-info" onclick="visualizarSimulado({{ simulado.id }})">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        {% if simulado.status == 'gerado' %}
-                                        <button class="btn btn-sm btn-success" onclick="enviarParaAlunos({{ simulado.id }})">
-                                            <i class="bi bi-send"></i>
-                                        </button>
-                                        {% endif %}
-                                        <button class="btn btn-sm btn-danger" onclick="excluirSimulado({{ simulado.id }})">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                    <td class="text-center">
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-info" onclick="visualizarSimulado({{ simulado.id }})" title="Visualizar">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                            
+                                            {% if simulado.status == 'gerado' %}
+                                            <button class="btn btn-sm btn-primary" onclick="editarSimulado({{ simulado.id }})" title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            {% if simulado.status == 'enviado' %}
+                                            <button class="btn btn-sm btn-danger" onclick="cancelarEnvioSimulado({{ simulado.id }})" title="Cancelar Envio">
+                                                <i class="bi bi-x-circle"></i>
+                                            </button>
+                                            {% else %}
+                                            <button class="btn btn-sm btn-success" onclick="enviarParaAlunos({{ simulado.id }})" title="Enviar">
+                                                <i class="bi bi-send"></i>
+                                            </button>
+                                            {% endif %}
+                                            
+                                            <button class="btn btn-sm btn-danger" onclick="excluirSimulado({{ simulado.id }})" title="Excluir">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -134,7 +148,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Função para visualizar simulado
 async function visualizarSimulado(simuladoId) {
     try {
-        const response = await fetch(`/professores/visualizar-simulado/${simuladoId}`);
+        const response = await fetch(`/professores/api/visualizar-simulado/${simuladoId}`);
         if (!response.ok) throw new Error('Erro ao carregar detalhes do simulado');
         
         const detalhes = await response.json();
@@ -142,22 +156,35 @@ async function visualizarSimulado(simuladoId) {
         
         // Atualiza o conteúdo do modal
         modalBody.innerHTML = `
-            <h6>Disciplina: ${detalhes.disciplina_nome}</h6>
-            <h6>Mês: ${detalhes.mes_nome}</h6>
+            <div class="mb-4">
+                <h6><strong>Disciplina:</strong> ${detalhes.disciplina_nome}</h6>
+                <h6><strong>Série:</strong> ${detalhes.serie_nome}</h6>
+                <h6><strong>Mês:</strong> ${detalhes.mes_nome}</h6>
+                <h6><strong>Data de Criação:</strong> ${detalhes.data_criacao}</h6>
+                <h6><strong>Status:</strong> 
+                    <span class="badge ${detalhes.status === 'enviado' ? 'bg-success' : 'bg-warning text-dark'}">
+                        ${detalhes.status === 'enviado' ? 'Enviado' : 'Gerado'}
+                    </span>
+                </h6>
+            </div>
             <hr>
             <div class="questoes-lista">
                 ${detalhes.questoes.map((q, index) => `
-                    <div class="questao mb-3">
-                        <strong>Questão ${index + 1}:</strong>
-                        <p>${q.enunciado}</p>
+                    <div class="questao mb-4">
+                        <h6><strong>Questão ${index + 1}</strong></h6>
+                        <p class="mb-3">${q.enunciado}</p>
                         <div class="alternativas ms-3">
                             ${q.alternativas.map(alt => `
-                                <div class="alternativa ${alt.correta ? 'text-success fw-bold' : ''}">
+                                <div class="alternativa mb-2 ${alt.correta ? 'text-success fw-bold' : ''}">
                                     ${alt.letra}) ${alt.texto}
                                 </div>
                             `).join('')}
                         </div>
+                        <div class="mt-2">
+                            <small class="text-muted"><strong>Assunto:</strong> ${q.assunto}</small>
+                        </div>
                     </div>
+                    ${index < detalhes.questoes.length - 1 ? '<hr>' : ''}
                 `).join('')}
             </div>
         `;
@@ -178,6 +205,11 @@ async function enviarParaAlunos(simuladoId) {
         if (!response.ok) throw new Error('Erro ao carregar turmas');
         
         const turmas = await response.json();
+        if (!Array.isArray(turmas) || turmas.length === 0) {
+            alert('Não há turmas disponíveis para envio');
+            return;
+        }
+        
         const listaTurmas = document.getElementById('lista-turmas');
         document.getElementById('simulado-id-envio').value = simuladoId;
         
@@ -185,7 +217,7 @@ async function enviarParaAlunos(simuladoId) {
         listaTurmas.innerHTML = turmas.map(turma => `
             <div class="list-group-item">
                 <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="${turma.id}" id="turma-${turma.id}">
+                    <input class="form-check-input" type="checkbox" value="${turma.id}" id="turma-${turma.id}" name="turmas">
                     <label class="form-check-label" for="turma-${turma.id}">
                         ${turma.nome}
                     </label>
@@ -196,22 +228,23 @@ async function enviarParaAlunos(simuladoId) {
         // Define a data mínima como hoje
         const hoje = new Date().toISOString().split('T')[0];
         document.getElementById('data-limite').min = hoje;
+        document.getElementById('data-limite').value = hoje;
         
         // Abre o modal
         const modal = new bootstrap.Modal(document.getElementById('modalEnviarSimulado'));
         modal.show();
+        
     } catch (error) {
         console.error('Erro:', error);
         alert('Erro ao carregar turmas');
     }
 }
 
-// Função para confirmar envio do simulado
+// Função para confirmar envio
 async function confirmarEnvio() {
     const simuladoId = document.getElementById('simulado-id-envio').value;
     const dataLimite = document.getElementById('data-limite').value;
-    const turmasSelecionadas = Array.from(document.querySelectorAll('#lista-turmas input[type="checkbox"]:checked'))
-        .map(cb => cb.value);
+    const turmasSelecionadas = Array.from(document.querySelectorAll('input[name="turmas"]:checked')).map(cb => cb.value);
     
     if (!dataLimite) {
         alert('Por favor, selecione uma data limite');
@@ -227,7 +260,7 @@ async function confirmarEnvio() {
         const response = await fetch('/professores/enviar-simulado', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 simulado_id: simuladoId,
@@ -239,19 +272,17 @@ async function confirmarEnvio() {
         if (!response.ok) throw new Error('Erro ao enviar simulado');
         
         const result = await response.json();
-        if (result.success) {
-            alert('Simulado enviado com sucesso!');
-            // Fechar o modal
-            const modal = bootstrap.Modal.getInstance(document.getElementById('modalEnviarSimulado'));
-            modal.hide();
-            // Recarregar a página
-            window.location.reload();
-        } else {
-            throw new Error(result.error || 'Erro ao enviar simulado');
-        }
+        alert(result.message);
+        
+        // Fecha o modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalEnviarSimulado'));
+        modal.hide();
+        
+        // Atualiza a página para mostrar o novo status
+        location.reload();
     } catch (error) {
         console.error('Erro:', error);
-        alert('Erro ao enviar simulado: ' + error.message);
+        alert('Erro ao enviar simulado');
     }
 }
 
@@ -279,6 +310,41 @@ async function excluirSimulado(simuladoId) {
         console.error('Erro:', error);
         alert('Erro ao excluir simulado: ' + error.message);
     }
+}
+
+// Função para cancelar envio do simulado
+async function cancelarEnvioSimulado(simuladoId) {
+    if (!confirm('Tem certeza que deseja cancelar o envio deste simulado? Isso removerá o acesso dos alunos a ele.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/professores/cancelar-envio-simulado/${simuladoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao cancelar envio do simulado');
+        }
+        
+        alert('Envio do simulado cancelado com sucesso!');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    } catch (error) {
+        console.error('Erro ao cancelar envio:', error);
+        alert('Erro ao cancelar envio: ' + error.message);
+    }
+}
+
+// Função para editar simulado
+function editarSimulado(simuladoId) {
+    window.location.href = `/professores/criar-simulado?id=${simuladoId}`;
 }
 </script>
 {% endblock %}

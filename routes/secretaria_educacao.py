@@ -1,8 +1,28 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify, send_file
 from flask_login import login_required, current_user
 import sqlite3
 import os
 from werkzeug.utils import secure_filename
+import pandas as pd
+from weasyprint import HTML
+import tempfile
+from io import BytesIO
+
+# Dicionário de meses
+MESES = {
+    1: 'Janeiro',
+    2: 'Fevereiro',
+    3: 'Março',
+    4: 'Abril',
+    5: 'Maio',
+    6: 'Junho',
+    7: 'Julho',
+    8: 'Agosto',
+    9: 'Setembro',
+    10: 'Outubro',
+    11: 'Novembro',
+    12: 'Dezembro'
+}
 
 # Registrando o Blueprint com url_prefix
 secretaria_educacao_bp = Blueprint('secretaria_educacao', __name__, url_prefix='/secretaria_educacao')
@@ -394,6 +414,16 @@ def relatorios_dashboard():
         faixa_61_80=faixas[3],
         faixa_81_100=faixas[4]
     )
+
+@secretaria_educacao_bp.route('/relatorios_gerenciais')
+@login_required
+def relatorios_gerenciais():
+    """Página de relatórios gerenciais."""
+    if current_user.tipo_usuario_id != 5:  # Verifica se é secretaria
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    return render_template('secretaria_educacao/relatorios_gerenciais.html')
 
 @secretaria_educacao_bp.route("/portal_secretaria_educacao", methods=["GET", "POST"])
 @login_required
@@ -842,3 +872,2225 @@ def atualizar_questao(questao_id):
     except Exception as e:
         print(f"Erro ao atualizar questão: {str(e)}")  # Log do erro
         return jsonify({'success': False, 'message': str(e)}), 500
+
+@secretaria_educacao_bp.route('/relatorio_rede_municipal')
+@login_required
+def relatorio_rede_municipal():
+    """Relatório de desempenho da rede municipal."""
+    if current_user.tipo_usuario_id != 5:  # Verifica se é secretaria
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Buscar o `codigo_ibge` do usuário
+    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+    codigo_ibge = cursor.fetchone()[0]
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Buscar dados gerais
+    total_escolas = cursor.execute('SELECT COUNT(*) as total FROM escolas WHERE codigo_ibge = ?', (codigo_ibge,)).fetchone()['total']
+    total_alunos = cursor.execute('SELECT COUNT(*) as total FROM usuarios WHERE codigo_ibge = ? AND tipo_usuario_id = 4', (codigo_ibge,)).fetchone()['total']
+    
+    # Query para total de simulados com filtro de data
+    total_simulados_query = '''
+        SELECT COUNT(DISTINCT simulado_id) as total 
+        FROM desempenho_simulado 
+        WHERE codigo_ibge = ? AND ''' + data_condition
+    
+    total_simulados = cursor.execute(total_simulados_query, [codigo_ibge] + data_params).fetchone()['total']
+    
+    # Buscar dados de cada escola
+    query_params = [codigo_ibge] + data_params
+    rows = cursor.execute(f'''
+        SELECT 
+            e.id,
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4 AND u.codigo_ibge = ?
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ? 
+            AND {data_condition}
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola
+        ORDER BY media DESC
+    ''', [codigo_ibge, codigo_ibge] + data_params + [codigo_ibge]).fetchall()
+    
+    # Converter rows para lista de dicionários e formatar datas
+    escolas = []
+    total_alunos_ativos = 0
+    soma_medias_ponderadas = 0
+    
+    for row in rows:
+        escola = dict(row)
+        total_alunos_ativos += escola['alunos_ativos']
+        soma_medias_ponderadas += escola['media'] * escola['alunos_ativos']
+        escolas.append(escola)
+    
+    # Calcular média geral ponderada
+    media_geral = soma_medias_ponderadas / total_alunos_ativos if total_alunos_ativos > 0 else 0.0
+    
+    # Buscar desempenho por disciplina
+    disciplinas_query = f'''
+        WITH SimuladosDisciplinas AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                CASE 
+                    WHEN ds.tipo_usuario_id = 5 THEN sg.disciplina_id
+                    WHEN ds.tipo_usuario_id = 3 THEN sgp.disciplina_id
+                END as disciplina_id
+            FROM desempenho_simulado ds
+            LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+            LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+            WHERE ds.codigo_ibge = ? AND {data_condition}
+        ),
+        DesempenhoDisciplina AS (
+            SELECT 
+                d.id,
+                d.nome as disciplina,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(DISTINCT sd.simulado_id) as total_questoes,
+                ROUND(AVG(sd.desempenho), 1) as media_acertos
+            FROM disciplinas d
+            LEFT JOIN SimuladosDisciplinas sd ON sd.disciplina_id = d.id
+            GROUP BY d.id, d.nome
+            HAVING total_alunos > 0
+            ORDER BY media_acertos DESC
+        )
+        SELECT *
+        FROM DesempenhoDisciplina
+    '''
+    
+    disciplinas = cursor.execute(disciplinas_query, [codigo_ibge] + data_params).fetchall()
+    disciplinas = [dict(d) for d in disciplinas]
+    
+    # Preparar dados para o gráfico de disciplinas
+    disciplinas_nomes = [d['disciplina'] for d in disciplinas]
+    disciplinas_medias = [float(d['media_acertos']) for d in disciplinas]
+    
+    # Buscar desempenho por série (1º ao 9º ano)
+    series_query = f'''
+        WITH DesempenhoSerie AS (
+            SELECT 
+                s.id,
+                s.nome as serie_nome,
+                COUNT(DISTINCT u.id) as total_alunos,
+                COUNT(DISTINCT ud.aluno_id) as alunos_ativos,
+                COALESCE(AVG(ud.desempenho), 0) as media
+            FROM series s
+            LEFT JOIN usuarios u ON u.serie_id = s.id AND u.tipo_usuario_id = 4 AND u.codigo_ibge = ?
+            LEFT JOIN desempenho_simulado ud ON ud.aluno_id = u.id AND {data_condition}
+            WHERE s.id BETWEEN 1 AND 9
+            GROUP BY s.id, s.nome
+            ORDER BY s.id
+        )
+        SELECT *
+        FROM DesempenhoSerie
+    '''
+    
+    series = cursor.execute(series_query, [codigo_ibge] + data_params).fetchall()
+    series = [dict(s) for s in series]
+    
+    # Preparar dados para o gráfico de séries
+    series_nomes = [s['serie_nome'] for s in series]
+    series_medias = [float(s['media']) for s in series]
+    
+    # Buscar desempenho por escola
+    escolas_query = f'''
+        SELECT 
+            e.id,
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4 AND u.codigo_ibge = ?
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id AND {data_condition}
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola
+        ORDER BY media DESC
+    '''
+    
+    escolas = cursor.execute(escolas_query, [codigo_ibge] + data_params + [codigo_ibge]).fetchall()
+    escolas = [dict(e) for e in escolas]
+    
+    # Preparar dados para o gráfico de escolas
+    escolas_nomes = [e['nome'] for e in escolas]
+    escolas_medias = [float(e['media']) for e in escolas]
+    
+    return render_template(
+        'secretaria_educacao/relatorio_rede_municipal.html',
+        escolas=escolas,
+        total_escolas=total_escolas,
+        total_alunos=total_alunos,
+        total_simulados=total_simulados,
+        media_geral=f"{media_geral:.1f}",
+        disciplinas=disciplinas,
+        disciplinas_nomes=disciplinas_nomes,
+        disciplinas_medias=disciplinas_medias,
+        series=series,
+        series_nomes=series_nomes,
+        series_medias=series_medias,
+        escolas_nomes=escolas_nomes,
+        escolas_medias=escolas_medias,
+        mes=mes,
+        ano=ano
+    )
+
+@secretaria_educacao_bp.route('/relatorio_rede_municipal/export_pdf')
+@login_required
+def export_pdf_relatorio():
+    """Exportar relatório em PDF."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Buscar o `codigo_ibge` do usuário
+    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+    codigo_ibge = cursor.fetchone()[0]
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Buscar dados gerais
+    total_escolas = cursor.execute('SELECT COUNT(*) as total FROM escolas WHERE codigo_ibge = ?', (codigo_ibge,)).fetchone()['total']
+    total_alunos = cursor.execute('SELECT COUNT(*) as total FROM usuarios WHERE codigo_ibge = ? AND tipo_usuario_id = 4', (codigo_ibge,)).fetchone()['total']
+    
+    # Query para total de simulados com filtro de data
+    total_simulados_query = '''
+        SELECT COUNT(DISTINCT simulado_id) as total 
+        FROM desempenho_simulado 
+        WHERE codigo_ibge = ? AND ''' + data_condition
+    
+    total_simulados = cursor.execute(total_simulados_query, [codigo_ibge] + data_params).fetchone()['total']
+    
+    # Buscar dados das escolas
+    query_params = [codigo_ibge] + data_params
+    rows = cursor.execute(f'''
+        SELECT 
+            e.id,
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4 AND u.codigo_ibge = ?
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ? 
+            AND {data_condition}
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola
+        ORDER BY media DESC
+    ''', [codigo_ibge, codigo_ibge] + data_params + [codigo_ibge]).fetchall()
+    
+    # Converter rows para lista de dicionários
+    escolas = [dict(row) for row in rows]
+    
+    # Calcular média geral ponderada
+    total_alunos_ativos = sum(escola['alunos_ativos'] for escola in escolas)
+    soma_medias_ponderadas = sum(escola['media'] * escola['alunos_ativos'] for escola in escolas)
+    media_geral = soma_medias_ponderadas / total_alunos_ativos if total_alunos_ativos > 0 else 0.0
+    
+    # Buscar desempenho por disciplina
+    disciplinas_query = f'''
+        WITH SimuladosDisciplinas AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                CASE 
+                    WHEN ds.tipo_usuario_id = 5 THEN sg.disciplina_id
+                    WHEN ds.tipo_usuario_id = 3 THEN sgp.disciplina_id
+                END as disciplina_id
+            FROM desempenho_simulado ds
+            LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+            LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+            WHERE ds.codigo_ibge = ? AND {data_condition}
+        ),
+        DesempenhoDisciplina AS (
+            SELECT 
+                d.id,
+                d.nome as disciplina,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(DISTINCT sd.simulado_id) as total_questoes,
+                ROUND(AVG(sd.desempenho), 1) as media_acertos
+            FROM disciplinas d
+            LEFT JOIN SimuladosDisciplinas sd ON sd.disciplina_id = d.id
+            GROUP BY d.id, d.nome
+            HAVING total_alunos > 0
+            ORDER BY media_acertos DESC
+        )
+        SELECT *
+        FROM DesempenhoDisciplina
+    '''
+    
+    disciplinas = cursor.execute(disciplinas_query, [codigo_ibge] + data_params).fetchall()
+    disciplinas = [dict(d) for d in disciplinas]
+    
+    # Preparar dados para o gráfico de disciplinas
+    disciplinas_nomes = [d['disciplina'] for d in disciplinas]
+    disciplinas_medias = [float(d['media_acertos']) for d in disciplinas]
+    
+    # Renderizar o template HTML para PDF
+    html_content = render_template(
+        'secretaria_educacao/relatorio_rede_municipal_pdf.html',  # Template específico para PDF
+        escolas=escolas,
+        total_escolas=total_escolas,
+        total_alunos=total_alunos,
+        total_simulados=total_simulados,
+        media_geral=f"{media_geral:.1f}",
+        disciplinas=disciplinas,
+        disciplinas_nomes=disciplinas_nomes,
+        disciplinas_medias=disciplinas_medias,
+        escolas_nomes=[e['nome'] for e in escolas],
+        escolas_medias=[float(e['media']) for e in escolas],
+        mes=mes,
+        ano=ano
+    )
+    
+    # Criar PDF usando WeasyPrint
+    pdf = HTML(string=html_content).write_pdf()
+    
+    # Retornar o PDF como download
+    return send_file(
+        BytesIO(pdf),
+        download_name='relatorio_rede_municipal.pdf',
+        mimetype='application/pdf'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_rede_municipal/export_excel')
+@login_required
+def export_excel_relatorio():
+    """Exportar relatório em Excel."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Buscar o `codigo_ibge` do usuário
+    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+    codigo_ibge = cursor.fetchone()[0]
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Criar um Excel writer
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='openpyxl')
+    
+    # Aba Visão Geral - Dados das escolas
+    escolas_query = f'''
+        SELECT 
+            e.id,
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4 AND u.codigo_ibge = ?
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id AND {data_condition}
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola
+        ORDER BY media DESC
+    '''
+    
+    escolas = cursor.execute(escolas_query, [codigo_ibge] + data_params + [codigo_ibge]).fetchall()
+    df_escolas = pd.DataFrame([dict(row) for row in escolas])
+    if not df_escolas.empty:
+        df_escolas = df_escolas.rename(columns={
+            'nome': 'Escola',
+            'total_alunos': 'Total de Alunos',
+            'alunos_ativos': 'Alunos Ativos',
+            'media': 'Média (%)'
+        })
+        df_escolas['Média (%)'] = df_escolas['Média (%)'].round(1)
+        df_escolas.drop('id', axis=1, inplace=True)
+    df_escolas.to_excel(writer, sheet_name='Visão Geral', index=False)
+    
+    # Aba Desempenho por Disciplina
+    disciplinas_query = f'''
+        WITH SimuladosDisciplinas AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                CASE 
+                    WHEN ds.tipo_usuario_id = 5 THEN sg.disciplina_id
+                    WHEN ds.tipo_usuario_id = 3 THEN sgp.disciplina_id
+                END as disciplina_id
+            FROM desempenho_simulado ds
+            LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+            LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+            WHERE ds.codigo_ibge = ? AND {data_condition}
+        ),
+        DesempenhoDisciplina AS (
+            SELECT 
+                d.nome as disciplina,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(DISTINCT sd.simulado_id) as total_questoes,
+                ROUND(AVG(sd.desempenho), 1) as media_acertos
+            FROM disciplinas d
+            LEFT JOIN SimuladosDisciplinas sd ON sd.disciplina_id = d.id
+            GROUP BY d.id, d.nome
+            HAVING total_alunos > 0
+            ORDER BY media_acertos DESC
+        )
+        SELECT *
+        FROM DesempenhoDisciplina
+    '''
+    
+    disciplinas = cursor.execute(disciplinas_query, [codigo_ibge] + data_params).fetchall()
+    df_disciplinas = pd.DataFrame([dict(row) for row in disciplinas])
+    if not df_disciplinas.empty:
+        df_disciplinas = df_disciplinas.rename(columns={
+            'disciplina': 'Disciplina',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media_acertos': 'Média de Acertos (%)'
+        })
+    df_disciplinas.to_excel(writer, sheet_name='Desempenho por Disciplina', index=False)
+
+    # Buscar todas as séries
+    series = cursor.execute('''
+        SELECT id, nome 
+        FROM series 
+        ORDER BY id
+    ''').fetchall()
+
+    # Para cada série, criar uma aba com desempenho por escola
+    for serie in series:
+        serie_id = serie['id']
+        serie_nome = serie['nome']
+        
+        # Query para buscar dados da série específica
+        query = f'''
+            WITH DadosSerie AS (
+                SELECT 
+                    e.id as escola_id,
+                    e.nome_da_escola,
+                    COUNT(DISTINCT u.id) as total_alunos,
+                    COUNT(DISTINCT ds.aluno_id) as alunos_responderam,
+                    COALESCE(AVG(ds.desempenho), 0) as media_geral
+                FROM escolas e
+                LEFT JOIN usuarios u ON u.escola_id = e.id 
+                    AND u.tipo_usuario_id = 4 
+                    AND u.serie_id = ? 
+                    AND u.codigo_ibge = ?
+                LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+                    AND {data_condition}
+                WHERE e.codigo_ibge = ?
+                GROUP BY e.id, e.nome_da_escola
+            ),
+            DesempenhoDisciplina AS (
+                SELECT 
+                    u.escola_id,
+                    d.nome as disciplina,
+                    COALESCE(AVG(ds.desempenho), 0) as media_disciplina
+                FROM desempenho_simulado ds
+                JOIN usuarios u ON u.id = ds.aluno_id 
+                    AND u.serie_id = ? 
+                    AND u.codigo_ibge = ?
+                JOIN disciplinas d ON d.id = (
+                    CASE 
+                        WHEN ds.tipo_usuario_id = 5 THEN (SELECT disciplina_id FROM simulados_gerados WHERE id = ds.simulado_id)
+                        WHEN ds.tipo_usuario_id = 3 THEN (SELECT disciplina_id FROM simulados_gerados_professor WHERE id = ds.simulado_id)
+                    END
+                )
+                WHERE ds.codigo_ibge = ? 
+                    AND {data_condition}
+                GROUP BY u.escola_id, d.nome
+            )
+            SELECT 
+                ds.*,
+                dd.disciplina,
+                dd.media_disciplina
+            FROM DadosSerie ds
+            LEFT JOIN DesempenhoDisciplina dd ON dd.escola_id = ds.escola_id
+            WHERE ds.total_alunos > 0
+            ORDER BY ds.media_geral DESC
+        '''
+        
+        params = [serie_id, codigo_ibge] + data_params + [codigo_ibge, serie_id, codigo_ibge, codigo_ibge] + data_params
+        rows = cursor.execute(query, params).fetchall()
+        
+        # Transformar os dados em um DataFrame
+        df_serie = pd.DataFrame([dict(row) for row in rows])
+        
+        if not df_serie.empty:
+            # Renomear colunas para melhor legibilidade
+            df_serie = df_serie.rename(columns={
+                'nome_da_escola': 'Escola',
+                'total_alunos': 'Total de Alunos',
+                'alunos_responderam': 'Alunos Ativos',
+                'media_geral': 'Média Geral (%)'
+            })
+
+            # Arredondar médias para uma casa decimal
+            df_serie['Média Geral (%)'] = df_serie['Média Geral (%)'].round(1)
+            
+            # Pivotear a tabela para ter disciplinas como colunas
+            if 'disciplina' in df_serie.columns:
+                df_pivot = df_serie.pivot_table(
+                    index=['escola_id', 'Escola', 'Total de Alunos', 'Alunos Ativos', 'Média Geral (%)'],
+                    columns='disciplina',
+                    values='media_disciplina',
+                    aggfunc='first'
+                ).reset_index()
+                
+                # Arredondar médias das disciplinas
+                for col in df_pivot.columns:
+                    if col not in ['escola_id', 'Escola', 'Total de Alunos', 'Alunos Ativos', 'Média Geral (%)']:
+                        df_pivot[col] = df_pivot[col].round(1)
+                        df_pivot = df_pivot.rename(columns={col: f'{col} (%)'})
+                
+                # Remover coluna escola_id
+                df_pivot.drop('escola_id', axis=1, inplace=True)
+                
+                # Salvar na planilha
+                df_pivot.to_excel(writer, sheet_name=serie_nome, index=False)
+            else:
+                # Se não houver dados de disciplinas, salvar apenas os dados gerais
+                df_serie.drop(['escola_id', 'disciplina', 'media_disciplina'], axis=1, errors='ignore', inplace=True)
+                df_serie.to_excel(writer, sheet_name=serie_nome, index=False)
+    
+    writer.close()
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name='relatorio_rede_municipal.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+def get_relatorio_data():
+    cursor = get_db().cursor()
+    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+    codigo_ibge = cursor.fetchone()[0]
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+        
+    # Buscar todos os dados necessários para o relatório
+    # ... (resto do código atual da função relatorio_rede_municipal)
+    
+    return {
+        'codigo_ibge': codigo_ibge,
+        'mes': mes,
+        'ano': ano,
+        'escolas': escolas,
+        'total_escolas': total_escolas,
+        'total_alunos': total_alunos,
+        'total_simulados': total_simulados,
+        'media_geral': media_geral,
+        'disciplinas': disciplinas,
+        'disciplinas_nomes': disciplinas_nomes,
+        'disciplinas_medias': disciplinas_medias
+    }
+
+@secretaria_educacao_bp.route('/relatorio_escola')
+@secretaria_educacao_bp.route('/relatorio_escola')
+@login_required
+def relatorio_escola():
+    """Página de relatório por escola."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Buscar o `codigo_ibge` do usuário
+    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+    codigo_ibge = cursor.fetchone()[0]
+    
+    # Buscar todas as escolas do município
+    cursor.execute("""
+        SELECT id, nome_da_escola as nome
+        FROM escolas
+        WHERE codigo_ibge = ?
+        ORDER BY nome_da_escola
+    """, [codigo_ibge])
+    escolas = cursor.fetchall()
+    
+    # Obter escola_id e mês da query string
+    escola_id = request.args.get('escola_id', type=int)
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Se uma escola foi selecionada, buscar seus dados
+    if escola_id:
+        # Construir a condição de data
+        data_condition = "strftime('%Y', data_resposta) = ?"
+        data_params = [str(ano)]
+        
+        if mes:
+            data_condition += " AND strftime('%m', data_resposta) = ?"
+            data_params.append(f"{mes:02d}")
+        
+        # Buscar dados gerais da escola
+        cursor.execute(f"""
+            SELECT 
+                e.nome_da_escola as nome,
+                COUNT(DISTINCT u.id) as total_alunos,
+                COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+                COUNT(DISTINCT ds.simulado_id) as total_simulados,
+                COALESCE(AVG(ds.desempenho), 0) as media_geral
+            FROM escolas e
+            LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id AND {data_condition}
+            WHERE e.id = ?
+            GROUP BY e.id, e.nome_da_escola
+        """, data_params + [escola_id])
+        escola = cursor.fetchone()
+        
+        # Buscar dados por série
+        cursor.execute(f"""
+            SELECT 
+                s.id,
+                s.nome,
+                COUNT(DISTINCT u.id) as total_alunos,
+                COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+                COALESCE(AVG(ds.desempenho), 0) as media
+            FROM series s
+            LEFT JOIN usuarios u ON u.serie_id = s.id 
+                AND u.tipo_usuario_id = 4 
+                AND u.escola_id = ?
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+                AND {data_condition}
+            GROUP BY s.id, s.nome
+            ORDER BY s.id
+        """, [escola_id] + data_params)
+        series = cursor.fetchall()
+        
+        # Buscar dados por disciplina
+        cursor.execute(f"""
+            WITH SimuladosDisciplinas AS (
+                SELECT 
+                    ds.aluno_id,
+                    ds.simulado_id,
+                    ds.desempenho,
+                    CASE 
+                        WHEN ds.tipo_usuario_id = 5 THEN sg.disciplina_id
+                        WHEN ds.tipo_usuario_id = 3 THEN sgp.disciplina_id
+                    END as disciplina_id
+                FROM desempenho_simulado ds
+                LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+                LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+                JOIN usuarios u ON u.id = ds.aluno_id AND u.escola_id = ?
+                WHERE {data_condition}
+            )
+            SELECT 
+                d.nome as disciplina,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(DISTINCT sd.simulado_id) as total_questoes,
+                ROUND(AVG(sd.desempenho), 1) as media_acertos
+            FROM disciplinas d
+            LEFT JOIN SimuladosDisciplinas sd ON sd.disciplina_id = d.id
+            GROUP BY d.id, d.nome
+            HAVING total_alunos > 0
+            ORDER BY media_acertos DESC
+        """, [escola_id] + data_params)
+        disciplinas = cursor.fetchall()
+
+        # Buscar dados por turma
+        cursor.execute(f"""
+            SELECT 
+                t.id,
+                t.turma,
+                COUNT(DISTINCT u.id) as total_alunos,
+                COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+                COALESCE(AVG(ds.desempenho), 0) as media
+            FROM turmas t
+            LEFT JOIN usuarios u ON u.turma_id = t.id 
+                AND u.tipo_usuario_id = 1  -- Alunos
+                AND u.escola_id = ?
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+                AND {data_condition}
+            GROUP BY t.id, t.turma
+            HAVING total_alunos > 0
+            ORDER BY t.turma
+        """, [escola_id] + data_params)
+        turmas = cursor.fetchall()
+
+        # Buscar dados dos alunos por turma
+        cursor.execute(f"""
+            SELECT 
+                t.id as turma_id,
+                u.id as aluno_id,
+                u.nome as aluno_nome,
+                COUNT(DISTINCT ds.simulado_id) as total_simulados,
+                COALESCE(AVG(ds.desempenho), 0) as media
+            FROM turmas t
+            JOIN usuarios u ON u.turma_id = t.id 
+                AND u.tipo_usuario_id = 1  -- Alunos
+                AND u.escola_id = ?
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+                AND {data_condition}
+            GROUP BY t.id, t.turma, u.id, u.nome
+            ORDER BY t.turma, u.nome
+        """, [escola_id] + data_params)
+        alunos = cursor.fetchall()
+        
+        return render_template('secretaria_educacao/relatorio_escola.html',
+                             ano=ano,
+                             mes=mes,
+                             escolas=escolas,
+                             escola_id=escola_id,
+                             media_geral=round(escola['media_geral'], 1),
+                             total_alunos=escola['total_alunos'],
+                             alunos_ativos=escola['alunos_ativos'],
+                             total_simulados=escola['total_simulados'],
+                             series=series,
+                             disciplinas=disciplinas,
+                             turmas=turmas,
+                             alunos=alunos)
+    
+    return render_template('secretaria_educacao/relatorio_escola.html',
+                         ano=ano,
+                         mes=mes,
+                         escolas=escolas,
+                         escola_id=None)
+
+                         
+@secretaria_educacao_bp.route('/relatorio_escola/export_pdf')
+@login_required
+def export_pdf_escola():
+    """Exportar relatório da escola em PDF."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter escola_id e mês da query string
+    escola_id = request.args.get('escola_id', type=int)
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    if not escola_id:
+        flash("Escola não especificada.", "danger")
+        return redirect(url_for("secretaria_educacao.relatorio_escola"))
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Buscar dados da escola
+    cursor.execute(f"""
+        SELECT 
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COUNT(DISTINCT ds.simulado_id) as total_simulados,
+            COALESCE(AVG(ds.desempenho), 0) as media_geral
+        FROM escolas e
+        LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id AND {data_condition}
+        WHERE e.id = ?
+        GROUP BY e.id, e.nome_da_escola
+    """, data_params + [escola_id])
+    escola = cursor.fetchone()
+    
+    # Buscar dados por série
+    cursor.execute(f"""
+        SELECT 
+            s.id,
+            s.nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM series s
+        LEFT JOIN usuarios u ON u.serie_id = s.id 
+            AND u.tipo_usuario_id = 4 
+            AND u.escola_id = ?
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND {data_condition}
+        GROUP BY s.id, s.nome
+        ORDER BY s.id
+    """, [escola_id] + data_params)
+    series = cursor.fetchall()
+    
+    # Buscar dados por disciplina
+    cursor.execute(f"""
+        WITH SimuladosDisciplinas AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                CASE 
+                    WHEN ds.tipo_usuario_id = 5 THEN sg.disciplina_id
+                    WHEN ds.tipo_usuario_id = 3 THEN sgp.disciplina_id
+                END as disciplina_id
+            FROM desempenho_simulado ds
+            LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+            LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+            JOIN usuarios u ON u.id = ds.aluno_id AND u.escola_id = ?
+            WHERE {data_condition}
+        )
+        SELECT 
+            d.nome as disciplina,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(DISTINCT sd.simulado_id) as total_questoes,
+            ROUND(AVG(sd.desempenho), 1) as media_acertos
+        FROM disciplinas d
+        LEFT JOIN SimuladosDisciplinas sd ON sd.disciplina_id = d.id
+        GROUP BY d.id, d.nome
+        HAVING total_alunos > 0
+        ORDER BY media_acertos DESC
+    """, [escola_id] + data_params)
+    disciplinas = cursor.fetchall()
+    
+    # Renderizar o template HTML
+    html = render_template('secretaria_educacao/relatorio_escola_pdf.html',
+                         ano=ano,
+                         mes=MESES.get(mes) if mes else None,
+                         escola=escola,
+                         media_geral=round(escola['media_geral'], 1),
+                         total_alunos=escola['total_alunos'],
+                         alunos_ativos=escola['alunos_ativos'],
+                         total_simulados=escola['total_simulados'],
+                         series=series,
+                         disciplinas=disciplinas)
+    
+    # Gerar o PDF
+    pdf = HTML(string=html).write_pdf()
+    
+    return send_file(
+        BytesIO(pdf),
+        download_name=f'relatorio_escola_{escola_id}.pdf',
+        mimetype='application/pdf'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_escola/export_excel')
+@login_required
+def export_excel_escola():
+    """Exportar relatório da escola em Excel."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter escola_id e mês da query string
+    escola_id = request.args.get('escola_id', type=int)
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    if not escola_id:
+        flash("Escola não especificada.", "danger")
+        return redirect(url_for("secretaria_educacao.relatorio_escola"))
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Criar um Excel writer
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='openpyxl')
+    
+    # Aba Visão Geral
+    cursor.execute(f"""
+        SELECT 
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COUNT(DISTINCT ds.simulado_id) as total_simulados,
+            COALESCE(AVG(ds.desempenho), 0) as media_geral
+        FROM escolas e
+        LEFT JOIN usuarios u ON u.escola_id = e.id AND u.tipo_usuario_id = 4
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id AND {data_condition}
+        WHERE e.id = ?
+        GROUP BY e.id, e.nome_da_escola
+    """, data_params + [escola_id])
+    escola = cursor.fetchone()
+    
+    df_geral = pd.DataFrame([{
+        'Indicador': 'Média Geral',
+        'Valor': f"{round(escola['media_geral'], 1)}%"
+    }, {
+        'Indicador': 'Total de Alunos',
+        'Valor': str(escola['total_alunos'])
+    }, {
+        'Indicador': 'Alunos Ativos',
+        'Valor': str(escola['alunos_ativos'])
+    }, {
+        'Indicador': 'Simulados Realizados',
+        'Valor': str(escola['total_simulados'])
+    }])
+    df_geral.to_excel(writer, sheet_name='Visão Geral', index=False)
+    
+    # Aba Desempenho por Série
+    cursor.execute(f"""
+        SELECT 
+            s.nome as serie,
+            COUNT(DISTINCT u.id) as total_alunos,
+            COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM series s
+        LEFT JOIN usuarios u ON u.serie_id = s.id 
+            AND u.tipo_usuario_id = 4 
+            AND u.escola_id = ?
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND {data_condition}
+        GROUP BY s.id, s.nome
+        ORDER BY s.id
+    """, [escola_id] + data_params)
+    series = cursor.fetchall()
+    
+    df_series = pd.DataFrame([dict(row) for row in series])
+    if not df_series.empty:
+        df_series = df_series.rename(columns={
+            'serie': 'Série',
+            'total_alunos': 'Total de Alunos',
+            'alunos_ativos': 'Alunos Ativos',
+            'media': 'Média (%)'
+        })
+        df_series['Média (%)'] = df_series['Média (%)'].round(1)
+    df_series.to_excel(writer, sheet_name='Desempenho por Série', index=False)
+    
+    # Aba Desempenho por Disciplina
+    cursor.execute(f"""
+        WITH SimuladosDisciplinas AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                CASE 
+                    WHEN ds.tipo_usuario_id = 5 THEN sg.disciplina_id
+                    WHEN ds.tipo_usuario_id = 3 THEN sgp.disciplina_id
+                END as disciplina_id
+            FROM desempenho_simulado ds
+            LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+            LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+            JOIN usuarios u ON u.id = ds.aluno_id AND u.escola_id = ?
+            WHERE {data_condition}
+        )
+        SELECT 
+            d.nome as disciplina,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(DISTINCT sd.simulado_id) as total_questoes,
+            ROUND(AVG(sd.desempenho), 1) as media_acertos
+        FROM disciplinas d
+        LEFT JOIN SimuladosDisciplinas sd ON sd.disciplina_id = d.id
+        GROUP BY d.id, d.nome
+        HAVING total_alunos > 0
+        ORDER BY media_acertos DESC
+    """, [escola_id] + data_params)
+    disciplinas = cursor.fetchall()
+    
+    df_disciplinas = pd.DataFrame([dict(row) for row in disciplinas])
+    if not df_disciplinas.empty:
+        df_disciplinas = df_disciplinas.rename(columns={
+            'disciplina': 'Disciplina',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media_acertos': 'Média de Acertos (%)'
+        })
+    df_disciplinas.to_excel(writer, sheet_name='Desempenho por Disciplina', index=False)
+    
+    writer.close()
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name=f'relatorio_escola_{escola_id}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_disciplina')
+@login_required
+def relatorio_disciplina():
+    """Página de relatório por disciplina."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Buscar o `codigo_ibge` do usuário
+    cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+    codigo_ibge = cursor.fetchone()[0]
+    
+    # Buscar todas as disciplinas
+    cursor.execute("""
+        SELECT id, nome
+        FROM disciplinas
+        ORDER BY nome
+    """)
+    disciplinas = cursor.fetchall()
+    
+    # Obter disciplina_id e mês da query string
+    disciplina_id = request.args.get('disciplina_id', type=int)
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Se uma disciplina foi selecionada, buscar seus dados
+    if disciplina_id:
+        # Construir a condição de data
+        data_condition = "strftime('%Y', data_resposta) = ?"
+        data_params = [str(ano)]
+        
+        if mes:
+            data_condition += " AND strftime('%m', data_resposta) = ?"
+            data_params.append(f"{mes:02d}")
+        
+        # Buscar dados gerais da disciplina
+        cursor.execute(f"""
+            WITH SimuladosDisciplina AS (
+                SELECT 
+                    ds.aluno_id,
+                    ds.simulado_id,
+                    ds.desempenho
+                FROM desempenho_simulado ds
+                WHERE (
+                    (ds.tipo_usuario_id = 5 AND EXISTS (
+                        SELECT 1 FROM simulados_gerados 
+                        WHERE id = ds.simulado_id AND disciplina_id = ?
+                    ))
+                    OR 
+                    (ds.tipo_usuario_id = 3 AND EXISTS (
+                        SELECT 1 FROM simulados_gerados_professor 
+                        WHERE id = ds.simulado_id AND disciplina_id = ?
+                    ))
+                )
+                AND ds.codigo_ibge = ?
+                AND {data_condition}
+            )
+            SELECT 
+                d.nome,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(DISTINCT sd.simulado_id) as total_simulados,
+                COUNT(sd.simulado_id) as total_questoes,
+                COALESCE(AVG(sd.desempenho), 0) as media_geral
+            FROM disciplinas d
+            LEFT JOIN SimuladosDisciplina sd ON 1=1
+            WHERE d.id = ?
+            GROUP BY d.id, d.nome
+        """, [disciplina_id, disciplina_id, codigo_ibge] + data_params + [disciplina_id])
+        disciplina = cursor.fetchone()
+        
+        # Buscar dados por série
+        cursor.execute(f"""
+            WITH SimuladosDisciplina AS (
+                SELECT 
+                    ds.aluno_id,
+                    ds.simulado_id,
+                    ds.desempenho,
+                    u.serie_id
+                FROM desempenho_simulado ds
+                JOIN usuarios u ON u.id = ds.aluno_id
+                WHERE (
+                    (ds.tipo_usuario_id = 5 AND EXISTS (
+                        SELECT 1 FROM simulados_gerados 
+                        WHERE id = ds.simulado_id AND disciplina_id = ?
+                    ))
+                    OR 
+                    (ds.tipo_usuario_id = 3 AND EXISTS (
+                        SELECT 1 FROM simulados_gerados_professor 
+                        WHERE id = ds.simulado_id AND disciplina_id = ?
+                    ))
+                )
+                AND ds.codigo_ibge = ?
+                AND {data_condition}
+            )
+            SELECT 
+                s.id,
+                s.nome,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(sd.simulado_id) as total_questoes,
+                COALESCE(AVG(sd.desempenho), 0) as media
+            FROM series s
+            LEFT JOIN SimuladosDisciplina sd ON sd.serie_id = s.id
+            GROUP BY s.id, s.nome
+            ORDER BY s.id
+        """, [disciplina_id, disciplina_id, codigo_ibge] + data_params)
+        series = cursor.fetchall()
+        
+        # Buscar dados por escola
+        cursor.execute(f"""
+            WITH SimuladosDisciplina AS (
+                SELECT 
+                    ds.aluno_id,
+                    ds.simulado_id,
+                    ds.desempenho,
+                    u.escola_id
+                FROM desempenho_simulado ds
+                JOIN usuarios u ON u.id = ds.aluno_id
+                WHERE (
+                    (ds.tipo_usuario_id = 5 AND EXISTS (
+                        SELECT 1 FROM simulados_gerados 
+                        WHERE id = ds.simulado_id AND disciplina_id = ?
+                    ))
+                    OR 
+                    (ds.tipo_usuario_id = 3 AND EXISTS (
+                        SELECT 1 FROM simulados_gerados_professor 
+                        WHERE id = ds.simulado_id AND disciplina_id = ?
+                    ))
+                )
+                AND ds.codigo_ibge = ?
+                AND {data_condition}
+            )
+            SELECT 
+                e.nome_da_escola as nome,
+                COUNT(DISTINCT sd.aluno_id) as total_alunos,
+                COUNT(sd.simulado_id) as total_questoes,
+                ROUND(AVG(sd.desempenho), 1) as media_acertos
+            FROM escolas e
+            LEFT JOIN SimuladosDisciplina sd ON sd.escola_id = e.id
+            WHERE e.codigo_ibge = ?
+            GROUP BY e.id, e.nome_da_escola
+            HAVING total_alunos > 0
+            ORDER BY media_acertos DESC
+        """, [disciplina_id, disciplina_id, codigo_ibge] + data_params + [codigo_ibge])
+        escolas = cursor.fetchall()
+        
+        return render_template('secretaria_educacao/relatorio_disciplina.html',
+                             ano=ano,
+                             mes=mes,
+                             disciplinas=disciplinas,
+                             disciplina_id=disciplina_id,
+                             media_geral=round(disciplina['media_geral'], 1),
+                             total_alunos=disciplina['total_alunos'],
+                             total_questoes=disciplina['total_questoes'],
+                             total_simulados=disciplina['total_simulados'],
+                             series=series,
+                             escolas=escolas)
+    
+    return render_template('secretaria_educacao/relatorio_disciplina.html',
+                         ano=ano,
+                         mes=mes,
+                         disciplinas=disciplinas,
+                         disciplina_id=None)
+
+@secretaria_educacao_bp.route('/relatorio_disciplina/export_pdf')
+@login_required
+def export_pdf_disciplina():
+    """Exportar relatório da disciplina em PDF."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter disciplina_id e mês da query string
+    disciplina_id = request.args.get('disciplina_id', type=int)
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    if not disciplina_id:
+        flash("Disciplina não especificada.", "danger")
+        return redirect(url_for("secretaria_educacao.relatorio_disciplina"))
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Buscar dados da disciplina
+    cursor.execute(f"""
+        WITH SimuladosDisciplina AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho
+            FROM desempenho_simulado ds
+            WHERE (
+                (ds.tipo_usuario_id = 5 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+                OR 
+                (ds.tipo_usuario_id = 3 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados_professor 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+            )
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            d.nome,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(DISTINCT sd.simulado_id) as total_simulados,
+            COUNT(sd.simulado_id) as total_questoes,
+            COALESCE(AVG(sd.desempenho), 0) as media_geral
+        FROM disciplinas d
+        LEFT JOIN SimuladosDisciplina sd ON 1=1
+        WHERE d.id = ?
+        GROUP BY d.id, d.nome
+    """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params + [disciplina_id])
+    disciplina = cursor.fetchone()
+    
+    # Buscar dados por série
+    cursor.execute(f"""
+        WITH SimuladosDisciplina AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.serie_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            WHERE (
+                (ds.tipo_usuario_id = 5 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+                OR 
+                (ds.tipo_usuario_id = 3 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados_professor 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+            )
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            s.id,
+            s.nome,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(sd.simulado_id) as total_questoes,
+            COALESCE(AVG(sd.desempenho), 0) as media
+        FROM series s
+        LEFT JOIN SimuladosDisciplina sd ON sd.serie_id = s.id
+        GROUP BY s.id, s.nome
+        ORDER BY s.id
+    """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params)
+    series = cursor.fetchall()
+    
+    # Buscar dados por escola
+    cursor.execute(f"""
+        WITH SimuladosDisciplina AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            WHERE (
+                (ds.tipo_usuario_id = 5 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+                OR 
+                (ds.tipo_usuario_id = 3 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados_professor 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+            )
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            e.nome_da_escola as nome,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(sd.simulado_id) as total_questoes,
+            ROUND(AVG(sd.desempenho), 1) as media_acertos
+        FROM escolas e
+        LEFT JOIN SimuladosDisciplina sd ON sd.escola_id = e.id
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola
+        HAVING total_alunos > 0
+        ORDER BY media_acertos DESC
+    """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas = cursor.fetchall()
+    
+    # Renderizar o template HTML
+    html = render_template('secretaria_educacao/relatorio_disciplina_pdf.html',
+                         ano=ano,
+                         mes=MESES.get(mes) if mes else None,
+                         disciplina=disciplina,
+                         media_geral=round(disciplina['media_geral'], 1),
+                         total_alunos=disciplina['total_alunos'],
+                         total_questoes=disciplina['total_questoes'],
+                         total_simulados=disciplina['total_simulados'],
+                         series=series,
+                         escolas=escolas)
+    
+    # Gerar o PDF
+    pdf = HTML(string=html).write_pdf()
+    
+    return send_file(
+        BytesIO(pdf),
+        download_name=f'relatorio_disciplina_{disciplina_id}.pdf',
+        mimetype='application/pdf'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_disciplina/export_excel')
+@login_required
+def export_excel_disciplina():
+    """Exportar relatório da disciplina em Excel."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter disciplina_id e mês da query string
+    disciplina_id = request.args.get('disciplina_id', type=int)
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    if not disciplina_id:
+        flash("Disciplina não especificada.", "danger")
+        return redirect(url_for("secretaria_educacao.relatorio_disciplina"))
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Criar um Excel writer
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='openpyxl')
+    
+    # Aba Visão Geral
+    cursor.execute(f"""
+        WITH SimuladosDisciplina AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho
+            FROM desempenho_simulado ds
+            WHERE (
+                (ds.tipo_usuario_id = 5 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+                OR 
+                (ds.tipo_usuario_id = 3 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados_professor 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+            )
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            d.nome,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(DISTINCT sd.simulado_id) as total_simulados,
+            COUNT(sd.simulado_id) as total_questoes,
+            COALESCE(AVG(sd.desempenho), 0) as media_geral
+        FROM disciplinas d
+        LEFT JOIN SimuladosDisciplina sd ON 1=1
+        WHERE d.id = ?
+        GROUP BY d.id, d.nome
+    """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params + [disciplina_id])
+    disciplina = cursor.fetchone()
+    
+    df_geral = pd.DataFrame([{
+        'Indicador': 'Média Geral',
+        'Valor': f"{round(disciplina['media_geral'], 1)}%"
+    }, {
+        'Indicador': 'Total de Alunos',
+        'Valor': str(disciplina['total_alunos'])
+    }, {
+        'Indicador': 'Total de Questões',
+        'Valor': str(disciplina['total_questoes'])
+    }, {
+        'Indicador': 'Simulados com a Disciplina',
+        'Valor': str(disciplina['total_simulados'])
+    }])
+    df_geral.to_excel(writer, sheet_name='Visão Geral', index=False)
+    
+    # Aba Desempenho por Série
+    cursor.execute(f"""
+        WITH SimuladosDisciplina AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.serie_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            WHERE (
+                (ds.tipo_usuario_id = 5 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+                OR 
+                (ds.tipo_usuario_id = 3 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados_professor 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+            )
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            s.nome as serie,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(sd.simulado_id) as total_questoes,
+            COALESCE(AVG(sd.desempenho), 0) as media
+        FROM series s
+        LEFT JOIN SimuladosDisciplina sd ON sd.serie_id = s.id
+        GROUP BY s.id, s.nome
+        ORDER BY s.id
+    """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params)
+    series = cursor.fetchall()
+    
+    df_series = pd.DataFrame([dict(row) for row in series])
+    if not df_series.empty:
+        df_series = df_series.rename(columns={
+            'serie': 'Série',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media': 'Média (%)'
+        })
+        df_series['Média (%)'] = df_series['Média (%)'].round(1)
+    df_series.to_excel(writer, sheet_name='Desempenho por Série', index=False)
+    
+    # Aba Desempenho por Escola
+    cursor.execute(f"""
+        WITH SimuladosDisciplina AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            WHERE (
+                (ds.tipo_usuario_id = 5 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+                OR 
+                (ds.tipo_usuario_id = 3 AND EXISTS (
+                    SELECT 1 FROM simulados_gerados_professor 
+                    WHERE id = ds.simulado_id AND disciplina_id = ?
+                ))
+            )
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            e.nome_da_escola as escola,
+            COUNT(DISTINCT sd.aluno_id) as total_alunos,
+            COUNT(sd.simulado_id) as total_questoes,
+            ROUND(AVG(sd.desempenho), 1) as media_acertos
+        FROM escolas e
+        LEFT JOIN SimuladosDisciplina sd ON sd.escola_id = e.id
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola
+        HAVING total_alunos > 0
+        ORDER BY media_acertos DESC
+    """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas = cursor.fetchall()
+    
+    df_escolas = pd.DataFrame([dict(row) for row in escolas])
+    if not df_escolas.empty:
+        df_escolas = df_escolas.rename(columns={
+            'escola': 'Escola',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media_acertos': 'Média de Acertos (%)'
+        })
+    df_escolas.to_excel(writer, sheet_name='Desempenho por Escola', index=False)
+    
+    writer.close()
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name=f'relatorio_disciplina_{disciplina_id}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_tipo_ensino')
+@login_required
+def relatorio_tipo_ensino():
+    """Página do relatório por tipo de ensino."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Obter dados gerais
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(DISTINCT sa.simulado_id) as total_simulados,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media_geral
+        FROM SimuladosAlunos sa
+    """, [current_user.codigo_ibge] + data_params)
+    dados_gerais = cursor.fetchone()
+    
+    # Obter dados por tipo de ensino
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            te.nome,
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media
+        FROM tipos_ensino te
+        LEFT JOIN SimuladosAlunos sa ON sa.tipo_ensino_id = te.id
+        GROUP BY te.id, te.nome
+        HAVING total_alunos > 0
+        ORDER BY media DESC
+    """, [current_user.codigo_ibge] + data_params)
+    tipos_ensino = cursor.fetchall()
+    
+    # Obter dados por escola
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            e.nome_da_escola as nome,
+            te.nome as tipo_ensino,
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media
+        FROM escolas e
+        JOIN tipos_ensino te ON te.id = e.tipo_ensino_id
+        LEFT JOIN SimuladosAlunos sa ON sa.escola_id = e.id
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola, te.nome
+        HAVING total_alunos > 0
+        ORDER BY media DESC
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas = cursor.fetchall()
+    
+    return render_template(
+        'secretaria_educacao/relatorio_tipo_ensino.html',
+        ano=ano,
+        mes=mes,
+        media_geral=dados_gerais['media_geral'],
+        total_alunos=dados_gerais['total_alunos'],
+        total_questoes=dados_gerais['total_questoes'],
+        total_simulados=dados_gerais['total_simulados'],
+        tipos_ensino=tipos_ensino,
+        escolas=escolas
+    )
+
+@secretaria_educacao_bp.route('/relatorio_tipo_ensino/export_pdf')
+@login_required
+def export_pdf_tipo_ensino():
+    """Exportar relatório por tipo de ensino em PDF."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Obter dados gerais
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(DISTINCT sa.simulado_id) as total_simulados,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media_geral
+        FROM SimuladosAlunos sa
+    """, [current_user.codigo_ibge] + data_params)
+    dados_gerais = cursor.fetchone()
+    
+    # Obter dados por tipo de ensino
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            te.nome,
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media
+        FROM tipos_ensino te
+        LEFT JOIN SimuladosAlunos sa ON sa.tipo_ensino_id = te.id
+        GROUP BY te.id, te.nome
+        HAVING total_alunos > 0
+        ORDER BY media DESC
+    """, [current_user.codigo_ibge] + data_params)
+    tipos_ensino = cursor.fetchall()
+    
+    # Obter dados por escola
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            e.nome_da_escola as nome,
+            te.nome as tipo_ensino,
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media
+        FROM escolas e
+        JOIN tipos_ensino te ON te.id = e.tipo_ensino_id
+        LEFT JOIN SimuladosAlunos sa ON sa.escola_id = e.id
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola, te.nome
+        HAVING total_alunos > 0
+        ORDER BY media DESC
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas = cursor.fetchall()
+    
+    # Renderizar o template
+    html = render_template(
+        'secretaria_educacao/relatorio_tipo_ensino_pdf.html',
+        ano=ano,
+        mes=meses.get(mes, ''),
+        media_geral=dados_gerais['media_geral'],
+        total_alunos=dados_gerais['total_alunos'],
+        total_questoes=dados_gerais['total_questoes'],
+        total_simulados=dados_gerais['total_simulados'],
+        tipos_ensino=tipos_ensino,
+        escolas=escolas
+    )
+    
+    # Converter para PDF
+    pdf = HTML(string=html).write_pdf()
+    
+    return send_file(
+        BytesIO(pdf),
+        download_name='relatorio_tipo_ensino.pdf',
+        mimetype='application/pdf'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_tipo_ensino/export_excel')
+@login_required
+def export_excel_tipo_ensino():
+    """Exportar relatório por tipo de ensino em Excel."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Obter dados gerais
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(DISTINCT sa.simulado_id) as total_simulados,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media_geral
+        FROM SimuladosAlunos sa
+    """, [current_user.codigo_ibge] + data_params)
+    dados_gerais = cursor.fetchone()
+    
+    # Criar um Excel writer
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='openpyxl')
+    
+    # Aba Visão Geral
+    df_geral = pd.DataFrame([{
+        'Indicador': 'Média Geral',
+        'Valor': f"{round(dados_gerais['media_geral'], 1)}%"
+    }, {
+        'Indicador': 'Total de Alunos',
+        'Valor': str(dados_gerais['total_alunos'])
+    }, {
+        'Indicador': 'Total de Questões',
+        'Valor': str(dados_gerais['total_questoes'])
+    }, {
+        'Indicador': 'Total de Simulados',
+        'Valor': str(dados_gerais['total_simulados'])
+    }])
+    df_geral.to_excel(writer, sheet_name='Visão Geral', index=False)
+    
+    # Obter dados por tipo de ensino
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            te.nome,
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media
+        FROM tipos_ensino te
+        LEFT JOIN SimuladosAlunos sa ON sa.tipo_ensino_id = te.id
+        GROUP BY te.id, te.nome
+        HAVING total_alunos > 0
+        ORDER BY media DESC
+    """, [current_user.codigo_ibge] + data_params)
+    tipos_ensino = cursor.fetchall()
+    
+    df_tipos = pd.DataFrame([dict(row) for row in tipos_ensino])
+    if not df_tipos.empty:
+        df_tipos = df_tipos.rename(columns={
+            'nome': 'Tipo de Ensino',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media': 'Média (%)'
+        })
+        df_tipos['Média (%)'] = df_tipos['Média (%)'].round(1)
+    df_tipos.to_excel(writer, sheet_name='Desempenho por Tipo', index=False)
+    
+    # Obter dados por escola
+    cursor.execute(f"""
+        WITH SimuladosAlunos AS (
+            SELECT 
+                ds.aluno_id,
+                ds.simulado_id,
+                ds.desempenho,
+                u.escola_id,
+                e.tipo_ensino_id
+            FROM desempenho_simulado ds
+            JOIN usuarios u ON u.id = ds.aluno_id
+            JOIN escolas e ON e.id = u.escola_id
+            WHERE ds.codigo_ibge = ?
+            AND {data_condition}
+        )
+        SELECT 
+            e.nome_da_escola as nome,
+            te.nome as tipo_ensino,
+            COUNT(DISTINCT sa.aluno_id) as total_alunos,
+            COUNT(sa.simulado_id) as total_questoes,
+            COALESCE(AVG(sa.desempenho), 0) as media
+        FROM escolas e
+        JOIN tipos_ensino te ON te.id = e.tipo_ensino_id
+        LEFT JOIN SimuladosAlunos sa ON sa.escola_id = e.id
+        WHERE e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola, te.nome
+        HAVING total_alunos > 0
+        ORDER BY media DESC
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas = cursor.fetchall()
+    
+    df_escolas = pd.DataFrame([dict(row) for row in escolas])
+    if not df_escolas.empty:
+        df_escolas = df_escolas.rename(columns={
+            'nome': 'Escola',
+            'tipo_ensino': 'Tipo de Ensino',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media': 'Média (%)'
+        })
+        df_escolas['Média (%)'] = df_escolas['Média (%)'].round(1)
+    df_escolas.to_excel(writer, sheet_name='Desempenho por Escola', index=False)
+    
+    writer.close()
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name='relatorio_tipo_ensino.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
+
+@secretaria_educacao_bp.route('/relatorio_turma')
+@login_required
+def relatorio_turma():
+    """Página do relatório por turma."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Obter dados gerais
+    cursor.execute(f"""
+        SELECT 
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(DISTINCT ds.simulado_id) as total_simulados,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media_geral
+        FROM desempenho_simulado ds
+        JOIN usuarios u ON u.id = ds.aluno_id
+        WHERE ds.codigo_ibge = ?
+        AND {data_condition}
+    """, [current_user.codigo_ibge] + data_params)
+    dados_gerais = cursor.fetchone()
+    
+    # Obter dados por turma
+    cursor.execute(f"""
+        SELECT 
+            t.turma,
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM usuarios u
+        JOIN turmas t ON t.id = u.turma_id
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        WHERE u.tipo_usuario_id = 1  -- Alunos
+        AND u.codigo_ibge = ?
+        GROUP BY t.id, t.turma
+        HAVING total_alunos > 0
+        ORDER BY t.turma
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    turmas = cursor.fetchall()
+    
+    # Obter dados por escola e turma
+    cursor.execute(f"""
+        SELECT 
+            e.nome_da_escola as escola,
+            t.turma,
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        JOIN usuarios u ON u.escola_id = e.id
+        JOIN turmas t ON t.id = u.turma_id
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        WHERE u.tipo_usuario_id = 1  -- Alunos
+        AND e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola, t.id, t.turma
+        HAVING total_alunos > 0
+        ORDER BY e.nome_da_escola, t.turma
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas_turmas = cursor.fetchall()
+    
+    return render_template(
+        'secretaria_educacao/relatorio_turma.html',
+        ano=ano,
+        mes=mes,
+        media_geral=dados_gerais['media_geral'],
+        total_alunos=dados_gerais['total_alunos'],
+        total_questoes=dados_gerais['total_questoes'],
+        total_simulados=dados_gerais['total_simulados'],
+        turmas=turmas,
+        escolas_turmas=escolas_turmas
+    )
+
+@secretaria_educacao_bp.route('/relatorio_turma/export_pdf')
+@login_required
+def export_pdf_turma():
+    """Exportar relatório por turma em PDF."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Obter dados gerais
+    cursor.execute(f"""
+        SELECT 
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(DISTINCT ds.simulado_id) as total_simulados,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media_geral
+        FROM desempenho_simulado ds
+        JOIN usuarios u ON u.id = ds.aluno_id
+        WHERE ds.codigo_ibge = ?
+        AND {data_condition}
+    """, [current_user.codigo_ibge] + data_params)
+    dados_gerais = cursor.fetchone()
+    
+    # Obter dados por turma
+    cursor.execute(f"""
+        SELECT 
+            t.turma,
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM usuarios u
+        JOIN turmas t ON t.id = u.turma_id
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        WHERE u.tipo_usuario_id = 1  -- Alunos
+        AND u.codigo_ibge = ?
+        GROUP BY t.id, t.turma
+        HAVING total_alunos > 0
+        ORDER BY t.turma
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    turmas = cursor.fetchall()
+    
+    # Obter dados por escola e turma
+    cursor.execute(f"""
+        SELECT 
+            e.nome_da_escola as escola,
+            t.turma,
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        JOIN usuarios u ON u.escola_id = e.id
+        JOIN turmas t ON t.id = u.turma_id
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        WHERE u.tipo_usuario_id = 1  -- Alunos
+        AND e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola, t.id, t.turma
+        HAVING total_alunos > 0
+        ORDER BY e.nome_da_escola, t.turma
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas_turmas = cursor.fetchall()
+    
+    # Renderizar o template
+    html = render_template(
+        'secretaria_educacao/relatorio_turma_pdf.html',
+        ano=ano,
+        mes=MESES.get(mes, ''),
+        media_geral=dados_gerais['media_geral'],
+        total_alunos=dados_gerais['total_alunos'],
+        total_questoes=dados_gerais['total_questoes'],
+        total_simulados=dados_gerais['total_simulados'],
+        turmas=turmas,
+        escolas_turmas=escolas_turmas
+    )
+    
+    # Converter para PDF
+    pdf = HTML(string=html).write_pdf()
+    
+    return send_file(
+        BytesIO(pdf),
+        download_name='relatorio_turma.pdf',
+        mimetype='application/pdf'
+    )
+
+@secretaria_educacao_bp.route('/relatorio_turma/export_excel')
+@login_required
+def export_excel_turma():
+    """Exportar relatório por turma em Excel."""
+    if current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    db = get_db()
+    cursor = db.cursor()
+    
+    # Obter mês da query string
+    mes = request.args.get('mes', type=int)
+    ano = 2025  # Fixado em 2025
+    
+    # Construir a condição de data
+    data_condition = "strftime('%Y', data_resposta) = ?"
+    data_params = [str(ano)]
+    
+    if mes:
+        data_condition += " AND strftime('%m', data_resposta) = ?"
+        data_params.append(f"{mes:02d}")
+    
+    # Obter dados gerais
+    cursor.execute(f"""
+        SELECT 
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(DISTINCT ds.simulado_id) as total_simulados,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media_geral
+        FROM desempenho_simulado ds
+        JOIN usuarios u ON u.id = ds.aluno_id
+        WHERE ds.codigo_ibge = ?
+        AND {data_condition}
+    """, [current_user.codigo_ibge] + data_params)
+    dados_gerais = cursor.fetchone()
+    
+    # Criar um Excel writer
+    output = BytesIO()
+    writer = pd.ExcelWriter(output, engine='openpyxl')
+    
+    # Aba Visão Geral
+    df_geral = pd.DataFrame([{
+        'Indicador': 'Média Geral',
+        'Valor': f"{round(dados_gerais['media_geral'], 1)}%"
+    }, {
+        'Indicador': 'Total de Alunos',
+        'Valor': str(dados_gerais['total_alunos'])
+    }, {
+        'Indicador': 'Total de Questões',
+        'Valor': str(dados_gerais['total_questoes'])
+    }, {
+        'Indicador': 'Total de Simulados',
+        'Valor': str(dados_gerais['total_simulados'])
+    }])
+    df_geral.to_excel(writer, sheet_name='Visão Geral', index=False)
+    
+    # Obter dados por turma
+    cursor.execute(f"""
+        SELECT 
+            t.turma,
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM usuarios u
+        JOIN turmas t ON t.id = u.turma_id
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        WHERE u.tipo_usuario_id = 1  -- Alunos
+        AND u.codigo_ibge = ?
+        GROUP BY t.id, t.turma
+        HAVING total_alunos > 0
+        ORDER BY t.turma
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    turmas = cursor.fetchall()
+    
+    df_turmas = pd.DataFrame([dict(row) for row in turmas])
+    if not df_turmas.empty:
+        df_turmas = df_turmas.rename(columns={
+            'turma': 'Turma',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media': 'Média (%)'
+        })
+        df_turmas['Média (%)'] = df_turmas['Média (%)'].round(1)
+    df_turmas.to_excel(writer, sheet_name='Desempenho por Turma', index=False)
+    
+    # Obter dados por escola e turma
+    cursor.execute(f"""
+        SELECT 
+            e.nome_da_escola as escola,
+            t.turma,
+            COUNT(DISTINCT ds.aluno_id) as total_alunos,
+            COUNT(ds.simulado_id) as total_questoes,
+            COALESCE(AVG(ds.desempenho), 0) as media
+        FROM escolas e
+        JOIN usuarios u ON u.escola_id = e.id
+        JOIN turmas t ON t.id = u.turma_id
+        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            AND ds.codigo_ibge = ?
+            AND {data_condition}
+        WHERE u.tipo_usuario_id = 1  -- Alunos
+        AND e.codigo_ibge = ?
+        GROUP BY e.id, e.nome_da_escola, t.id, t.turma
+        HAVING total_alunos > 0
+        ORDER BY e.nome_da_escola, t.turma
+    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
+    escolas_turmas = cursor.fetchall()
+    
+    df_escolas = pd.DataFrame([dict(row) for row in escolas_turmas])
+    if not df_escolas.empty:
+        df_escolas = df_escolas.rename(columns={
+            'escola': 'Escola',
+            'turma': 'Turma',
+            'total_alunos': 'Total de Alunos',
+            'total_questoes': 'Total de Questões',
+            'media': 'Média (%)'
+        })
+        df_escolas['Média (%)'] = df_escolas['Média (%)'].round(1)
+    df_escolas.to_excel(writer, sheet_name='Desempenho por Escola', index=False)
+    
+    writer.close()
+    output.seek(0)
+    
+    return send_file(
+        output,
+        download_name='relatorio_turma.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )

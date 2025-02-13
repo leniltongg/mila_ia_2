@@ -1,0 +1,205 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .performance-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 10px;
+    }
+    .high-performance { background-color: #28a745; }
+    .medium-performance { background-color: #ffc107; }
+    .low-performance { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Desempenho por Componente Curricular - {{ ano }}</h1>
+        <div class="d-flex gap-2">
+            <form method="GET" class="d-flex align-items-center">
+                <select name="disciplina_id" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Selecione um componente curricular</option>
+                    {% for disciplina in disciplinas %}
+                    <option value="{{ disciplina.id }}" {% if disciplina_id == disciplina.id %}selected{% endif %}>{{ disciplina.nome }}</option>
+                    {% endfor %}
+                </select>
+                <select name="mes" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Todos os meses</option>
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Janeiro</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Fevereiro</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Março</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Maio</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junho</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julho</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Setembro</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Outubro</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Novembro</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Dezembro</option>
+                </select>
+            </form>
+            {% if disciplina_id %}
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('secretaria_educacao.export_pdf_disciplina', disciplina_id=disciplina_id, mes=mes) }}" class="btn btn-danger">
+                    <i class="bi bi-file-pdf me-2"></i>PDF
+                </a>
+                <a href="{{ url_for('secretaria_educacao.export_excel_disciplina', disciplina_id=disciplina_id, mes=mes) }}" class="btn btn-success">
+                    <i class="bi bi-file-excel me-2"></i>Excel
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if disciplina_id %}
+    <!-- Cards de Resumo -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total de Alunos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_alunos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Total de Simulados</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_simulados }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total de Questões</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_questoes }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-question-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Média Geral</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ media_geral }}%</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-percentage fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desempenho por Série -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Desempenho por Série</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Série</th>
+                            <th>Total de Alunos</th>
+                            <th>Total de Questões</th>
+                            <th>Média</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for serie in series %}
+                        <tr>
+                            <td>{{ serie.nome }}</td>
+                            <td>{{ serie.total_alunos }}</td>
+                            <td>{{ serie.total_questoes }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="performance-indicator {% if serie.media >= 70 %}high-performance{% elif serie.media >= 50 %}medium-performance{% else %}low-performance{% endif %}"></span>
+                                    {{ "%.1f"|format(serie.media) }}%
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desempenho por Escola -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Desempenho por Escola</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Escola</th>
+                            <th>Total de Alunos</th>
+                            <th>Total de Questões</th>
+                            <th>Média de Acertos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escola in escolas %}
+                        <tr>
+                            <td>{{ escola.nome }}</td>
+                            <td>{{ escola.total_alunos }}</td>
+                            <td>{{ escola.total_questoes }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="performance-indicator {% if escola.media_acertos >= 70 %}high-performance{% elif escola.media_acertos >= 50 %}medium-performance{% else %}low-performance{% endif %}"></span>
+                                    {{ escola.media_acertos }}%
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        Selecione uma disciplina para visualizar seu desempenho.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

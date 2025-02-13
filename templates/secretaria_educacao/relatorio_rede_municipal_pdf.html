@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Relatório da Rede Municipal - {{ ano }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .summary-cards {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            width: 23%;
+            text-align: center;
+        }
+        .card h3 {
+            margin: 0;
+            color: #333;
+        }
+        .card p {
+            font-size: 24px;
+            margin: 10px 0;
+            color: #4e73df;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #4e73df;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fc;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            color: #4e73df;
+            border-bottom: 2px solid #4e73df;
+            padding-bottom: 3px;
+            margin-bottom: 10px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+        @page {
+            margin: 2.5cm;
+            @top-center {
+                content: "Relatório da Rede Municipal - {{ ano }}";
+            }
+            @bottom-center {
+                content: "Página " counter(page) " de " counter(pages);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Relatório da Rede Municipal</h1>
+        <p>Ano: {{ ano }}{% if mes %} - Mês: {{ mes }}{% endif %}</p>
+    </div>
+
+    <div class="section">
+        <h2 class="section-title">Resumo Geral</h2>
+        <div class="summary-cards">
+            <div class="card">
+                <h3>Média Geral</h3>
+                <p>{{ media_geral }}%</p>
+            </div>
+            <div class="card">
+                <h3>Total de Escolas</h3>
+                <p>{{ total_escolas }}</p>
+            </div>
+            <div class="card">
+                <h3>Total de Alunos</h3>
+                <p>{{ total_alunos }}</p>
+            </div>
+            <div class="card">
+                <h3>Simulados Realizados</h3>
+                <p>{{ total_simulados }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="section page-break">
+        <h2 class="section-title">Desempenho por Ano Escolar</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Escola</th>
+                    <th>Total de Alunos</th>
+                    <th>Alunos que Responderam</th>
+                    <th>Média (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for escola in escolas %}
+                <tr>
+                    <td>{{ escola.nome }}</td>
+                    <td>{{ escola.total_alunos }}</td>
+                    <td>
+                        {{ escola.alunos_ativos }}
+                        <small>({{ "%.1f"|format(escola.alunos_ativos / escola.total_alunos * 100 if escola.total_alunos > 0 else 0) }}%)</small>
+                    </td>
+                    <td>{{ "%.1f"|format(escola.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section page-break">
+        <h2 class="section-title">Desempenho por Componente Curricular</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Componente Curricular</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média de Acertos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for disciplina in disciplinas %}
+                <tr>
+                    <td>{{ disciplina.disciplina }}</td>
+                    <td>{{ disciplina.total_alunos }}</td>
+                    <td>{{ disciplina.total_questoes }}</td>
+                    <td>{{ disciplina.media_acertos }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

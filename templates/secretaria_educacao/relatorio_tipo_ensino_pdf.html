@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .date {
+            color: #7f8c8d;
+            margin-bottom: 20px;
+        }
+        .summary-cards {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .card {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            width: calc(25% - 20px);
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+        .card h3 {
+            color: #2c3e50;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .card .value {
+            font-size: 24px;
+            color: #3498db;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .section h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Relatório de Desempenho por Tipo de Ensino</h1>
+        <div class="date">
+            {% if mes %}
+                {{ mes }} de {{ ano }}
+            {% else %}
+                {{ ano }}
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="summary-cards">
+        <div class="card">
+            <h3>Média Geral</h3>
+            <div class="value">{{ "%.1f"|format(media_geral) }}%</div>
+        </div>
+        <div class="card">
+            <h3>Total de Alunos</h3>
+            <div class="value">{{ total_alunos }}</div>
+        </div>
+        <div class="card">
+            <h3>Total de Questões</h3>
+            <div class="value">{{ total_questoes }}</div>
+        </div>
+        <div class="card">
+            <h3>Total de Simulados</h3>
+            <div class="value">{{ total_simulados }}</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Desempenho por Tipo de Ensino</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Tipo de Ensino</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tipo in tipos_ensino %}
+                <tr>
+                    <td>{{ tipo.nome }}</td>
+                    <td>{{ tipo.total_alunos }}</td>
+                    <td>{{ tipo.total_questoes }}</td>
+                    <td>{{ "%.1f"|format(tipo.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section page-break">
+        <h2>Desempenho por Escola</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Escola</th>
+                    <th>Tipo de Ensino</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for escola in escolas %}
+                <tr>
+                    <td>{{ escola.nome }}</td>
+                    <td>{{ escola.tipo_ensino }}</td>
+                    <td>{{ escola.total_alunos }}</td>
+                    <td>{{ escola.total_questoes }}</td>
+                    <td>{{ "%.1f"|format(escola.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

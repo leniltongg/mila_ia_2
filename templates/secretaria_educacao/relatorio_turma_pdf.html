@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #2C3E50;
+            margin-bottom: 10px;
+        }
+        .periodo {
+            color: #7F8C8D;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+        .cards {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #F8F9FA;
+            border: 1px solid #DEE2E6;
+            border-radius: 4px;
+            padding: 15px;
+            width: 22%;
+            text-align: center;
+        }
+        .card h3 {
+            color: #2C3E50;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+        }
+        .card p {
+            color: #2C3E50;
+            font-size: 24px;
+            margin: 0;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #DEE2E6;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #F8F9FA;
+            color: #2C3E50;
+        }
+        tr:nth-child(even) {
+            background: #F8F9FA;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #2C3E50;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Relatório de Desempenho por Turma</h1>
+        <div class="periodo">
+            Período: {% if mes %}{{ mes }} de {% endif %}{{ ano }}
+        </div>
+    </div>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Média Geral</h3>
+            <p>{{ "%.1f"|format(media_geral) }}%</p>
+        </div>
+        <div class="card">
+            <h3>Total de Alunos</h3>
+            <p>{{ total_alunos }}</p>
+        </div>
+        <div class="card">
+            <h3>Total de Questões</h3>
+            <p>{{ total_questoes }}</p>
+        </div>
+        <div class="card">
+            <h3>Total de Simulados</h3>
+            <p>{{ total_simulados }}</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Desempenho por Turma</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Turma</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for turma in turmas %}
+                <tr>
+                    <td>{{ turma.turma }}</td>
+                    <td>{{ turma.total_alunos }}</td>
+                    <td>{{ turma.total_questoes }}</td>
+                    <td>{{ "%.1f"|format(turma.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Desempenho por Escola e Turma</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Escola</th>
+                    <th>Turma</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in escolas_turmas %}
+                <tr>
+                    <td>{{ item.escola }}</td>
+                    <td>{{ item.turma }}</td>
+                    <td>{{ item.total_alunos }}</td>
+                    <td>{{ item.total_questoes }}</td>
+                    <td>{{ "%.1f"|format(item.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

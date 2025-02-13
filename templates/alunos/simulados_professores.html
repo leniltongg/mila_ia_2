@@ -1,61 +1,42 @@
 {% extends "alunos/base_alunos.html" %}
 
-{% block head %}
-<style>
-    .simulado-card {
-        transition: transform 0.2s;
-    }
-    .simulado-card:hover {
-        transform: translateY(-5px);
-    }
-    .simulado-status {
-        position: absolute;
-        top: 0;
-        right: 0;
-        padding: 0.5rem;
-    }
-    .timer {
-        font-size: 1.2rem;
-        font-weight: bold;
-    }
-    .simulado-card {
-        border-left: 5px solid #007bff;  /* Azul para simulados de professor */
-    }
-    .simulado-tipo {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        font-size: 0.8em;
-        color: #007bff;
-        font-weight: bold;
-    }
-
-</style>
-{% endblock %}
-
-{% block title %}Simulados{% endblock %}
-
 {% block content %}
 <div class="container mt-4">
+    <h2>Simulados dos Professores</h2>
+
     <!-- Filtros -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form id="filtro-form" class="row g-3">
-                <div class="col-md-6">
-                    <label for="filtro-status" class="form-label">Status</label>
-                    <select class="form-select" id="filtro-status">
-                        <option value="">Todos</option>
-                        <option value="disponivel">Disponível</option>
-                        <option value="em_andamento">Em Andamento</option>
-                        <option value="concluido">Concluído</option>
-                    </select>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                    <form id="filtro-form" method="GET" action="{{ url_for('simulados.filtrar_simulados_professores') }}">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label for="status" class="form-label">Status</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="">Todos</option>
+                                    <option value="respondido">Respondido</option>
+                                    <option value="disponível">Disponível</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="mes" class="form-label">Mês</label>
+                                <select class="form-select" id="mes" name="mes">
+                                    <option value="">Todos</option>
+                                    {% for mes_id, mes_nome in meses %}
+                                    <option value="{{ mes_id }}">{{ mes_nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="fas fa-filter"></i> Filtrar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
-                <div class="col-md-6 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="bi bi-search"></i> Filtrar
-                    </button>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 
@@ -63,42 +44,39 @@
     <div class="row" id="lista-simulados">
         {% for simulado in simulados %}
         <div class="col-md-4 mb-4">
-            <div class="card h-100 simulado-card">
-                <!-- Status -->
-                <div class="simulado-status">
-                    {% if simulado.id in desempenho_simulado %}
-                    <span class="badge bg-primary">Respondido</span>
+            <div class="card h-100">
+                <div class="card-body">
+                    {% if simulado.status == 'respondido' %}
+                    <span class="badge bg-success">Respondido</span>
                     {% else %}
                     <span class="badge bg-success">Disponível</span>
                     {% endif %}
-                </div>
 
-
-                <!-- Tipo do Simulado -->
-                <div class="simulado-tipo">
-                    <i class="fas fa-chalkboard-teacher"></i> Simulado do Professor
-                </div>
-
-                <div class="card-body">
-                    <h5 class="card-title">{{ simulado.titulo }}</h5>
+                    <h5 class="card-title mt-2">Simulado do Professor</h5>
+                    
                     <p class="card-text">
                         <strong>Professor:</strong> {{ simulado.professor_nome }}<br>
                         <strong>Disciplina:</strong> {{ simulado.disciplina_nome }}<br>
                         <strong>Data Limite:</strong> {{ simulado.data_envio }}
                     </p>
 
-                    {% if simulado.id in desempenho_simulado %}
-                    <div class="alert alert-success">
-                        <strong>Desempenho:</strong> {{ "%.1f"|format(desempenho_simulado[simulado.id].desempenho) }}%
-                        <div class="progress mt-2" style="height: 5px;">
+                    {% if simulado.status == 'respondido' %}
+                    <div class="mb-3">
+                        <label class="form-label">Desempenho:</label>
+                        <div class="progress">
                             <div class="progress-bar bg-success" role="progressbar" 
-                                 style="width: {{ desempenho_simulado[simulado.id].desempenho }}%"></div>
+                                 style="width: {{ simulado.nota }}%" 
+                                 aria-valuenow="{{ simulado.nota }}" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                {{ simulado.nota }}%
+                            </div>
                         </div>
                     </div>
                     {% endif %}
 
                     <div class="mt-3">
-                        {% if simulado.status == 'respondido' or simulado.status == 'finalizado' %}
+                        {% if simulado.status == 'respondido' %}
                         <a href="{{ url_for('simulados.responder_simulado', simulado_id=simulado.id, origem='professor') }}" 
                            class="btn btn-secondary w-100">
                             <i class="fas fa-eye"></i> Visualizar Respostas
@@ -115,100 +93,23 @@
         </div>
         {% endfor %}
     </div>
-
-    <!-- Sem Simulados -->
-    {% if not simulados %}
-    <div class="text-center text-muted mt-5">
-        <i class="bi bi-journal-x" style="font-size: 3rem;"></i>
-        <h4 class="mt-3">Nenhum simulado encontrado</h4>
-        <p>Use os filtros acima para encontrar simulados disponíveis.</p>
-    </div>
-    {% endif %}
 </div>
 
-<!-- Modal de Confirmação -->
-<div class="modal fade" id="confirmarInicioModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Confirmar Início do Simulado</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Você está prestes a iniciar o simulado. Algumas informações importantes:</p>
-                <ul>
-                    <li>O tempo começará a contar assim que você iniciar</li>
-                    <li>Você não poderá pausar o simulado</li>
-                    <li>Suas respostas são salvas automaticamente</li>
-                    <li>O simulado será finalizado automaticamente quando o tempo acabar</li>
-                </ul>
-                <p class="mb-0">Deseja continuar?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="confirmarInicio()">
-                    Iniciar Simulado
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endblock %}
-
-{% block scripts %}
+<!-- Script para filtros -->
 <script>
-let simuladoSelecionado = null;
-
-// Filtrar simulados
-document.getElementById('filtro-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
+document.addEventListener('DOMContentLoaded', function() {
+    // Atualizar os selects com os valores da URL
+    const urlParams = new URLSearchParams(window.location.search);
     
-    const filtros = {
-        status: document.getElementById('filtro-status').value
-    };
-
-    try {
-        const response = await fetch('/alunos/filtrar-simulados-professores?' + new URLSearchParams(filtros));
-        const html = await response.text();
-        document.getElementById('lista-simulados').innerHTML = html;
-    } catch (error) {
-        console.error('Erro ao filtrar simulados:', error);
-        alert('Erro ao filtrar simulados');
+    const status = urlParams.get('status');
+    if (status) {
+        document.getElementById('status').value = status;
+    }
+    
+    const mes = urlParams.get('mes');
+    if (mes) {
+        document.getElementById('mes').value = mes;
     }
 });
-
-function iniciarSimulado(id) {
-    simuladoSelecionado = id;
-    const modal = new bootstrap.Modal(document.getElementById('confirmarInicioModal'));
-    modal.show();
-}
-
-async function confirmarInicio() {
-    if (!simuladoSelecionado) return;
-    
-    try {
-        const response = await fetch(`/alunos/iniciar-simulado/${simuladoSelecionado}`, {
-            method: 'POST'
-        });
-        const data = await response.json();
-        
-        if (data.success) {
-            window.location.href = `/alunos/fazer-simulado/${simuladoSelecionado}`;
-        } else {
-            throw new Error(data.error || 'Erro ao iniciar simulado');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        alert(error.message);
-    }
-}
-
-function continuarSimulado(id) {
-    window.location.href = `/alunos/fazer-simulado/${id}`;
-}
-
-function verResultado(id) {
-    window.location.href = `/alunos/resultado-simulado/${id}`;
-}
 </script>
 {% endblock %}

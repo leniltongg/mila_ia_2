@@ -1,123 +1,5 @@
 {% extends "professores/base_professores.html" %}
 
-{% block head %}
-<style>
-    /* Card styles */
-    .card {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        margin-bottom: 1rem;
-    }
-    .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid rgba(0,0,0,.125);
-        padding: 1rem;
-    }
-    .card-header h5 {
-        margin: 0;
-        color: #333;
-        font-weight: 600;
-    }
-    
-    /* Questões styles */
-    .questao-row {
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-        background-color: white;
-        transition: all 0.2s;
-    }
-    .questao-row:hover {
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        transform: translateY(-1px);
-    }
-    .questao-row.dragging {
-        opacity: 0.5;
-        background-color: #f8f9fa;
-    }
-    
-    /* Áreas de questões */
-    #questoes-disponiveis {
-        max-height: 600px;
-        overflow-y: auto;
-        padding: 1rem;
-        background-color: #f8f9fa;
-        border-radius: 0.375rem;
-    }
-    #questoes-selecionadas {
-        min-height: 200px;
-        border: 2px dashed #dee2e6;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        background-color: #f8f9fa;
-    }
-    #questoes-selecionadas.drag-over {
-        border-color: #0d6efd;
-        background-color: rgba(13, 110, 253, 0.05);
-    }
-    
-    /* Botões e ações */
-    .btn-add-questao {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.875rem;
-        border-radius: 0.25rem;
-    }
-    .btn-action {
-        color: #0d6efd;
-        cursor: pointer;
-        padding: 0.25rem;
-        margin: 0 0.25rem;
-        transition: color 0.2s;
-    }
-    .btn-action:hover {
-        color: #0a58ca;
-    }
-    .btn-remove {
-        color: #dc3545;
-    }
-    .btn-remove:hover {
-        color: #bb2d3b;
-    }
-    
-    /* Resumo do simulado */
-    .resumo-simulado {
-        background-color: #fff;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        margin-top: 1rem;
-    }
-    .resumo-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #dee2e6;
-    }
-    .resumo-item:last-child {
-        border-bottom: none;
-    }
-    
-    /* Feedback visual */
-    .feedback {
-        position: fixed;
-        top: 1rem;
-        right: 1rem;
-        z-index: 1050;
-    }
-    .questao-preview {
-        background-color: #fff;
-        border: 1px solid #dee2e6;
-        border-radius: 0.375rem;
-        padding: 1rem;
-        margin-bottom: 0.5rem;
-    }
-    .questao-preview:hover {
-        border-color: #0d6efd;
-    }
-</style>
-{% endblock %}
-
-{% block title %}Criar Simulado{% endblock %}
-
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row">
@@ -126,7 +8,14 @@
             <!-- Dados do Simulado -->
             <div class="card">
                 <div class="card-header">
-                    <h5><i class="bi bi-file-earmark-text me-2"></i>Dados do Simulado</h5>
+                    <h5>
+                        <i class="bi bi-file-earmark-text me-2"></i>
+                        {% if simulado %}
+                        Editar Simulado
+                        {% else %}
+                        Criar Simulado
+                        {% endif %}
+                    </h5>
                 </div>
                 <div class="card-body">
                     <form id="simulado-form">
@@ -135,7 +24,9 @@
                             <select class="form-select" id="serie_id" required>
                                 <option value="">Selecione...</option>
                                 {% for serie in series %}
-                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                <option value="{{ serie.id }}" {% if simulado and simulado.serie_id == serie.id %}selected{% endif %}>
+                                    {{ serie.nome }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -145,7 +36,9 @@
                             <select class="form-select" id="mes_id" required>
                                 <option value="">Selecione...</option>
                                 {% for mes in meses %}
-                                <option value="{{ mes.id }}">{{ mes.nome }}</option>
+                                <option value="{{ mes.id }}" {% if simulado and simulado.mes_id == mes.id %}selected{% endif %}>
+                                    {{ mes.nome }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -155,42 +48,52 @@
                             <select class="form-select" id="disciplina_id" required>
                                 <option value="">Selecione...</option>
                                 {% for disciplina in disciplinas %}
-                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                <option value="{{ disciplina.id }}" {% if simulado and simulado.disciplina_id == disciplina.id %}selected{% endif %}>
+                                    {{ disciplina.nome }}
+                                </option>
                                 {% endfor %}
                             </select>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100">
-                            <i class="bi bi-save me-2"></i>Salvar Simulado
+                            <i class="bi bi-save me-2"></i>
+                            {% if simulado %}
+                            Salvar Alterações
+                            {% else %}
+                            Salvar Simulado
+                            {% endif %}
                         </button>
                     </form>
                 </div>
             </div>
 
             <!-- Resumo do Simulado -->
-            <div class="card">
+            <div class="card mt-3">
                 <div class="card-header">
-                    <h5><i class="bi bi-list-check me-2"></i>Resumo do Simulado</h5>
+                    <h5><i class="bi bi-list-check me-2"></i>Resumo</h5>
                 </div>
                 <div class="card-body">
-                    <div class="resumo-simulado">
-                        <div class="resumo-item">
-                            <span>Total de Questões:</span>
-                            <strong id="total-questoes">0</strong>
-                        </div>
-                        <div class="resumo-item">
-                            <span>Série:</span>
-                            <strong id="resumo-serie">-</strong>
-                        </div>
-                        <div class="resumo-item">
-                            <span>Disciplina:</span>
-                            <strong id="resumo-disciplina">-</strong>
-                        </div>
-                        <div class="resumo-item">
-                            <span>Mês:</span>
-                            <strong id="resumo-mes">-</strong>
-                        </div>
-                    </div>
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4">Série:</dt>
+                        <dd class="col-sm-8" id="resumo-serie">
+                            {% if simulado %}{{ simulado.serie_nome }}{% else %}-{% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Disciplina:</dt>
+                        <dd class="col-sm-8" id="resumo-disciplina">
+                            {% if simulado %}{{ simulado.disciplina_nome }}{% else %}-{% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Mês:</dt>
+                        <dd class="col-sm-8" id="resumo-mes">
+                            {% if simulado %}{{ simulado.mes_nome }}{% else %}-{% endif %}
+                        </dd>
+                        
+                        <dt class="col-sm-4">Questões:</dt>
+                        <dd class="col-sm-8" id="total-questoes">
+                            {% if questoes_selecionadas %}{{ questoes_selecionadas|length }}{% else %}0{% endif %}
+                        </dd>
+                    </dl>
                 </div>
             </div>
         </div>
@@ -203,41 +106,34 @@
                 </div>
                 <div class="card-body">
                     <!-- Filtros -->
-                    <form id="pesquisa-form" class="mb-3">
-                        <div class="row g-2">
-                            <div class="col-md-4">
-                                <label for="filtro-serie" class="form-label">Série</label>
-                                <select class="form-select" id="filtro-serie">
-                                    <option value="">Todas</option>
-                                    {% for serie in series %}
-                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="filtro-disciplina" class="form-label">Disciplina</label>
-                                <select class="form-select" id="filtro-disciplina">
-                                    <option value="">Todas</option>
-                                    {% for disciplina in disciplinas %}
-                                    <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label for="filtro-assunto" class="form-label">Assunto</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="filtro-assunto" placeholder="Digite...">
-                                    <button class="btn btn-primary" type="submit">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                </div>
-                            </div>
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="filtro-serie" class="form-label">Série</label>
+                            <select class="form-select" id="filtro-serie">
+                                <option value="">Todas</option>
+                                {% for serie in series %}
+                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% endfor %}
+                            </select>
                         </div>
-                    </form>
+                        <div class="col-md-4">
+                            <label for="filtro-disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="filtro-disciplina">
+                                <option value="">Todas</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="filtro-assunto" class="form-label">Assunto</label>
+                            <input type="text" class="form-control" id="filtro-assunto" placeholder="Pesquisar...">
+                        </div>
+                    </div>
 
                     <!-- Lista de Questões -->
                     <div id="questoes-disponiveis">
-                        <!-- Questões serão inseridas aqui -->
+                        <!-- As questões serão carregadas aqui -->
                     </div>
                 </div>
             </div>
@@ -251,9 +147,8 @@
                 </div>
                 <div class="card-body">
                     <div id="questoes-selecionadas">
-                        <!-- Questões selecionadas serão inseridas aqui -->
-                        <div class="text-center text-muted" id="empty-state">
-                            <i class="bi bi-arrow-left-circle" style="font-size: 2rem;"></i>
+                        <div class="empty-state" id="empty-state">
+                            <i class="bi bi-arrow-left-circle"></i>
                             <p class="mt-2">Arraste questões do banco ou clique no botão adicionar</p>
                         </div>
                     </div>
@@ -271,95 +166,102 @@
                 <h5 class="modal-title">Visualizar Questão</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body modal-questao">
-                <!-- Conteúdo da questão será inserido aqui -->
+            <div class="modal-body">
+                <div class="modal-questao">
+                    <!-- Conteúdo da questão será carregado aqui -->
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" id="btnAdicionarQuestaoModal">
-                    <i class="bi bi-plus-circle me-2"></i>Adicionar ao Simulado
-                </button>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-let questaoAtualModal = null;
 const questoesSelecionadas = new Set();
 
-document.addEventListener('DOMContentLoaded', function() {
-    const pesquisaForm = document.getElementById('pesquisa-form');
-    const simuladoForm = document.getElementById('simulado-form');
-    const questoesDisponiveis = document.getElementById('questoes-disponiveis');
-    const questoesSelecionadasDiv = document.getElementById('questoes-selecionadas');
-    
-    // Atualizar resumo quando os campos mudarem
-    document.getElementById('serie_id').addEventListener('change', atualizarResumo);
-    document.getElementById('disciplina_id').addEventListener('change', function() {
-        atualizarResumo();
-        buscarQuestoes();
-    });
-    document.getElementById('mes_id').addEventListener('change', atualizarResumo);
+{% if questoes_selecionadas %}
+    {% for questao in questoes_selecionadas %}
+        questoesSelecionadas.add({{ questao.id }});
+        
+        // Adicionar questão ao DOM
+        document.addEventListener('DOMContentLoaded', function() {
+            const questaoElement = criarElementoQuestao({
+                id: {{ questao.id }},
+                enunciado: {{ questao.enunciado | tojson }},
+                alternativas: {{ questao.alternativas | tojson }},
+                resposta: {{ questao.resposta | tojson }},
+                assunto: {{ questao.assunto | tojson }}
+            });
+            document.getElementById('questoes-selecionadas').appendChild(questaoElement);
+        });
+    {% endfor %}
+{% endif %}
 
-    // Event listeners for filter elements
+document.addEventListener('DOMContentLoaded', function() {
+    setupDragAndDrop();
+    
     document.getElementById('filtro-serie').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-disciplina').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-assunto').addEventListener('change', buscarQuestoes);
-
-    // Initial setup
-    setupDragAndDrop();
     
-    // Form submission handler
-    document.getElementById('simulado-form').addEventListener('submit', async function(e) {
-        e.preventDefault();
+    document.getElementById('serie_id').addEventListener('change', atualizarResumo);
+    document.getElementById('disciplina_id').addEventListener('change', atualizarResumo);
+    document.getElementById('mes_id').addEventListener('change', atualizarResumo);
+    
+    {% if simulado %}
+        document.getElementById('serie_id').value = '{{ simulado.serie_id }}';
+        document.getElementById('disciplina_id').value = '{{ simulado.disciplina_id }}';
+        document.getElementById('mes_id').value = '{{ simulado.mes_id }}';
         
-        if (questoesSelecionadas.size === 0) {
-            mostrarFeedback('Selecione pelo menos uma questão', 'warning');
-            return;
-        }
-        
-        const formData = {
-            serie_id: document.getElementById('serie_id').value,
-            disciplina_id: document.getElementById('disciplina_id').value,
-            mes_id: document.getElementById('mes_id').value,
-            questoes: Array.from(questoesSelecionadas)
-        };
-        
-        try {
-            const response = await fetch('/professores/salvar-simulado', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData)
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                mostrarFeedback('Simulado criado com sucesso!', 'success');
-                setTimeout(() => {
-                    window.location.href = '/professores/simulados';
-                }, 1500);
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            mostrarFeedback(error.message, 'danger');
-        }
-    });
+        atualizarResumo();
+    {% endif %}
+    
+    buscarQuestoes();
 });
 
-function mostrarFeedback(mensagem, tipo) {
-    const div = document.createElement('div');
-    div.className = `alert alert-${tipo} alert-dismissible fade show feedback`;
-    div.innerHTML = `
-        ${mensagem}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+function criarElementoQuestao(questao) {
+    const questaoDiv = document.createElement('div');
+    questaoDiv.className = 'questao-row';
+    questaoDiv.dataset.questaoId = questao.id;
+    
+    const alternativasHtml = questao.alternativas ? Object.entries(questao.alternativas)
+        .filter(([_, value]) => value !== null)
+        .map(([letra, texto]) => `
+            <div class="alternativa">
+                <strong>${letra.toUpperCase()})</strong> ${texto}
+            </div>
+        `).join('') : '';
+    
+    questaoDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-start">
+            <div class="questao-content">
+                <div class="questao-enunciado mb-2">${questao.enunciado}</div>
+                <div class="questao-alternativas">
+                    ${alternativasHtml}
+                </div>
+                <div class="questao-info mt-2">
+                    <small class="text-muted">
+                        Assunto: ${questao.assunto}
+                        | Resposta: ${questao.resposta}
+                    </small>
+                </div>
+            </div>
+            <div class="questao-actions">
+                <button type="button" class="btn btn-sm btn-info me-2" onclick="visualizarQuestao(${JSON.stringify(questao)})">
+                    <i class="bi bi-eye"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removerQuestao(${questao.id}, this.closest('.questao-row'))">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
     `;
-    document.body.appendChild(div);
-    setTimeout(() => div.remove(), 3000);
+    
+    return questaoDiv;
 }
 
 function atualizarResumo() {
@@ -384,25 +286,30 @@ async function buscarQuestoes() {
     
     try {
         const response = await fetch(`/professores/buscar-questoes?serie_id=${serie}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        if (!response.ok) {
+            throw new Error('Erro ao buscar questões');
+        }
         const questoes = await response.json();
         
         const questoesDisponiveis = document.getElementById('questoes-disponiveis');
         questoesDisponiveis.innerHTML = questoes.map(questao => {
-            // Stringify questao object only once and escape quotes properly
             const questaoJSON = JSON.stringify(questao).replace(/"/g, '&quot;');
             return `
                 <div class="questao-row" draggable="true" data-questao='${questaoJSON}'>
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <div class="questao-texto">${questao.questao.substring(0, 100)}...</div>
-                            <small class="text-muted">
-                                ${questao.disciplina_nome} | ${questao.serie_nome} | ${questao.assunto}
-                            </small>
-                        </div>
-                        <div>
-                            <i class="bi bi-eye btn-action" onclick="visualizarQuestao(${questaoJSON})"></i>
-                            <i class="bi bi-plus-circle btn-action" onclick="adicionarQuestao(${questaoJSON})"></i>
-                        </div>
+                    <h6>Questão ${questao.id}</h6>
+                    <p class="mb-2">${questao.pergunta.substring(0, 100)}...</p>
+                    <div class="questao-info text-muted small mb-2">
+                        <span>Disciplina: ${questao.disciplina_nome}</span> | 
+                        <span>Série: ${questao.serie_nome}</span> | 
+                        <span>Assunto: ${questao.assunto}</span>
+                    </div>
+                    <div class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick='visualizarQuestao(${questaoJSON})'>
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick='adicionarQuestao(${questaoJSON})'>
+                            <i class="bi bi-plus-circle"></i>
+                        </button>
                     </div>
                 </div>
             `;
@@ -416,25 +323,19 @@ async function buscarQuestoes() {
 }
 
 function visualizarQuestao(questao) {
-    questaoAtualModal = questao;
     const modalBody = document.querySelector('.modal-questao');
+    
+    const alternativas = JSON.parse(questao.alternativas);
     
     modalBody.innerHTML = `
         <div class="questao-preview">
-            <div class="questao-header">
-                <div class="questao-info">
-                    <strong>Disciplina:</strong> ${questao.disciplina_nome} |
-                    <strong>Série:</strong> ${questao.serie_nome} |
-                    <strong>Assunto:</strong> ${questao.assunto}
-                </div>
-            </div>
-            <div class="questao-texto mb-3">${questao.questao}</div>
+            <div class="questao-texto mb-3">${questao.pergunta}</div>
             <div class="alternativas">
-                <div class="alternativa">A) ${questao.alternativa_a}</div>
-                <div class="alternativa">B) ${questao.alternativa_b}</div>
-                <div class="alternativa">C) ${questao.alternativa_c}</div>
-                <div class="alternativa">D) ${questao.alternativa_d}</div>
-                ${questao.alternativa_e ? `<div class="alternativa">E) ${questao.alternativa_e}</div>` : ''}
+                ${alternativas.map((alt, index) => `
+                    <div class="alternativa ${questao.resposta_correta === index ? 'text-success' : ''}">
+                        ${String.fromCharCode(65 + index)}) ${alt}
+                    </div>
+                `).join('')}
             </div>
         </div>
     `;
@@ -450,35 +351,35 @@ function adicionarQuestao(questao) {
     }
     
     questoesSelecionadas.add(questao.id);
-    const questoesSelecionadasDiv = document.getElementById('questoes-selecionadas');
+    
     const emptyState = document.getElementById('empty-state');
+    if (emptyState) {
+        emptyState.remove();
+    }
     
-    if (emptyState) emptyState.remove();
-    
-    const questaoElement = document.createElement('div');
-    questaoElement.className = 'questao-row';
-    questaoElement.innerHTML = `
-        <div class="d-flex justify-content-between align-items-start">
-            <div>
-                <div class="questao-texto">${questao.questao.substring(0, 100)}...</div>
-                <small class="text-muted">
-                    ${questao.disciplina_nome} | ${questao.serie_nome} | ${questao.assunto}
-                </small>
-            </div>
-            <div>
-                <i class="bi bi-eye btn-action" onclick="visualizarQuestao(${JSON.stringify(questao).replace(/"/g, '&quot;')})"></i>
-                <i class="bi bi-x-circle btn-action btn-remove" onclick="removerQuestao(${questao.id}, this.parentElement.parentElement.parentElement)"></i>
-            </div>
+    const questoesSelecionadasDiv = document.getElementById('questoes-selecionadas');
+    const questaoDiv = document.createElement('div');
+    questaoDiv.className = 'questao-row';
+    questaoDiv.innerHTML = `
+        <h6>Questão ${questao.id}</h6>
+        <p class="mb-2">${questao.pergunta.substring(0, 100)}...</p>
+        <div class="questao-info text-muted small mb-2">
+            <span>Disciplina: ${questao.disciplina_nome}</span> | 
+            <span>Série: ${questao.serie_nome}</span> | 
+            <span>Assunto: ${questao.assunto}</span>
+        </div>
+        <div class="text-end">
+            <button class="btn btn-sm btn-outline-primary" onclick='visualizarQuestao(${JSON.stringify(questao)})'>
+                <i class="bi bi-eye"></i>
+            </button>
+            <button class="btn btn-sm btn-outline-danger" onclick="removerQuestao(${questao.id}, this.parentElement.parentElement)">
+                <i class="bi bi-trash"></i>
+            </button>
         </div>
     `;
     
-    questoesSelecionadasDiv.appendChild(questaoElement);
+    questoesSelecionadasDiv.appendChild(questaoDiv);
     atualizarResumo();
-    
-    // Fechar modal se estiver aberto
-    const modal = bootstrap.Modal.getInstance(document.getElementById('modalVisualizarQuestao'));
-    if (modal) modal.hide();
-    
     mostrarFeedback('Questão adicionada com sucesso', 'success');
 }
 
@@ -487,31 +388,32 @@ function removerQuestao(questaoId, element) {
     element.remove();
     atualizarResumo();
     
-    // Mostrar empty state se não houver questões
     if (questoesSelecionadas.size === 0) {
         const questoesSelecionadasDiv = document.getElementById('questoes-selecionadas');
-        questoesSelecionadasDiv.innerHTML = `
-            <div class="text-center text-muted" id="empty-state">
-                <i class="bi bi-arrow-left-circle" style="font-size: 2rem;"></i>
-                <p class="mt-2">Arraste questões do banco ou clique no botão adicionar</p>
-            </div>
+        const emptyState = document.createElement('div');
+        emptyState.className = 'empty-state';
+        emptyState.id = 'empty-state';
+        emptyState.innerHTML = `
+            <i class="bi bi-arrow-left-circle"></i>
+            <p class="mt-2">Arraste questões do banco ou clique no botão adicionar</p>
         `;
+        questoesSelecionadasDiv.appendChild(emptyState);
     }
     
-    mostrarFeedback('Questão removida', 'info');
+    mostrarFeedback('Questão removida com sucesso', 'success');
 }
 
 function setupDragAndDrop() {
-    const questoesRows = document.querySelectorAll('.questao-row');
+    const questoesDisponiveis = document.querySelectorAll('#questoes-disponiveis .questao-row');
     const questoesSelecionadasDiv = document.getElementById('questoes-selecionadas');
     
-    questoesRows.forEach(row => {
-        row.addEventListener('dragstart', function(e) {
-            this.classList.add('dragging');
+    questoesDisponiveis.forEach(questao => {
+        questao.addEventListener('dragstart', function(e) {
             e.dataTransfer.setData('text/plain', this.dataset.questao);
+            this.classList.add('dragging');
         });
         
-        row.addEventListener('dragend', function() {
+        questao.addEventListener('dragend', function() {
             this.classList.remove('dragging');
         });
     });
@@ -529,25 +431,172 @@ function setupDragAndDrop() {
         e.preventDefault();
         this.classList.remove('drag-over');
         
-        const questao = JSON.parse(e.dataTransfer.getData('text/plain'));
+        const questaoData = e.dataTransfer.getData('text/plain');
+        const questao = JSON.parse(questaoData);
         adicionarQuestao(questao);
     });
 }
 
+async function salvarSimulado(event) {
+    event.preventDefault();
+    
+    const serie_id = document.getElementById('serie_id').value;
+    const disciplina_id = document.getElementById('disciplina_id').value;
+    const mes_id = document.getElementById('mes_id').value;
+    
+    if (!serie_id || !disciplina_id || !mes_id) {
+        mostrarFeedback('Preencha todos os campos obrigatórios', 'warning');
+        return;
+    }
+    
+    if (questoesSelecionadas.size === 0) {
+        mostrarFeedback('Selecione pelo menos uma questão', 'warning');
+        return;
+    }
+    
+    try {
+        const url = {% if simulado %}
+            `/professores/salvar-simulado/{{ simulado.id }}`
+        {% else %}
+            '/professores/salvar-simulado'
+        {% endif %};
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                serie_id: parseInt(serie_id),
+                disciplina_id: parseInt(disciplina_id),
+                mes_id: parseInt(mes_id),
+                questoes: Array.from(questoesSelecionadas)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao salvar simulado');
+        }
+        
+        mostrarFeedback('Simulado salvo com sucesso!', 'success');
+        setTimeout(() => {
+            window.location.href = '/professores/simulados';
+        }, 1500);
+    } catch (error) {
+        console.error('Erro ao salvar simulado:', error);
+        mostrarFeedback('Erro ao salvar simulado: ' + error.message, 'danger');
+    }
+}
+
+// Adicionar evento de submit ao formulário
 document.addEventListener('DOMContentLoaded', function() {
-    const disciplinaSelect = document.getElementById('disciplina_id');
-    
-    disciplinaSelect.addEventListener('change', function() {
-        buscarQuestoes();
-    });
-    
-    // Setup inicial do drag and drop
-    setupDragAndDrop();
+    const form = document.getElementById('simulado-form');
+    if (form) {
+        form.addEventListener('submit', salvarSimulado);
+    }
 });
 
-function visualizarQuestao(questaoId) {
-    // Implementar modal para visualizar detalhes da questão
-    // TODO
+function mostrarFeedback(mensagem, tipo) {
+    const div = document.createElement('div');
+    div.className = `alert alert-${tipo} alert-dismissible fade show feedback`;
+    div.innerHTML = `
+        ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
 }
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Card styles */
+    .card {
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        margin-bottom: 1rem;
+    }
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 1px solid rgba(0,0,0,.125);
+        padding: 1rem;
+    }
+    .card-header h5 {
+        margin: 0;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    /* Questões styles */
+    .questao-row {
+        background-color: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .questao-row:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+    .questao-row h6 {
+        color: #0d6efd;
+        margin-bottom: 0.5rem;
+    }
+    .questao-row p {
+        color: #333;
+        margin-bottom: 0.5rem;
+    }
+    .questao-info {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .questao-row .btn {
+        padding: 0.25rem 0.5rem;
+        margin-left: 0.25rem;
+    }
+    
+    /* Áreas de questões */
+    #questoes-disponiveis {
+        max-height: 600px;
+        overflow-y: auto;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+    }
+    #questoes-selecionadas {
+        min-height: 200px;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 0.375rem;
+    }
+    #questoes-selecionadas.drag-over {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+    
+    /* Feedback visual */
+    .feedback {
+        position: fixed;
+        top: 1rem;
+        right: 1rem;
+        z-index: 1050;
+    }
+    
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+    }
+    .empty-state i {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+</style>
 {% endblock %}

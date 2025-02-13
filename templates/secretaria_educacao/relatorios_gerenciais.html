@@ -1,0 +1,99 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="h3 mb-4 text-gray-800">Relatórios Gerenciais</h1>
+
+    <div class="row">
+        <!-- Desempenho Rede Municipal -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho Rede Municipal</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Visualize o desempenho geral de toda a rede municipal nos simulados.</p>
+                    <a href="{{ url_for('secretaria_educacao.relatorio_rede_municipal') }}" class="btn btn-primary btn-block">
+                        <i class="bi bi-bar-chart-line me-2"></i>Ver Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Escola -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Escola</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Analise o desempenho individual de cada escola nos simulados.</p>
+                    <a href="{{ url_for('secretaria_educacao.relatorio_escola') }}" class="btn btn-primary btn-block">
+                        <i class="bi bi-building me-2"></i>Ver Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Componente Curricular -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Componente Curricular</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Compare o desempenho dos alunos em diferentes componentes curriculares.</p>
+                    <a href="{{ url_for('secretaria_educacao.relatorio_disciplina') }}" class="btn btn-primary btn-block">
+                        <i class="bi bi-book me-2"></i>Ver Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Tipo de Ensino -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Tipo de Ensino</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Compare o desempenho dos alunos em diferentes tipos de ensino.</p>
+                    <a href="{{ url_for('secretaria_educacao.relatorio_tipo_ensino') }}" class="btn btn-primary btn-block">
+                        <i class="bi bi-mortarboard me-2"></i>Ver Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Turma -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Turma</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Visualize o desempenho dos alunos agrupado por turma, com detalhamento por escola.</p>
+                    <a href="{{ url_for('secretaria_educacao.relatorio_turma') }}" class="btn btn-primary btn-block">
+                        <i class="bi bi-people me-2"></i>Ver Relatório
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho Individual -->
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho Individual</h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Acesse relatórios individuais de desempenho dos alunos.</p>
+                    <a href="#" class="btn btn-primary btn-block disabled">
+                        <i class="bi bi-person me-2"></i>Em breve
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

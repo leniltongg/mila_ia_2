@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório por Componente Curricular</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .info {
+            margin-bottom: 20px;
+        }
+        .resumo {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Relatório por Componente Curricular - {{ disciplina.nome }}</h1>
+    
+    <div class="info">
+        <p><strong>Período:</strong> {% if mes %}{{ get_nome_mes(mes) }} de {% endif %}{{ ano }}</p>
+    </div>
+    
+    <div class="resumo">
+        <h2 class="section-title">Resumo Geral</h2>
+        <p><strong>Total de Alunos:</strong> {{ disciplina.total_alunos }}</p>
+        <p><strong>Total de Simulados:</strong> {{ disciplina.total_simulados }}</p>
+        <p><strong>Total de Questões:</strong> {{ disciplina.total_questoes }}</p>
+        <p><strong>Média Geral:</strong> {{ "%.1f"|format(disciplina.media_geral) }}%</p>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">Desempenho por Série</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Série</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for serie in series %}
+                <tr>
+                    <td>{{ serie.nome }}</td>
+                    <td>{{ serie.total_alunos }}</td>
+                    <td>{{ serie.total_questoes }}</td>
+                    <td>{{ "%.1f"|format(serie.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="section">
+        <h2 class="section-title">Desempenho por Escola</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Escola</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média de Acertos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for escola in escolas %}
+                <tr>
+                    <td>{{ escola.nome }}</td>
+                    <td>{{ escola.total_alunos }}</td>
+                    <td>{{ escola.total_questoes }}</td>
+                    <td>{{ escola.media_acertos }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

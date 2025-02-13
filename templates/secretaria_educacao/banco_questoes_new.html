@@ -24,7 +24,7 @@
                         <label for="disciplina_id" class="form-label">Componente Curricular</label>
                         <select class="form-select" id="disciplina_id" name="disciplina_id">
                             <option value="">Todos</option>
-                            {% for disciplina in disciplinas %}
+                            {% for Componente Curricular in disciplinas %}
                             <option value="{{ disciplina.id }}" {% if disciplina.id == request.args.get('disciplina_id', '')|int %}selected{% endif %}>
                                 {{ disciplina.nome }}
                             </option>
@@ -123,7 +123,7 @@
                                 <label for="disciplina_id" class="form-label">Componente Curricular</label>
                                 <select class="form-select" id="disciplina_id" name="disciplina_id" required>
                                     <option value="">Selecione...</option>
-                                    {% for disciplina in disciplinas %}
+                                    {% for Componente Curricular in disciplinas %}
                                     <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
                                     {% endfor %}
                                 </select>

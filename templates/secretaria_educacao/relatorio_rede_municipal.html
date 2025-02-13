@@ -1,0 +1,231 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .school-card:hover {
+        transform: translateY(-5px);
+        transition: transform 0.2s;
+        cursor: pointer;
+    }
+    .performance-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 10px;
+    }
+    .high-performance { background-color: #28a745; }
+    .medium-performance { background-color: #ffc107; }
+    .low-performance { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Desempenho da Rede Municipal - 2025</h1>
+        <div class="d-flex gap-2">
+            <form method="GET" class="d-flex align-items-center">
+                <select name="mes" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Todos os meses</option>
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Janeiro</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Fevereiro</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Março</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Maio</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junho</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julho</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Setembro</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Outubro</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Novembro</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Dezembro</option>
+                </select>
+            </form>
+            <a href="{{ url_for('secretaria_educacao.export_pdf_relatorio', mes=mes) }}" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </a>
+            <a href="{{ url_for('secretaria_educacao.export_excel_relatorio', mes=mes) }}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </a>
+        </div>
+    </div>
+
+    <!-- Cards de Resumo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Média Geral</h5>
+                    <p class="card-text display-4">{{ media_geral }}%</p>
+                    <p class="card-text text-muted">
+                        Média ponderada por alunos ativos
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total de Escolas</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_escolas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-school fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Total de Alunos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_alunos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Simulados Realizados</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_simulados }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <!-- Gráfico de Desempenho por Escola -->
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Escola</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:50vh;">
+                        <canvas id="escolasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Escolas -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Ano Escolar</th>
+                            <th>Total de Alunos</th>
+                            <th>Alunos que Responderam</th>
+                            <th>Média (%)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escola in escolas %}
+                        <tr class="school-row" data-escola-id="{{ escola.id }}">
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="performance-indicator {{ 'high-performance' if escola.media >= 70 else 'medium-performance' if escola.media >= 50 else 'low-performance' }}"></span>
+                                    {{ escola.nome }}
+                                </div>
+                            </td>
+                            <td>{{ escola.total_alunos }}</td>
+                            <td>
+                                {{ escola.alunos_ativos }}
+                                <small class="text-muted">({{ "%.1f"|format(escola.alunos_ativos / escola.total_alunos * 100 if escola.total_alunos > 0 else 0) }}%)</small>
+                            </td>
+                            <td>{{ "%.1f"|format(escola.media) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% include 'secretaria_educacao/_desempenho_disciplinas.html' %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Dados do gráfico de escolas
+    const escolasData = {
+        labels: {{ escolas_nomes|tojson }},
+        datasets: [{
+            label: 'Média (%)',
+            data: {{ escolas_medias|tojson }},
+            backgroundColor: 'rgba(78, 115, 223, 0.8)',
+            borderColor: 'rgba(78, 115, 223, 1)',
+            borderWidth: 1
+        }]
+    };
+
+    // Configuração do gráfico de barras
+    const escolasChart = new Chart(
+        document.getElementById('escolasChart'),
+        {
+            type: 'bar',
+            data: escolasData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        }
+    );
+
+    // Adicionar evento de clique nas linhas da tabela
+    document.querySelectorAll('.school-row').forEach(row => {
+        row.addEventListener('click', function() {
+            const escolaId = this.dataset.escolaId;
+            window.location.href = `/secretaria_educacao/relatorio_escola/${escolaId}`;
+        });
+    });
+});
+</script>
+{% endblock %}

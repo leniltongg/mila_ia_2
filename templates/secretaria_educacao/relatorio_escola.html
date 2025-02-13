@@ -1,0 +1,256 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block extra_css %}
+{{ super() }}
+<style>
+    .performance-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 10px;
+    }
+    .high-performance { background-color: #28a745; }
+    .medium-performance { background-color: #ffc107; }
+    .low-performance { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Desempenho por Escola - {{ ano }}</h1>
+        <div class="d-flex gap-2">
+            <form method="GET" class="d-flex align-items-center">
+                <select name="escola_id" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Selecione uma escola</option>
+                    {% for e in escolas %}
+                    <option value="{{ e.id }}" {% if e.id == escola_id %}selected{% endif %}>{{ e.nome }}</option>
+                    {% endfor %}
+                </select>
+                <select name="mes" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Todos os meses</option>
+                    <option value="1" {% if mes == 1 %}selected{% endif %}>Janeiro</option>
+                    <option value="2" {% if mes == 2 %}selected{% endif %}>Fevereiro</option>
+                    <option value="3" {% if mes == 3 %}selected{% endif %}>Março</option>
+                    <option value="4" {% if mes == 4 %}selected{% endif %}>Abril</option>
+                    <option value="5" {% if mes == 5 %}selected{% endif %}>Maio</option>
+                    <option value="6" {% if mes == 6 %}selected{% endif %}>Junho</option>
+                    <option value="7" {% if mes == 7 %}selected{% endif %}>Julho</option>
+                    <option value="8" {% if mes == 8 %}selected{% endif %}>Agosto</option>
+                    <option value="9" {% if mes == 9 %}selected{% endif %}>Setembro</option>
+                    <option value="10" {% if mes == 10 %}selected{% endif %}>Outubro</option>
+                    <option value="11" {% if mes == 11 %}selected{% endif %}>Novembro</option>
+                    <option value="12" {% if mes == 12 %}selected{% endif %}>Dezembro</option>
+                </select>
+            </form>
+            {% if escola_id %}
+            <a href="{{ url_for('secretaria_educacao.export_pdf_escola', escola_id=escola_id, mes=mes) }}" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </a>
+            <a href="{{ url_for('secretaria_educacao.export_excel_escola', escola_id=escola_id, mes=mes) }}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if escola_id %}
+        <!-- Cards de Resumo -->
+        <div class="row mb-4">
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-primary shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                    Média Geral</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ media_geral }}%</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-percent fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-success shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                    Total de Alunos</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_alunos }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-users fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    Alunos Ativos</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ alunos_ativos }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-user-check fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6 mb-4">
+                <div class="card border-left-warning shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                    Simulados Realizados</div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_simulados }}</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Série -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Desempenho por Série</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Série</th>
+                                <th>Total Alunos</th>
+                                <th>Alunos Ativos</th>
+                                <th>Média</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for serie in series %}
+                            <tr>
+                                <td>{{ serie.nome }}</td>
+                                <td>{{ serie.total_alunos }}</td>
+                                <td>
+                                    {{ serie.alunos_ativos }}
+                                    <small class="text-muted">({{ "%.1f"|format(serie.alunos_ativos / serie.total_alunos * 100 if serie.total_alunos > 0 else 0) }}%)</small>
+                                </td>
+                                <td>{{ "%.1f"|format(serie.media) }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Disciplina -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">Desempenho por Disciplina</h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Disciplina</th>
+                                <th>Total de Alunos</th>
+                                <th>Total de Questões</th>
+                                <th>Média de Acertos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for disciplina in disciplinas %}
+                            <tr>
+                                <td>{{ disciplina.disciplina }}</td>
+                                <td>{{ disciplina.total_alunos }}</td>
+                                <td>{{ disciplina.total_questoes }}</td>
+                                <td>{{ disciplina.media_acertos }}%</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+                <!-- Desempenho por Turma -->
+                <div class="card shadow mb-4">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Desempenho por Turma</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="accordion" id="accordionTurmas">
+                            {% for turma in turmas %}
+                            <div class="accordion-item">
+                                <h2 class="accordion-header" id="heading{{ turma.id }}">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ turma.id }}" aria-expanded="false" aria-controls="collapse{{ turma.id }}">
+                                        <div class="d-flex justify-content-between align-items-center w-100 me-3">
+                                            <strong>{{ turma.turma }}</strong>
+                                            <span class="badge bg-primary">Média: {{ "%.1f"|format(turma.media) }}%</span>
+                                        </div>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ turma.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ turma.id }}" data-bs-parent="#accordionTurmas">
+                                    <div class="accordion-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Aluno</th>
+                                                        <th>Simulados Realizados</th>
+                                                        <th>Média</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% for aluno in alunos if aluno.turma_id == turma.id %}
+                                                    <tr>
+                                                        <td>{{ aluno.aluno_nome }}</td>
+                                                        <td>{{ aluno.total_simulados }}</td>
+                                                        <td>{{ "%.1f"|format(aluno.media) }}%</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div class="mt-3">
+                                            <small class="text-muted">
+                                                Total de Alunos: {{ turma.total_alunos }} | 
+                                                Alunos Ativos: {{ turma.alunos_ativos }}
+                                                ({{ "%.1f"|format(turma.alunos_ativos / turma.total_alunos * 100 if turma.total_alunos > 0 else 0) }}%)
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            Selecione uma escola para visualizar seu desempenho.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

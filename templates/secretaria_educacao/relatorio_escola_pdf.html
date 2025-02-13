@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333;
+            font-size: 24px;
+        }
+        .header p {
+            margin: 5px 0;
+            color: #666;
+        }
+        .section {
+            margin-bottom: 30px;
+            page-break-inside: avoid;
+        }
+        .section h2 {
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .summary-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        .summary-item {
+            margin-bottom: 10px;
+        }
+        .summary-label {
+            font-weight: bold;
+            color: #666;
+        }
+        .page-break {
+            page-break-before: always;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Relatório de Desempenho - {{ escola.nome }}</h1>
+        <p>Período: {% if mes %}{{ mes }}/{% endif %}{{ ano }}</p>
+    </div>
+
+    <div class="section">
+        <h2>Resumo Geral</h2>
+        <div class="summary-box">
+            <div class="summary-item">
+                <span class="summary-label">Média Geral:</span>
+                <span>{{ media_geral }}%</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Total de Alunos:</span>
+                <span>{{ total_alunos }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Alunos Ativos:</span>
+                <span>{{ alunos_ativos }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Simulados Realizados:</span>
+                <span>{{ total_simulados }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Desempenho por Ano Escolar</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Ano Escolar</th>
+                    <th>Total de Alunos</th>
+                    <th>Alunos que Responderam</th>
+                    <th>Média (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for serie in series %}
+                <tr>
+                    <td>{{ serie.nome }}</td>
+                    <td>{{ serie.total_alunos }}</td>
+                    <td>
+                        {{ serie.alunos_ativos }}
+                        ({{ "%.1f"|format(serie.alunos_ativos / serie.total_alunos * 100 if serie.total_alunos > 0 else 0) }}%)
+                    </td>
+                    <td>{{ "%.1f"|format(serie.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section page-break">
+        <h2>Desempenho por Disciplina</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Disciplina</th>
+                    <th>Total de Alunos</th>
+                    <th>Total de Questões</th>
+                    <th>Média de Acertos</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for disciplina in disciplinas %}
+                <tr>
+                    <td>{{ disciplina.disciplina }}</td>
+                    <td>{{ disciplina.total_alunos }}</td>
+                    <td>{{ disciplina.total_questoes }}</td>
+                    <td>{{ disciplina.media_acertos }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% for turma in turmas %}
+    <div class="section page-break">
+        <h2>Desempenho da Turma {{ turma.turma }}</h2>
+        <div class="summary-box">
+            <div class="summary-item">
+                <span class="summary-label">Média da Turma:</span>
+                <span>{{ "%.1f"|format(turma.media) }}%</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Total de Alunos:</span>
+                <span>{{ turma.total_alunos }}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Alunos Ativos:</span>
+                <span>{{ turma.alunos_ativos }} ({{ "%.1f"|format(turma.alunos_ativos / turma.total_alunos * 100 if turma.total_alunos > 0 else 0) }}%)</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Simulados Realizados</th>
+                    <th>Média</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for aluno in alunos if aluno.turma_id == turma.id %}
+                <tr>
+                    <td>{{ aluno.aluno_nome }}</td>
+                    <td>{{ aluno.total_simulados }}</td>
+                    <td>{{ "%.1f"|format(aluno.media) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+</body>
+</html>

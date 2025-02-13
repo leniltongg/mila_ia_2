@@ -24,10 +24,10 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="filtro-disciplina" class="form-label">Disciplina</label>
-                            <select class="form-select" id="filtro-disciplina">
+                            <label for="filtro-Componente Curricular" class="form-label">Componente Curricular</label>
+                            <select class="form-select" id="filtro-Componente Curricular">
                                 <option value="">Todas</option>
-                                {% for disciplina in disciplinas %}
+                                {% for Componente Curricular in disciplinas %}
                                 <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
                                 {% endfor %}
                             </select>
@@ -67,7 +67,7 @@
                                 <thead>
                                     <tr>
                                         <th>Série</th>
-                                        <th>Disciplina</th>
+                                        <th>Componente Curricular</th>
                                         <th>Mês</th>
                                         <th>Data Envio</th>
                                         <th>Status</th>
@@ -123,11 +123,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 async function buscarSimulados() {
     const serie = document.getElementById('filtro-serie').value;
-    const disciplina = document.getElementById('filtro-disciplina').value;
+    const Componente Curricular = document.getElementById('filtro-Componente Curricular').value;
     const mes = document.getElementById('filtro-mes').value;
     
     try {
-        const response = await fetch(`/secretaria_educacao/filtrar-simulados?serie_id=${serie}&disciplina_id=${disciplina}&mes_id=${mes}`);
+        const response = await fetch(`/secretaria_educacao/filtrar-simulados?serie_id=${serie}&disciplina_id=${Componente Curricular}&mes_id=${mes}`);
         const data = await response.json();
         
         window.location.reload();

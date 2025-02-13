@@ -2,6 +2,9 @@ from flask import render_template, jsonify, g, redirect, url_for, flash, make_re
 from flask_login import login_required, current_user
 import sqlite3
 import logging
+import matplotlib
+matplotlib.use('Agg')  # Configurar o backend antes de importar pyplot
+import matplotlib.pyplot as plt
 from . import professores_bp
 from models import (
     User, Turma, Disciplina, 

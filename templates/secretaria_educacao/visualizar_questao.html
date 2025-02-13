@@ -34,12 +34,12 @@
                             <div>
                                 <strong>Componente Curricular:</strong> {{ questao.disciplina_nome }}
                             </div>
-                            <button type="button" class="btn btn-link text-primary" onclick="editarCampo('disciplina')">
+                            <button type="button" class="btn btn-link text-primary" onclick="editarCampo('Componente Curricular')">
                                 <i class="bi bi-pencil"></i>
                             </button>
                         </div>
                         <select class="form-select mt-2 d-none" id="disciplina_id" name="disciplina_id">
-                            {% for disciplina in disciplinas %}
+                            {% for Componente Curricular in disciplinas %}
                             <option value="{{ disciplina.id }}" {% if disciplina.id == questao.disciplina_id %}selected{% endif %}>
                                 {{ disciplina.nome }}
                             </option>
@@ -196,7 +196,7 @@ function editarCampo(campo) {
     // Mostra/esconde os elementos do campo atual
     const elementos = {
         'serie': ['serie_id'],
-        'disciplina': ['disciplina_id'],
+        'Componente Curricular': ['disciplina_id'],
         'assunto': ['assunto'],
         'questao': ['questao', 'questao_texto'],
         'alternativas': ['alternativas_edit', 'alternativas_texto'],
