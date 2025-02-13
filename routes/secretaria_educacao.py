@@ -7,6 +7,7 @@ import pandas as pd
 from weasyprint import HTML
 import tempfile
 from io import BytesIO
+from datetime import datetime
 
 # Dicionário de meses
 MESES = {
@@ -56,10 +57,31 @@ def get_nome_mes(mes_id):
     }
     return meses.get(mes_id, '-')
 
+# @secretaria_educacao_bp.route('/criar_simulado', methods=['GET'])
+# @login_required
+# def criar_simulado():
+#     """Cria um novo simulado."""
+#     if current_user.tipo_usuario_id != 5:  # Verifica se é secretaria
+#         flash("Acesso não autorizado.", "danger")
+#         return redirect(url_for("index"))
+    
+#     db = get_db()
+#     # Buscar disciplinas
+#     disciplinas = db.execute('SELECT * FROM disciplinas ORDER BY nome').fetchall()
+#     # Buscar todas as séries
+#     series = db.execute('SELECT * FROM series ORDER BY nome').fetchall()
+#     # Buscar meses
+#     meses = db.execute('SELECT * FROM meses ORDER BY id').fetchall()
+    
+#     return render_template('secretaria_educacao/criar_simulado.html', 
+#                          disciplinas=disciplinas,
+#                          series=series,
+#                          meses=meses)
+
 @secretaria_educacao_bp.route('/criar_simulado', methods=['GET'])
 @login_required
 def criar_simulado():
-    """Cria um novo simulado."""
+    """Cria um novo simulado ou edita um existente."""
     if current_user.tipo_usuario_id != 5:  # Verifica se é secretaria
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
@@ -72,36 +94,230 @@ def criar_simulado():
     # Buscar meses
     meses = db.execute('SELECT * FROM meses ORDER BY id').fetchall()
     
+    # Verificar se é edição
+    simulado_id = request.args.get('id', type=int)
+    simulado_data = None
+    questoes_selecionadas = []
+    
+    if simulado_id:
+        # Buscar dados do simulado
+        cursor = db.cursor()
+        cursor.execute("""
+            SELECT 
+                sgs.id,
+                sgs.disciplina_id,
+                sgs.serie_id,
+                sgs.mes_id,
+                sgs.status,
+                d.nome as disciplina_nome,
+                s.nome as serie_nome,
+                m.nome as mes_nome
+            FROM simulados_gerados sgs
+            JOIN disciplinas d ON d.id = sgs.disciplina_id
+            JOIN series s ON s.id = sgs.serie_id
+            JOIN meses m ON m.id = sgs.mes_id
+            WHERE sgs.id = ?
+        """, [simulado_id])
+        simulado = cursor.fetchone()
+        
+        if simulado:
+            # Verificar se o status é 'gerado'
+            if simulado['status'] != 'gerado':
+                flash('Não é possível editar um simulado que já foi enviado. Cancele o envio primeiro.', 'warning')
+                return redirect(url_for('secretaria_educacao.meus_simulados'))
+            
+            # Converter a tupla em um dicionário com todos os dados necessários
+            simulado_data = {
+                'id': simulado['id'],
+                'disciplina_id': simulado['disciplina_id'],
+                'serie_id': simulado['serie_id'],
+                'mes_id': simulado['mes_id'],
+                'status': simulado['status'],
+                'disciplina_nome': simulado['disciplina_nome'],
+                'serie_nome': simulado['serie_nome'],
+                'mes_nome': simulado['mes_nome']
+            }
+            
+            # Buscar questões do simulado
+            cursor.execute("""
+                SELECT 
+                    bq.id,
+                    bq.questao,
+                    bq.alternativa_a,
+                    bq.alternativa_b,
+                    bq.alternativa_c,
+                    bq.alternativa_d,
+                    bq.alternativa_e,
+                    bq.questao_correta,
+                    bq.assunto,
+                    bq.disciplina_id,
+                    bq.serie_id,
+                    bq.mes_id
+                FROM simulado_questoes sqs
+                JOIN banco_questoes bq ON bq.id = sqs.questao_id
+                WHERE sqs.simulado_id = ?
+                ORDER BY sqs.id
+            """, [simulado_id])
+            questoes_selecionadas = cursor.fetchall()
+    
     return render_template('secretaria_educacao/criar_simulado.html', 
                          disciplinas=disciplinas,
                          series=series,
-                         meses=meses)
+                         meses=meses,
+                         simulado=simulado_data,
+                         questoes_selecionadas=questoes_selecionadas)
 
-@secretaria_educacao_bp.route('/buscar_questoes', methods=['GET'])
+@secretaria_educacao_bp.route('/salvar_simulado', methods=['POST'])
 @login_required
-def buscar_questoes():
-    if current_user.tipo_usuario_id != 5:
-        return jsonify({'error': 'Acesso não autorizado'}), 403
+def salvar_simulado():
+    if current_user.tipo_usuario_id != 5:  # Mudei de 5 para 2
+        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
+    
+    try:
+        # Pegar dados do formulário
+        serie_id = request.form.get('serie_id')
+        mes_id = request.form.get('mes_id')
+        disciplina_id = request.form.get('disciplina_id')
+        questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
+        simulado_id = request.form.get('simulado_id')
+        
+        if not all([serie_id, mes_id, disciplina_id]) or not questoes:
+            return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
+        
+        db = get_db()
+        cursor = db.cursor()
+        
+        if simulado_id:  # Edição
+            # Atualizar simulado existente
+            cursor.execute("""
+                UPDATE simulados_gerados 
+                SET serie_id = ?, mes_id = ?, disciplina_id = ?
+                WHERE id = ? AND status = 'gerado'
+            """, (serie_id, mes_id, disciplina_id, simulado_id))
+            
+            # Remover questões antigas
+            cursor.execute("DELETE FROM simulado_questoes WHERE simulado_id = ?", [simulado_id])
+            
+            # Inserir novas questões
+            for questao_id in questoes:
+                cursor.execute(
+                    "INSERT INTO simulado_questoes (simulado_id, questao_id) VALUES (?, ?)",
+                    (simulado_id, questao_id)
+                )
+        else:  # Novo simulado
+            # Criar novo simulado
+            cursor.execute("""
+                INSERT INTO simulados_gerados (serie_id, mes_id, disciplina_id, status, data_envio)
+                VALUES (?, ?, ?, 'gerado', CURRENT_TIMESTAMP)
+            """, (serie_id, mes_id, disciplina_id))
+            simulado_id = cursor.lastrowid
+            
+            # Inserir questões do simulado
+            for questao_id in questoes:
+                cursor.execute(
+                    "INSERT INTO simulado_questoes (simulado_id, questao_id) VALUES (?, ?)",
+                    (simulado_id, questao_id)
+                )
+        
+        db.commit()
+        return jsonify({'success': True, 'message': 'Simulado salvo com sucesso!', 'simulado_id': simulado_id})
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao salvar simulado: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro ao salvar simulado'}), 500
 
-    serie_id = request.args.get('serie_id', '')
-    disciplina_id = request.args.get('disciplina_id', '')
+# @secretaria_educacao_bp.route('/buscar_questoes', methods=['GET'])
+# @login_required
+# def buscar_questoes():
+#     if current_user.tipo_usuario_id != 5:
+#         return jsonify({'error': 'Acesso não autorizado'}), 403
+
+#     serie_id = request.args.get('serie_id', '')
+#     disciplina_id = request.args.get('disciplina_id', '')
+#     assunto = request.args.get('assunto', '')
+    
+#     db = get_db()
+#     cursor = db.cursor()
+
+#     query = """
+#         SELECT 
+#             bq.*,
+#             d.nome as disciplina_nome,
+#             s.nome as serie_nome
+#         FROM banco_questoes bq
+#         LEFT JOIN series s ON bq.serie_id = s.id
+#         LEFT JOIN disciplinas d ON bq.disciplina_id = d.id
+#         WHERE 1=1
+#     """
+#     params = []
+
+#     if serie_id:
+#         query += " AND bq.serie_id = ?"
+#         params.append(serie_id)
+    
+#     if disciplina_id:
+#         query += " AND bq.disciplina_id = ?"
+#         params.append(disciplina_id)
+    
+#     if assunto:
+#         query += " AND bq.assunto LIKE ?"
+#         params.append(f"%{assunto}%")
+
+#     query += " ORDER BY bq.id DESC"
+    
+#     try:
+#         cursor.execute(query, params)
+#         questoes = cursor.fetchall()
+
+#         questoes_list = []
+#         for q in questoes:
+#             questao = {
+#                 'id': q[0],
+#                 'questao': q[1],
+#                 'alternativa_a': q[2],
+#                 'alternativa_b': q[3],
+#                 'alternativa_c': q[4],
+#                 'alternativa_d': q[5],
+#                 'alternativa_e': q[6],
+#                 'questao_correta': q[7],
+#                 'disciplina_id': q[8],
+#                 'assunto': q[9],
+#                 'serie_id': q[10],
+#                 'mes_id': q[11],
+#                 'disciplina_nome': q[12],
+#                 'serie_nome': q[13]
+#             }
+#             questoes_list.append(questao)
+
+#         return jsonify(questoes_list)
+#     except Exception as e:
+#         print(f"Erro ao buscar questões: {str(e)}")
+#         return jsonify({'error': 'Erro ao buscar questões'}), 500
+
+@secretaria_educacao_bp.route('/buscar_questoes')
+def buscar_questoes():
+    serie_id = request.args.get('serie_id')
+    disciplina_id = request.args.get('disciplina_id')
     assunto = request.args.get('assunto', '')
     
-    db = get_db()
-    cursor = db.cursor()
-
     query = """
         SELECT 
             bq.*,
             d.nome as disciplina_nome,
-            s.nome as serie_nome
+            s.nome as serie_nome,
+            (
+                SELECT COUNT(DISTINCT sq.simulado_id)
+                FROM simulado_questoes sq
+                WHERE sq.questao_id = bq.id
+            ) as total_usos
         FROM banco_questoes bq
-        LEFT JOIN series s ON bq.serie_id = s.id
-        LEFT JOIN disciplinas d ON bq.disciplina_id = d.id
+        JOIN disciplinas d ON d.id = bq.disciplina_id
+        JOIN series s ON s.id = bq.serie_id
         WHERE 1=1
     """
     params = []
-
+    
     if serie_id:
         query += " AND bq.serie_id = ?"
         params.append(serie_id)
@@ -113,77 +329,86 @@ def buscar_questoes():
     if assunto:
         query += " AND bq.assunto LIKE ?"
         params.append(f"%{assunto}%")
-
+    
     query += " ORDER BY bq.id DESC"
     
-    try:
-        cursor.execute(query, params)
-        questoes = cursor.fetchall()
+    db = get_db()
+    questoes = db.execute(query, params).fetchall()
+    return jsonify([dict(q) for q in questoes])
 
-        questoes_list = []
-        for q in questoes:
-            questao = {
-                'id': q[0],
-                'questao': q[1],
-                'alternativa_a': q[2],
-                'alternativa_b': q[3],
-                'alternativa_c': q[4],
-                'alternativa_d': q[5],
-                'alternativa_e': q[6],
-                'questao_correta': q[7],
-                'disciplina_id': q[8],
-                'assunto': q[9],
-                'serie_id': q[10],
-                'mes_id': q[11],
-                'disciplina_nome': q[12],
-                'serie_nome': q[13]
-            }
-            questoes_list.append(questao)
-
-        return jsonify(questoes_list)
-    except Exception as e:
-        print(f"Erro ao buscar questões: {str(e)}")
-        return jsonify({'error': 'Erro ao buscar questões'}), 500
-
-@secretaria_educacao_bp.route('/salvar_simulado', methods=['POST'])
+@secretaria_educacao_bp.route('/gerar_simulado_automatico', methods=['POST'])
 @login_required
-def salvar_simulado():
+def gerar_simulado_automatico():
     if current_user.tipo_usuario_id != 5:
         return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
-    
+        
     try:
-        # Pegar dados do formulário
-        serie_id = request.form.get('serie_id')
-        mes_id = request.form.get('mes_id')
-        disciplina_id = request.form.get('disciplina_id')
-        questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
+        data = request.get_json()
+        serie_id = data.get('serie_id')
+        disciplina_id = data.get('disciplina_id')
+        quantidade = int(data.get('quantidade', 10))
         
-        if not all([serie_id, mes_id, disciplina_id, questoes]):
-            return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
+        if not serie_id or not disciplina_id:
+            return jsonify({'success': False, 'message': 'Série e disciplina são obrigatórios'}), 400
         
-        # Criar novo simulado
-        query = """
-            INSERT INTO simulados_gerados (serie_id, mes_id, disciplina_id, status, data_envio)
-            VALUES (?, ?, ?, 'gerado', CURRENT_TIMESTAMP)
-        """
-        cursor = get_db().cursor()
-        cursor.execute(query, (serie_id, mes_id, disciplina_id))
-        simulado_id = cursor.lastrowid
+        db = get_db()
+        questoes = db.execute(
+            "SELECT id FROM banco_questoes WHERE serie_id = ? AND disciplina_id = ? ORDER BY RANDOM() LIMIT ?",
+            [serie_id, disciplina_id, quantidade]
+        ).fetchall()
         
-        # Inserir questões do simulado
-        for questao_id in questoes:
-            cursor.execute(
-                "INSERT INTO simulado_questoes (simulado_id, questao_id) VALUES (?, ?)",
-                (simulado_id, questao_id)
-            )
+        questoes_ids = [q['id'] for q in questoes]
+        if not questoes_ids:
+            return jsonify({'success': False, 'message': 'Nenhuma questão encontrada'}), 404
         
-        get_db().commit()
-        return jsonify({'success': True, 'message': 'Simulado criado com sucesso!', 'simulado_id': simulado_id})
+        return jsonify({'success': True, 'questoes': questoes_ids})
         
     except Exception as e:
-        get_db().rollback()
-        print(f"Erro ao salvar simulado: {str(e)}")
-        return jsonify({'success': False, 'message': 'Erro ao salvar simulado'}), 500
+        print(f"Erro ao gerar simulado automático: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro ao gerar simulado automático'}), 500
+
+
+
+
+# @secretaria_educacao_bp.route('/salvar_simulado', methods=['POST'])
+# @login_required
+# def salvar_simulado():
+#     if current_user.tipo_usuario_id != 5:
+#         return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
+    
+#     try:
+#         # Pegar dados do formulário
+#         serie_id = request.form.get('serie_id')
+#         mes_id = request.form.get('mes_id')
+#         disciplina_id = request.form.get('disciplina_id')
+#         questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
+        
+#         if not all([serie_id, mes_id, disciplina_id, questoes]):
+#             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
+        
+#         # Criar novo simulado
+#         query = """
+#             INSERT INTO simulados_gerados (serie_id, mes_id, disciplina_id, status, data_envio)
+#             VALUES (?, ?, ?, 'gerado', CURRENT_TIMESTAMP)
+#         """
+#         cursor = get_db().cursor()
+#         cursor.execute(query, (serie_id, mes_id, disciplina_id))
+#         simulado_id = cursor.lastrowid
+        
+#         # Inserir questões do simulado
+#         for questao_id in questoes:
+#             cursor.execute(
+#                 "INSERT INTO simulado_questoes (simulado_id, questao_id) VALUES (?, ?)",
+#                 (simulado_id, questao_id)
+#             )
+        
+#         get_db().commit()
+#         return jsonify({'success': True, 'message': 'Simulado criado com sucesso!', 'simulado_id': simulado_id})
+        
+#     except Exception as e:
+#         get_db().rollback()
+#         print(f"Erro ao salvar simulado: {str(e)}")
+#         return jsonify({'success': False, 'message': 'Erro ao salvar simulado'}), 500
 
 @secretaria_educacao_bp.route('/banco_questoes', methods=['GET', 'POST'])
 @login_required
@@ -1436,7 +1661,110 @@ def get_relatorio_data():
         'disciplinas_medias': disciplinas_medias
     }
 
-@secretaria_educacao_bp.route('/relatorio_escola')
+# @secretaria_educacao_bp.route('/relatorio_escola')
+# @login_required
+# def relatorio_escola():
+#     """Página de relatório por escola."""
+#     if current_user.tipo_usuario_id != 5:
+#         flash("Acesso não autorizado.", "danger")
+#         return redirect(url_for("index"))
+    
+#     db = get_db()
+#     cursor = db.cursor()
+    
+#     # Buscar o `codigo_ibge` do usuário
+#     cursor.execute("SELECT codigo_ibge FROM usuarios WHERE id = ?", (current_user.id,))
+#     codigo_ibge = cursor.fetchone()[0]
+    
+#     # Buscar todas as escolas do município
+#     cursor.execute("""
+#         SELECT id, nome_da_escola as nome
+#         FROM escolas
+#         WHERE codigo_ibge = ?
+#         ORDER BY nome_da_escola
+#     """, [codigo_ibge])
+#     escolas = cursor.fetchall()
+    
+#     # Obter escola_id e mês da query string
+#     escola_id = request.args.get('escola_id', type=int)
+#     mes = request.args.get('mes', type=int)
+#     ano = 2025  # Fixado em 2025
+    
+#     # Se uma escola foi selecionada, buscar seus dados
+#     if escola_id:
+#         # Construir a condição de data
+#         data_condition = "strftime('%Y', data_resposta) = ?"
+#         data_params = [str(ano)]
+        
+#         if mes:
+#             data_condition += " AND strftime('%m', data_resposta) = ?"
+#             data_params.append(f"{mes:02d}")
+        
+#         # Buscar dados da escola
+#         cursor.execute("""
+#             SELECT nome_da_escola, ensino_fundamental
+#             FROM escolas
+#             WHERE id = ?
+#         """, [escola_id])
+#         escola = cursor.fetchone()
+        
+#         # Buscar turmas e seus desempenhos
+#         cursor.execute(f"""
+#             SELECT 
+#                 t.id,
+#                 t.turma,
+#                 COUNT(DISTINCT u.id) as total_alunos,
+#                 COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
+#                 COALESCE(AVG(ds.desempenho), 0) as media
+#             FROM turmas t
+#             LEFT JOIN usuarios u ON u.turma_id = t.id AND u.tipo_usuario_id = 4
+#             LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id
+#             WHERE t.escola_id = ?
+#             AND ({data_condition} OR ds.data_resposta IS NULL)
+#             GROUP BY t.id, t.turma
+#             ORDER BY t.turma
+#         """, [escola_id] + data_params)
+        
+#         turmas = cursor.fetchall()
+        
+#         # Buscar alunos e seus desempenhos
+#         cursor.execute(f"""
+#             SELECT 
+#                 u.id as aluno_id,
+#                 u.nome as aluno_nome,
+#                 u.turma_id,
+#                 COUNT(ds.id) as total_simulados,
+#                 COALESCE(AVG(ds.desempenho), 0) as media
+#             FROM usuarios u
+#             LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id
+#             WHERE u.escola_id = ? 
+#             AND u.tipo_usuario_id = 4
+#             AND ({data_condition} OR ds.data_resposta IS NULL)
+#             GROUP BY u.id, u.nome, u.turma_id
+#             ORDER BY u.nome
+#         """, [escola_id] + data_params)
+        
+#         alunos = cursor.fetchall()
+        
+#         return render_template(
+#             'secretaria_educacao/relatorio_escola.html',
+#             escolas=escolas,
+#             escola_id=escola_id,
+#             escola=escola,
+#             mes=mes,
+#             ano=ano,
+#             turmas=turmas,
+#             alunos=alunos
+#         )
+    
+#     return render_template(
+#         'secretaria_educacao/relatorio_escola.html',
+#         escolas=escolas,
+#         escola_id=None,
+#         mes=mes,
+#         ano=ano
+#     )
+
 @secretaria_educacao_bp.route('/relatorio_escola')
 @login_required
 def relatorio_escola():
@@ -1541,43 +1869,96 @@ def relatorio_escola():
         """, [escola_id] + data_params)
         disciplinas = cursor.fetchall()
 
-        # Buscar dados por turma
+
+        #Buscar dados por turma
         cursor.execute(f"""
             SELECT 
                 t.id,
-                t.turma,
+                s.nome || ' ' || t.turma as turma,
                 COUNT(DISTINCT u.id) as total_alunos,
                 COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
                 COALESCE(AVG(ds.desempenho), 0) as media
             FROM turmas t
+            JOIN series s ON s.id = t.serie_id
             LEFT JOIN usuarios u ON u.turma_id = t.id 
-                AND u.tipo_usuario_id = 1  -- Alunos
+                AND u.tipo_usuario_id = 4
                 AND u.escola_id = ?
             LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
                 AND {data_condition}
-            GROUP BY t.id, t.turma
+            GROUP BY t.id, t.turma, s.nome
             HAVING total_alunos > 0
-            ORDER BY t.turma
+            ORDER BY s.nome, t.turma
         """, [escola_id] + data_params)
+        
         turmas = cursor.fetchall()
-
-        # Buscar dados dos alunos por turma
+        
+        #Buscar alunos e seus desempenhos
         cursor.execute(f"""
+            SELECT 
+                u.id as aluno_id,
+                u.nome as aluno_nome,
+                u.turma_id,
+                COUNT(ds.id) as total_simulados,
+                COALESCE(AVG(ds.desempenho), 0) as media
+            FROM usuarios u
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id
+            WHERE u.escola_id = ? 
+            AND u.tipo_usuario_id = 4
+            AND ({data_condition} OR ds.data_resposta IS NULL)
+            GROUP BY u.id, u.nome, u.turma_id
+            ORDER BY u.nome
+        """, [escola_id] + data_params)
+        
+        alunos = cursor.fetchall()
+
+        # Buscar dados dos alunos por turma com desempenho por disciplina
+        cursor.execute(f"""
+            WITH SimuladosDisciplinas AS (
+                SELECT 
+                    ds.aluno_id,
+                    ds.simulado_id,
+                    ds.desempenho,
+                    COALESCE(sg.disciplina_id, sgp.disciplina_id) as disciplina_id,
+                    u.turma_id
+                FROM desempenho_simulado ds
+                JOIN usuarios u ON u.id = ds.aluno_id
+                LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+                LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+                WHERE u.escola_id = ? 
+                AND COALESCE(sg.disciplina_id, sgp.disciplina_id) IS NOT NULL
+            ),
+            MediasPorDisciplina AS (
+                SELECT 
+                    sd.aluno_id,
+                    sd.turma_id,
+                    d.id as disciplina_id,
+                    ROUND(AVG(sd.desempenho), 1) as media_disciplina
+                FROM SimuladosDisciplinas sd
+                JOIN disciplinas d ON d.id = sd.disciplina_id
+                GROUP BY sd.aluno_id, sd.turma_id, d.id
+            )
             SELECT 
                 t.id as turma_id,
                 u.id as aluno_id,
                 u.nome as aluno_nome,
-                COUNT(DISTINCT ds.simulado_id) as total_simulados,
-                COALESCE(AVG(ds.desempenho), 0) as media
+                COUNT(DISTINCT CASE WHEN {data_condition} THEN ds.simulado_id END) as total_simulados,
+                COALESCE(AVG(CASE WHEN {data_condition} THEN ds.desempenho END), 0) as media,
+                MAX(CASE WHEN mpd.disciplina_id = 2 THEN mpd.media_disciplina END) as media_matematica,
+                MAX(CASE WHEN mpd.disciplina_id = 1 THEN mpd.media_disciplina END) as media_portugues,
+                MAX(CASE WHEN mpd.disciplina_id = 3 THEN mpd.media_disciplina END) as media_ciencias,
+                MAX(CASE WHEN mpd.disciplina_id = 4 THEN mpd.media_disciplina END) as media_historia,
+                MAX(CASE WHEN mpd.disciplina_id = 5 THEN mpd.media_disciplina END) as media_geografia
             FROM turmas t
             JOIN usuarios u ON u.turma_id = t.id 
-                AND u.tipo_usuario_id = 1  -- Alunos
+                AND u.tipo_usuario_id = 4
                 AND u.escola_id = ?
             LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
-                AND {data_condition}
+            LEFT JOIN MediasPorDisciplina mpd ON mpd.aluno_id = u.id AND mpd.turma_id = t.id
             GROUP BY t.id, t.turma, u.id, u.nome
             ORDER BY t.turma, u.nome
-        """, [escola_id] + data_params)
+        """, [escola_id] + data_params + data_params + [escola_id])
+        
+        # Aqui está o problema - precisamos armazenar o resultado em alunos
         alunos = cursor.fetchall()
         
         return render_template('secretaria_educacao/relatorio_escola.html',
@@ -2775,93 +3156,130 @@ def export_excel_tipo_ensino():
 @secretaria_educacao_bp.route('/relatorio_turma')
 @login_required
 def relatorio_turma():
-    """Página do relatório por turma."""
-    if current_user.tipo_usuario_id != 5:
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("index"))
-    
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Obter mês da query string
+    """Página de relatório por turma."""
+    cursor = get_db().cursor()
+
+    # Pegar parâmetros da URL
+    escola_id = request.args.get('escola_id', type=int)
+    turma_id = request.args.get('turma_id', type=int)
+    ano = request.args.get('ano', default=datetime.now().year, type=int)
     mes = request.args.get('mes', type=int)
-    ano = 2025  # Fixado em 2025
-    
-    # Construir a condição de data
-    data_condition = "strftime('%Y', data_resposta) = ?"
-    data_params = [str(ano)]
-    
+
+    # Construir condição de data
+    data_condition = "1=1"
+    data_params = []
     if mes:
-        data_condition += " AND strftime('%m', data_resposta) = ?"
-        data_params.append(f"{mes:02d}")
+        data_condition = "strftime('%m', ds.data_resposta) = ?"
+        data_params = [f"{mes:02d}"]
+
+    # Buscar todas as escolas
+    cursor.execute("""
+        SELECT id, nome 
+        FROM escolas 
+        ORDER BY nome
+    """)
+    escolas = [dict(id=row[0], nome=row[1]) for row in cursor.fetchall()]
+
+    if escola_id:
+        # Buscar turmas da escola selecionada
+        cursor.execute("""
+            SELECT t.id, t.turma,
+                COUNT(DISTINCT u.id) as total_alunos,
+                COUNT(DISTINCT CASE WHEN ds.id IS NOT NULL THEN u.id END) as alunos_ativos,
+                COUNT(DISTINCT ds.simulado_id) as total_simulados,
+                COALESCE(AVG(ds.desempenho), 0) as media
+            FROM turmas t
+            LEFT JOIN usuarios u ON u.turma_id = t.id AND u.tipo_usuario_id = 4
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id
+            WHERE t.escola_id = ?
+            GROUP BY t.id, t.turma
+            ORDER BY t.turma
+        """, [escola_id])
+        turmas = [dict(row) for row in cursor.fetchall()]
+
+        # Buscar métricas gerais da escola
+        cursor.execute("""
+            SELECT 
+                COUNT(DISTINCT u.id) as total_alunos,
+                COUNT(DISTINCT CASE WHEN ds.id IS NOT NULL THEN u.id END) as alunos_ativos,
+                COUNT(DISTINCT ds.simulado_id) as total_simulados,
+                COALESCE(AVG(ds.desempenho), 0) as media_geral
+            FROM usuarios u
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id
+            WHERE u.escola_id = ? AND u.tipo_usuario_id = 4
+        """, [escola_id])
+        escola = dict(cursor.fetchone())
+
+        # Buscar dados dos alunos com desempenho por disciplina
+        cursor.execute(f"""
+            WITH SimuladosDisciplinas AS (
+                SELECT 
+                    ds.aluno_id,
+                    ds.simulado_id,
+                    ds.desempenho,
+                    COALESCE(sg.disciplina_id, sgp.disciplina_id) as disciplina_id,
+                    u.turma_id
+                FROM desempenho_simulado ds
+                JOIN usuarios u ON u.id = ds.aluno_id
+                LEFT JOIN simulados_gerados sg ON sg.id = ds.simulado_id AND ds.tipo_usuario_id = 5
+                LEFT JOIN simulados_gerados_professor sgp ON sgp.id = ds.simulado_id AND ds.tipo_usuario_id = 3
+                WHERE u.escola_id = ? 
+                AND COALESCE(sg.disciplina_id, sgp.disciplina_id) IS NOT NULL
+                AND ({data_condition})
+            ),
+            MediasPorDisciplina AS (
+                SELECT 
+                    sd.aluno_id,
+                    sd.turma_id,
+                    d.id as disciplina_id,
+                    ROUND(AVG(sd.desempenho), 1) as media_disciplina
+                FROM SimuladosDisciplinas sd
+                JOIN disciplinas d ON d.id = sd.disciplina_id
+                GROUP BY sd.aluno_id, sd.turma_id, d.id
+            )
+            SELECT 
+                t.id as turma_id,
+                u.id as aluno_id,
+                u.nome as aluno_nome,
+                COUNT(DISTINCT CASE WHEN {data_condition} THEN ds.simulado_id END) as total_simulados,
+                COALESCE(AVG(CASE WHEN {data_condition} THEN ds.desempenho END), 0) as media,
+                MAX(CASE WHEN mpd.disciplina_id = 2 THEN mpd.media_disciplina END) as media_matematica,
+                MAX(CASE WHEN mpd.disciplina_id = 1 THEN mpd.media_disciplina END) as media_portugues,
+                MAX(CASE WHEN mpd.disciplina_id = 3 THEN mpd.media_disciplina END) as media_ciencias,
+                MAX(CASE WHEN mpd.disciplina_id = 4 THEN mpd.media_disciplina END) as media_historia,
+                MAX(CASE WHEN mpd.disciplina_id = 5 THEN mpd.media_disciplina END) as media_geografia
+            FROM turmas t
+            JOIN usuarios u ON u.turma_id = t.id 
+                AND u.tipo_usuario_id = 4
+                AND u.escola_id = ?
+            LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
+            LEFT JOIN MediasPorDisciplina mpd ON mpd.aluno_id = u.id AND mpd.turma_id = t.id
+            {f'WHERE t.id = {turma_id}' if turma_id else ''}
+            GROUP BY t.id, t.turma, u.id, u.nome
+            ORDER BY t.turma, u.nome
+        """, [escola_id] + data_params + data_params + [escola_id])
+        
+        alunos = cursor.fetchall()
+
+        return render_template('secretaria_educacao/relatorio_turma.html',
+                             ano=ano,
+                             mes=mes,
+                             escolas=escolas,
+                             escola_id=escola_id,
+                             turma_id=turma_id,
+                             media_geral=round(escola['media_geral'], 1),
+                             total_alunos=escola['total_alunos'],
+                             alunos_ativos=escola['alunos_ativos'],
+                             total_simulados=escola['total_simulados'],
+                             turmas=turmas,
+                             alunos=alunos)
     
-    # Obter dados gerais
-    cursor.execute(f"""
-        SELECT 
-            COUNT(DISTINCT ds.aluno_id) as total_alunos,
-            COUNT(DISTINCT ds.simulado_id) as total_simulados,
-            COUNT(ds.simulado_id) as total_questoes,
-            COALESCE(AVG(ds.desempenho), 0) as media_geral
-        FROM desempenho_simulado ds
-        JOIN usuarios u ON u.id = ds.aluno_id
-        WHERE ds.codigo_ibge = ?
-        AND {data_condition}
-    """, [current_user.codigo_ibge] + data_params)
-    dados_gerais = cursor.fetchone()
-    
-    # Obter dados por turma
-    cursor.execute(f"""
-        SELECT 
-            t.turma,
-            COUNT(DISTINCT ds.aluno_id) as total_alunos,
-            COUNT(ds.simulado_id) as total_questoes,
-            COALESCE(AVG(ds.desempenho), 0) as media
-        FROM usuarios u
-        JOIN turmas t ON t.id = u.turma_id
-        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
-            AND ds.codigo_ibge = ?
-            AND {data_condition}
-        WHERE u.tipo_usuario_id = 1  -- Alunos
-        AND u.codigo_ibge = ?
-        GROUP BY t.id, t.turma
-        HAVING total_alunos > 0
-        ORDER BY t.turma
-    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
-    turmas = cursor.fetchall()
-    
-    # Obter dados por escola e turma
-    cursor.execute(f"""
-        SELECT 
-            e.nome_da_escola as escola,
-            t.turma,
-            COUNT(DISTINCT ds.aluno_id) as total_alunos,
-            COUNT(ds.simulado_id) as total_questoes,
-            COALESCE(AVG(ds.desempenho), 0) as media
-        FROM escolas e
-        JOIN usuarios u ON u.escola_id = e.id
-        JOIN turmas t ON t.id = u.turma_id
-        LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
-            AND ds.codigo_ibge = ?
-            AND {data_condition}
-        WHERE u.tipo_usuario_id = 1  -- Alunos
-        AND e.codigo_ibge = ?
-        GROUP BY e.id, e.nome_da_escola, t.id, t.turma
-        HAVING total_alunos > 0
-        ORDER BY e.nome_da_escola, t.turma
-    """, [current_user.codigo_ibge] + data_params + [current_user.codigo_ibge])
-    escolas_turmas = cursor.fetchall()
-    
-    return render_template(
-        'secretaria_educacao/relatorio_turma.html',
-        ano=ano,
-        mes=mes,
-        media_geral=dados_gerais['media_geral'],
-        total_alunos=dados_gerais['total_alunos'],
-        total_questoes=dados_gerais['total_questoes'],
-        total_simulados=dados_gerais['total_simulados'],
-        turmas=turmas,
-        escolas_turmas=escolas_turmas
-    )
+    return render_template('secretaria_educacao/relatorio_turma.html',
+                         ano=ano,
+                         mes=mes,
+                         escolas=escolas,
+                         escola_id=None,
+                         turma_id=None)
 
 @secretaria_educacao_bp.route('/relatorio_turma/export_pdf')
 @login_required
@@ -3094,3 +3512,39 @@ def export_excel_turma():
         download_name='relatorio_turma.xlsx',
         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     )
+
+@secretaria_educacao_bp.route('/cancelar_envio_simulado/<int:simulado_id>', methods=['POST'])
+@login_required
+def cancelar_envio_simulado(simulado_id):
+    if current_user.tipo_usuario_id != 5:  # Apenas secretaria de educação pode acessar
+        return jsonify({'success': False, 'error': 'Acesso não autorizado'}), 403
+    
+    try:
+        db = get_db()
+        
+        # Verificar se o simulado existe
+        simulado = db.execute(
+            'SELECT id FROM simulados_gerados WHERE id = ?',
+            [simulado_id]
+        ).fetchone()
+        
+        if not simulado:
+            return jsonify({'success': False, 'error': 'Simulado não encontrado'}), 404
+        
+        # Remover registros de aluno_simulado
+        db.execute('DELETE FROM aluno_simulado WHERE simulado_id = ?', [simulado_id])
+        
+        # Atualizar status para gerado
+        db.execute(
+            'UPDATE simulados_gerados SET status = ?, data_envio = NULL WHERE id = ?',
+            ['gerado', simulado_id]
+        )
+        
+        db.commit()
+        
+        return jsonify({'success': True})
+        
+    except Exception as e:
+        db.rollback()
+        print(f"Erro ao cancelar envio do simulado: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500

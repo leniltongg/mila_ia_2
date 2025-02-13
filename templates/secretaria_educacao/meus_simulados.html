@@ -52,10 +52,22 @@
                                             <i class="bi bi-eye"></i>
                                         </a>
                                         {% if simulado.status == 'gerado' %}
-                                        <button class="btn btn-sm btn-primary" 
+                                        <a href="{{ url_for('secretaria_educacao.criar_simulado', id=simulado.id) }}" 
+                                           class="btn btn-sm btn-primary" 
+                                           title="Editar Simulado">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-success" 
                                                 onclick="enviarSimulado({{ simulado.id }})"
                                                 title="Enviar Simulado">
                                             <i class="bi bi-send"></i>
+                                        </button>
+                                        {% endif %}
+                                        {% if simulado.status == 'enviado' %}
+                                        <button class="btn btn-sm btn-warning" 
+                                                onclick="cancelarEnvioSimulado({{ simulado.id }})"
+                                                title="Cancelar Envio">
+                                            <i class="bi bi-x-circle"></i>
                                         </button>
                                         {% endif %}
                                     </td>
@@ -93,6 +105,27 @@ function enviarSimulado(simuladoId) {
         .catch(error => {
             console.error('Error:', error);
             alert('Erro ao enviar simulado');
+        });
+    }
+}
+
+function cancelarEnvioSimulado(simuladoId) {
+    if (confirm('Tem certeza que deseja cancelar o envio deste simulado? Isso permitirá que você edite o simulado novamente.')) {
+        fetch(`/secretaria_educacao/cancelar_envio_simulado/${simuladoId}`, {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Envio do simulado cancelado com sucesso!');
+                window.location.reload();
+            } else {
+                alert(data.message || 'Erro ao cancelar envio do simulado');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Erro ao cancelar envio do simulado');
         });
     }
 }

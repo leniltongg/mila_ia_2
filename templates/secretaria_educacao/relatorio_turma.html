@@ -1,182 +1,156 @@
-{% extends "base.html" %}
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h2">Relatório de Desempenho por Turma</h1>
-        <div class="btn-toolbar mb-2 mb-md-0">
-            <div class="dropdown me-2">
-                <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    {% if mes %}{{ mes }}{% else %}Todos os Meses{% endif %}
-                </button>
-                <ul class="dropdown-menu">
-                    <li><a class="dropdown-item" href="{{ url_for('secretaria_educacao.relatorio_turma') }}">Todos os Meses</a></li>
-                    {% for mes in meses %}
-                    <li><a class="dropdown-item" href="{{ url_for('secretaria_educacao.relatorio_turma', mes=mes[0]) }}">{{ mes[1] }}</a></li>
-                    {% endfor %}
-                </ul>
-            </div>
-            <div class="btn-group me-2">
-                <a href="{{ url_for('secretaria_educacao.export_pdf_turma', mes=mes) if mes else url_for('secretaria_educacao.export_pdf_turma') }}" 
-                   class="btn btn-sm btn-outline-secondary">
-                    Exportar PDF
-                </a>
-                <a href="{{ url_for('secretaria_educacao.export_excel_turma', mes=mes) if mes else url_for('secretaria_educacao.export_excel_turma') }}" 
-                   class="btn btn-sm btn-outline-secondary">
-                    Exportar Excel
-                </a>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Relatório de Desempenho por Turma</h1>
+    </div>
+
+    <!-- Seleção de Escola e Turma -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="escola" class="form-label">Escola</label>
+                    <select class="form-select" id="escola" name="escola_id" onchange="this.form.submit()">
+                        <option value="">Selecione uma escola</option>
+                        {% for escola in escolas %}
+                        <option value="{{ escola.id }}" {% if escola_id == escola.id %}selected{% endif %}>
+                            {{ escola.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% if escola_id %}
+                <div class="col-md-4">
+                    <label for="turma" class="form-label">Turma</label>
+                    <select class="form-select" id="turma" name="turma_id" onchange="this.form.submit()">
+                        <option value="">Todas as Turmas</option>
+                        {% for turma in turmas %}
+                        <option value="{{ turma.id }}" {% if turma_id == turma.id %}selected{% endif %}>
+                            {{ turma.turma }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
+            </form>
         </div>
     </div>
 
-    <!-- Cards com informações gerais -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card">
+    {% if escola_id %}
+    <!-- Cards de Resumo -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">Média Geral</h5>
-                    <p class="card-text display-6">{{ "%.1f"|format(media_geral) }}%</p>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Média Geral</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ "%.1f"|format(media_geral) }}%</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">Total de Alunos</h5>
-                    <p class="card-text display-6">{{ total_alunos }}</p>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Total de Alunos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_alunos }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">Total de Questões</h5>
-                    <p class="card-text display-6">{{ total_questoes }}</p>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Alunos Ativos</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ alunos_ativos }}</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
                 <div class="card-body">
-                    <h5 class="card-title">Total de Simulados</h5>
-                    <p class="card-text display-6">{{ total_simulados }}</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Gráfico de desempenho por turma -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Desempenho por Turma</h5>
-                    <canvas id="graficoTurmas"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Tabela de desempenho por turma -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Detalhamento por Turma</h5>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Turma</th>
-                                    <th>Total de Alunos</th>
-                                    <th>Total de Questões</th>
-                                    <th>Média (%)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for turma in turmas %}
-                                <tr>
-                                    <td>{{ turma.turma }}</td>
-                                    <td>{{ turma.total_alunos }}</td>
-                                    <td>{{ turma.total_questoes }}</td>
-                                    <td>{{ "%.1f"|format(turma.media) }}%</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Total de Simulados</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_simulados }}</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabela de desempenho por escola e turma -->
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Detalhamento por Escola e Turma</h5>
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Escola</th>
-                                    <th>Turma</th>
-                                    <th>Total de Alunos</th>
-                                    <th>Total de Questões</th>
-                                    <th>Média (%)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in escolas_turmas %}
-                                <tr>
-                                    <td>{{ item.escola }}</td>
-                                    <td>{{ item.turma }}</td>
-                                    <td>{{ item.total_alunos }}</td>
-                                    <td>{{ item.total_questoes }}</td>
-                                    <td>{{ "%.1f"|format(item.media) }}%</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+    <!-- Desempenho por Turma -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Desempenho por Turma</h6>
+        </div>
+        <div class="card-body">
+            <div class="accordion" id="accordionTurmas">
+                {% for turma in turmas %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ turma.id }}">
+                        <button class="accordion-button {% if not turma_id or turma_id != turma.id %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ turma.id }}" aria-expanded="{% if turma_id == turma.id %}true{% else %}false{% endif %}" aria-controls="collapse{{ turma.id }}">
+                            {{ turma.turma }} - Média: {{ "%.1f"|format(turma.media) }}%
+                        </button>
+                    </h2>
+                    <div id="collapse{{ turma.id }}" class="accordion-collapse collapse {% if not turma_id or turma_id == turma.id %}show{% endif %}" aria-labelledby="heading{{ turma.id }}" data-bs-parent="#accordionTurmas">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Aluno</th>
+                                            <th class="text-center">Total Simulados</th>
+                                            <th class="text-center">Matemática</th>
+                                            <th class="text-center">Português</th>
+                                            <th class="text-center">Ciências</th>
+                                            <th class="text-center">História</th>
+                                            <th class="text-center">Geografia</th>
+                                            <th class="text-center">Média Geral</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for aluno in alunos if aluno.turma_id == turma.id %}
+                                        <tr>
+                                            <td>{{ aluno.aluno_nome }}</td>
+                                            <td class="text-center">{{ aluno.total_simulados }}</td>
+                                            <td class="text-center">{{ "%.1f"|format(aluno.media_matematica or 0) }}%</td>
+                                            <td class="text-center">{{ "%.1f"|format(aluno.media_portugues or 0) }}%</td>
+                                            <td class="text-center">{{ "%.1f"|format(aluno.media_ciencias or 0) }}%</td>
+                                            <td class="text-center">{{ "%.1f"|format(aluno.media_historia or 0) }}%</td>
+                                            <td class="text-center">{{ "%.1f"|format(aluno.media_geografia or 0) }}%</td>
+                                            <td class="text-center">{{ "%.1f"|format(aluno.media) }}%</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </div>
+                {% endfor %}
             </div>
         </div>
     </div>
+    {% endif %}
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Dados para o gráfico
-    const turmas = {{ turmas|tojson }};
-    
-    // Criar gráfico de barras
-    const ctx = document.getElementById('graficoTurmas').getContext('2d');
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: turmas.map(t => t.turma),
-            datasets: [{
-                label: 'Média (%)',
-                data: turmas.map(t => t.media),
-                backgroundColor: 'rgba(54, 162, 235, 0.2)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    max: 100
-                }
-            }
-        }
-    });
-});
-</script>
 {% endblock %}
