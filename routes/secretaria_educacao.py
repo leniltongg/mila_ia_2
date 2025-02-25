@@ -402,22 +402,37 @@ def buscar_questoes():
         print(f"6. Query executada, {len(questoes)} questões encontradas")
         
         # Formatar resultado
-        resultado = [{
-            'id': q.id,
-            'questao': q.questao,
-            'alternativa_a': q.alternativa_a,
-            'alternativa_b': q.alternativa_b,
-            'alternativa_c': q.alternativa_c,
-            'alternativa_d': q.alternativa_d,
-            'alternativa_e': q.alternativa_e,
-            'questao_correta': q.questao_correta,
-            'assunto': q.assunto,
-            'disciplina_id': q.disciplina_id,
-            'Ano_escolar_id': q.Ano_escolar_id,
-            'mes_id': q.mes_id,
-            'disciplina_nome': q.disciplina_nome,
-            'Ano_escolar_nome': q.Ano_escolar_nome
-        } for q in questoes]
+        resultado = []
+        for q in questoes:
+            questao_dict = {
+                'id': q.id,
+                'questao': q.questao,
+                'alternativa_a': q.alternativa_a,
+                'alternativa_b': q.alternativa_b,
+                'alternativa_c': q.alternativa_c,
+                'alternativa_d': q.alternativa_d,
+                'alternativa_e': q.alternativa_e,
+                'questao_correta': q.questao_correta,
+                'assunto': q.assunto,
+                'disciplina_id': q.disciplina_id,
+                'Ano_escolar_id': q.Ano_escolar_id,
+                'mes_id': q.mes_id,
+                'disciplina_nome': q.disciplina_nome,
+                'Ano_escolar_nome': q.Ano_escolar_nome
+            }
+            
+            # Processar imagens nas questões e alternativas
+            for campo in ['questao', 'alternativa_a', 'alternativa_b', 'alternativa_c', 'alternativa_d', 'alternativa_e']:
+                if questao_dict[campo] and '<img' in questao_dict[campo]:
+                    if '{{ url_for' in questao_dict[campo]:
+                        import re
+                        pre_img = questao_dict[campo].split('<img')[0]
+                        match = re.search(r"filename='([^']*)'?\s*", questao_dict[campo])
+                        if match:
+                            filename = match.group(1).strip()
+                            questao_dict[campo] = f'{pre_img}<img src="/static/{filename}'
+            
+            resultado.append(questao_dict)
         
         print("7. Retornando resultado")
         return jsonify({'success': True, 'questoes': resultado})
@@ -1157,11 +1172,31 @@ def visualizar_simulado(simulado_id):
         ).order_by(
             SimuladoQuestoes.id
         ).all()
+
+        # Processar questões para garantir que as imagens sejam renderizadas corretamente
+        questoes_processadas = []
+        for q in questoes:
+            questao_dict = q._asdict()
+            # Garantir que as imagens usem o caminho correto
+            for campo in ['questao', 'alternativa_a', 'alternativa_b', 'alternativa_c', 'alternativa_d', 'alternativa_e']:
+                if questao_dict[campo] and '<img' in questao_dict[campo]:
+                    # Processar url_for no texto
+                    if '{{ url_for' in questao_dict[campo]:
+                        import re
+                        # Extrai o texto antes da tag img
+                        pre_img = questao_dict[campo].split('<img')[0]
+                        # Busca o filename
+                        match = re.search(r"filename='([^']*)'?\s*", questao_dict[campo])
+                        if match:
+                            filename = match.group(1).strip()
+                            # Reconstrói a questão com a nova tag img
+                            questao_dict[campo] = f'{pre_img}<img src="/static/{filename}'
+            questoes_processadas.append(questao_dict)
         
         return render_template(
             'secretaria_educacao/visualizar_simulado.html',
             simulado=simulado,
-            questoes=questoes
+            questoes=questoes_processadas
         )
         
     except Exception as e:
@@ -4053,3 +4088,54 @@ def deletar_imagem(id):
     except Exception as e:
         print(f"Erro ao deletar imagem: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@secretaria_educacao_bp.route('/adicionar_questao', methods=['POST'])
+@login_required
+def adicionar_questao():
+    if current_user.tipo_usuario_id not in [5, 6]:
+        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
+    
+    try:
+        # Recebe os dados do formulário
+        questao = request.form.get('questao')
+        disciplina_id = request.form.get('disciplina_id')
+        assunto = request.form.get('assunto')
+        alternativa_a = request.form.get('alternativa_a')
+        alternativa_b = request.form.get('alternativa_b')
+        alternativa_c = request.form.get('alternativa_c')
+        alternativa_d = request.form.get('alternativa_d')
+        alternativa_e = request.form.get('alternativa_e')
+        questao_correta = request.form.get('questao_correta')
+        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        mes_id = request.form.get('mes_id')
+        codigo_ibge = current_user.codigo_ibge
+        
+        # Validação básica
+        if not all([questao, disciplina_id, questao_correta]):
+            return jsonify({'success': False, 'message': 'Todos os campos obrigatórios devem ser preenchidos'}), 400
+            
+        # Cria nova questão
+        nova_questao = BancoQuestoes(
+            questao=questao,
+            disciplina_id=disciplina_id,
+            assunto=assunto,
+            alternativa_a=alternativa_a,
+            alternativa_b=alternativa_b,
+            alternativa_c=alternativa_c,
+            alternativa_d=alternativa_d,
+            alternativa_e=alternativa_e,
+            questao_correta=questao_correta,
+            Ano_escolar_id=Ano_escolar_id,
+            mes_id=mes_id,
+            codigo_ibge=codigo_ibge
+        )
+        
+        db.session.add(nova_questao)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Questão cadastrada com sucesso'})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': f'Erro ao cadastrar questão: {str(e)}'}), 500

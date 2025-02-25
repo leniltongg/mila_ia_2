@@ -343,12 +343,21 @@ async function buscarQuestoes() {
             questaoElement.setAttribute('data-questao-id', questao.id);
             questaoElement.ondragstart = (e) => drag(e, questao);
             
+            // Extrair apenas o texto antes da tag <img> se houver
+            let textoExibicao = questao.questao;
+            if (questao.questao.includes('<img')) {
+                textoExibicao = questao.questao.split('<img')[0].trim();
+                if (textoExibicao === '') {
+                    textoExibicao = 'Questão com imagem';
+                }
+            }
+            
             const questaoJSON = JSON.stringify(questao).replace(/"/g, '&quot;');
             questaoElement.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
                         <strong class="d-block mb-1">Questão ${questao.id}</strong>
-                        <p class="mb-1">${questao.questao.substring(0, 200)}...</p>
+                        <p class="mb-1">${textoExibicao}</p>
                         <small class="text-muted">
                             <strong>Disciplina:</strong> ${questao.disciplina_nome} | 
                             <strong>Ano Escolar:</strong> ${questao.Ano_escolar_nome} | 
@@ -396,11 +405,21 @@ function adicionarQuestao(questao) {
     const questaoElement = document.createElement('div');
     questaoElement.className = 'questao-selecionada border-bottom p-3';
     questaoElement.setAttribute('data-questao-id', questao.id);
+    
+    // Extrair apenas o texto antes da tag <img> se houver
+    let textoExibicao = questao.questao;
+    if (questao.questao.includes('<img')) {
+        textoExibicao = questao.questao.split('<img')[0].trim();
+        if (textoExibicao === '') {
+            textoExibicao = 'Questão com imagem';
+        }
+    }
+    
     questaoElement.innerHTML = `
         <div class="d-flex justify-content-between align-items-start">
             <div class="flex-grow-1">
                 <strong class="d-block mb-1">Questão ${questao.id}</strong>
-                <p class="mb-1">${questao.questao.substring(0, 100)}...</p>
+                <p class="mb-1">${textoExibicao}</p>
             </div>
             <div class="ms-3 d-flex gap-2 align-items-center">
                 <div class="input-group input-group-sm" style="width: 100px;">
