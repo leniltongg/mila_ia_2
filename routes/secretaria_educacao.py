@@ -3975,7 +3975,10 @@ def gerenciar_imagens():
         return redirect(url_for("index"))
     
     disciplinas = db.session.query(Disciplinas).order_by(Disciplinas.nome).all()
-    return render_template('secretaria_educacao/gerenciar_imagens.html', disciplinas=disciplinas)
+    imagens = ImagemQuestao.query.order_by(ImagemQuestao.data_upload.desc()).all()
+    return render_template('secretaria_educacao/gerenciar_imagens.html', 
+                         disciplinas=disciplinas,
+                         imagens=imagens)
 
 @secretaria_educacao_bp.route('/upload_imagem', methods=['POST'])
 @login_required
