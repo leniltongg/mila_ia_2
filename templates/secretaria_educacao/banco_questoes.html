@@ -2,11 +2,46 @@
 
 {% block title %}Banco de Questões{% endblock %}
 
-{% block extra_css %}
+{% block head %}
+<!-- jQuery primeiro -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<!-- Bootstrap Bundle com Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
 <!-- DataTables CSS -->
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css">
+<link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<link href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block extra_css %}
 <style>
+    .imagem-item {
+        cursor: pointer;
+        border: 1px solid #ddd;
+        padding: 5px;
+        margin: 5px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .imagem-item:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 0 5px rgba(13, 110, 253, 0.25);
+    }
+    
+    .imagem-item img {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    #modalImagensGrid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 10px;
+        padding: 10px;
+    }
+    
     .table {
         border: 1px solid #dee2e6;
     }
@@ -35,21 +70,18 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    .preview-image {
+        max-width: 200px;
+        max-height: 200px;
+        margin-top: 10px;
+    }
+
+    .image-preview-container {
+        margin: 10px 0;
+        text-align: center;
+    }
 </style>
-{% endblock %}
-
-{% block scripts %}
-<!-- jQuery primeiro -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-<!-- Bootstrap Bundle com Popper -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<!-- DataTables JS -->
-<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
-<script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -116,8 +148,8 @@
                             </td>
                             <td>{{ questao.disciplina_nome }}</td>
                             <td>{{ questao.assunto }}</td>
-                            <td>{{ questao.serie_nome or '-' }}</td>
-                            <td>{{ questao.mes_nome or '-' }}</td>
+                            <td>{{ questao.Ano_escolar_nome }}</td>
+                            <td>{{ questao.mes_nome }}</td>
                             <td>
                                 <div class="d-flex justify-content-start">
                                     <button class="btn btn-info btn-sm me-1" type="button" data-bs-toggle="modal" 
@@ -172,7 +204,7 @@
                                         <div class="row mt-3">
                                             <div class="col-md-6">
                                                 <p><strong>Disciplina:</strong> {{ questao.disciplina_nome }}</p>
-                                                <p><strong>Ano Escolar:</strong> {{ questao.serie_nome }}</p>
+                                                <p><strong>Ano Escolar:</strong> {{ questao.Ano_escolar_nome }}</p>
                                             </div>
                                             <div class="col-md-6">
                                                 <p><strong>Assunto:</strong> {{ questao.assunto }}</p>
@@ -226,17 +258,20 @@
                 <form method="POST" id="formAddQuestao" class="needs-validation" novalidate>
                     <div class="form-group">
                         <label for="questao">Questão <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="questao" name="questao" rows="4" required></textarea>
-                        <div class="invalid-feedback">
-                            Por favor, insira a questão.
+                        <div class="d-flex mb-2">
+                            <textarea class="form-control" id="questao" name="questao" rows="4" required></textarea>
                         </div>
+                        <button type="button" class="btn btn-secondary btn-sm btn-add-image" data-field="questao">
+                            <i class="fas fa-image"></i> Adicionar Imagem
+                        </button>
+                        <div id="questao_preview" class="image-preview-container"></div>
                     </div>
 
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="disciplina_id">Disciplina <span class="text-danger">*</span></label>
-                                <select class="form-control" id="disciplina_id" name="disciplina_id" required>
+                                <select class="form-select" id="disciplina_id" name="disciplina_id" required>
                                     <option value="">Selecione uma disciplina</option>
                                     {% for disciplina in disciplinas %}
                                     <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
@@ -249,11 +284,11 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="serie_id">Ano Escolar</label>
-                                <select class="form-control" id="serie_id" name="serie_id">
+                                <label for="Ano_escolar_id">Ano Escolar</label>
+                                <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id">
                                     <option value="">Selecione um ano escolar</option>
-                                    {% for serie in series %}
-                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                    {% for Ano_escolar in Ano_escolar %}
+                                    <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -273,20 +308,11 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="mes_id">Mês</label>
-                                <select class="form-control" id="mes_id" name="mes_id">
+                                <select class="form-select" id="mes_id" name="mes_id">
                                     <option value="">Selecione um mês</option>
-                                    <option value="1">Janeiro</option>
-                                    <option value="2">Fevereiro</option>
-                                    <option value="3">Março</option>
-                                    <option value="4">Abril</option>
-                                    <option value="5">Maio</option>
-                                    <option value="6">Junho</option>
-                                    <option value="7">Julho</option>
-                                    <option value="8">Agosto</option>
-                                    <option value="9">Setembro</option>
-                                    <option value="10">Outubro</option>
-                                    <option value="11">Novembro</option>
-                                    <option value="12">Dezembro</option>
+                                    {% for mes in meses %}
+                                    <option value="{{ mes.id }}">{{ mes.nome }}</option>
+                                    {% endfor %}
                                 </select>
                             </div>
                         </div>
@@ -294,43 +320,23 @@
 
                     <div class="form-group">
                         <label>Alternativas <span class="text-danger">*</span></label>
+                        {% for letra in ['a', 'b', 'c', 'd', 'e'] %}
                         <div class="mb-2">
-                            <label for="alternativa_a">A)</label>
-                            <input type="text" class="form-control" id="alternativa_a" name="alternativa_a" required>
-                            <div class="invalid-feedback">
-                                Por favor, insira a alternativa A.
+                            <label for="alternativa_{{ letra }}">{{ letra|upper }})</label>
+                            <div class="d-flex mb-2">
+                                <input type="text" class="form-control" id="alternativa_{{ letra }}" name="alternativa_{{ letra }}" {% if letra != 'e' %}required{% endif %}>
                             </div>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-image" data-field="alternativa_{{ letra }}">
+                                <i class="fas fa-image"></i> Adicionar Imagem
+                            </button>
+                            <div id="alternativa_{{ letra }}_preview" class="image-preview-container"></div>
                         </div>
-                        <div class="mb-2">
-                            <label for="alternativa_b">B)</label>
-                            <input type="text" class="form-control" id="alternativa_b" name="alternativa_b" required>
-                            <div class="invalid-feedback">
-                                Por favor, insira a alternativa B.
-                            </div>
-                        </div>
-                        <div class="mb-2">
-                            <label for="alternativa_c">C)</label>
-                            <input type="text" class="form-control" id="alternativa_c" name="alternativa_c" required>
-                            <div class="invalid-feedback">
-                                Por favor, insira a alternativa C.
-                            </div>
-                        </div>
-                        <div class="mb-2">
-                            <label for="alternativa_d">D)</label>
-                            <input type="text" class="form-control" id="alternativa_d" name="alternativa_d" required>
-                            <div class="invalid-feedback">
-                                Por favor, insira a alternativa D.
-                            </div>
-                        </div>
-                        <div class="mb-2">
-                            <label for="alternativa_e">E) (Opcional)</label>
-                            <input type="text" class="form-control" id="alternativa_e" name="alternativa_e">
-                        </div>
+                        {% endfor %}
                     </div>
 
                     <div class="form-group">
                         <label for="questao_correta">Alternativa Correta <span class="text-danger">*</span></label>
-                        <select class="form-control" id="questao_correta" name="questao_correta" required>
+                        <select class="form-select" id="questao_correta" name="questao_correta" required>
                             <option value="">Selecione a alternativa correta</option>
                             <option value="A">A</option>
                             <option value="B">B</option>
@@ -345,9 +351,48 @@
 
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Adicionar Questão</button>
+                        <button type="submit" form="formAddQuestao" class="btn btn-primary">Salvar</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Seletor de Imagens -->
+<div class="modal fade" id="modalSeletorImagens" tabindex="-1" aria-labelledby="modalSeletorImagensLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalSeletorImagensLabel">Selecionar Imagem</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-control" id="filtroDisciplina">
+                            <option value="">Todas as Disciplinas</option>
+                            {% for disciplina in disciplinas %}
+                            <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="filtroAssunto" placeholder="Filtrar por assunto">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-control" id="filtroTipo">
+                            <option value="">Todos os Tipos</option>
+                            <option value="enunciado">Enunciado</option>
+                            <option value="alternativa">Alternativa</option>
+                            <option value="outro">Outro</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="busca" placeholder="Buscar por nome/descrição">
+                    </div>
+                </div>
+                <div id="modalImagensGrid"></div>
             </div>
         </div>
     </div>
@@ -379,11 +424,11 @@
                     </div>
 
                     <div class="mb-3">
-                        <label for="edit_serie" class="form-label">Ano Escolar</label>
-                        <select class="form-select" id="edit_serie" name="serie_id">
+                        <label for="edit_Ano_escolar" class="form-label">Ano Escolar</label>
+                        <select class="form-select" id="edit_Ano_escolar" name="Ano_escolar_id">
                             <option value="">Selecione um ano escolar</option>
-                            {% for serie in series %}
-                            <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                            {% for Ano_escolar in Ano_escolar %}
+                            <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -392,18 +437,9 @@
                         <label for="edit_mes" class="form-label">Mês</label>
                         <select class="form-select" id="edit_mes" name="mes_id">
                             <option value="">Selecione um mês</option>
-                            <option value="1">Janeiro</option>
-                            <option value="2">Fevereiro</option>
-                            <option value="3">Março</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Maio</option>
-                            <option value="6">Junho</option>
-                            <option value="7">Julho</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Setembro</option>
-                            <option value="10">Outubro</option>
-                            <option value="11">Novembro</option>
-                            <option value="12">Dezembro</option>
+                            {% for mes in meses %}
+                            <option value="{{ mes.id }}">{{ mes.nome }}</option>
+                            {% endfor %}
                         </select>
                     </div>
 
@@ -484,274 +520,37 @@
     </div>
 </div>
 
-{% endblock %}
+{% endblock content %}
 
-{% block extra_js %}
+{% block scripts %}
+<!-- DataTables JS -->
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
+<script src="https://cdn.datatables.net/responsive/2.2.9/js/responsive.bootstrap5.min.js"></script>
+
+<!-- Seletor de Imagens -->
+<script src="{{ url_for('static', filename='js/image_selector.js') }}"></script>
+
+<!-- Inicialização do DataTables -->
 <script>
 $(document).ready(function() {
-    // Inicializa o DataTables
+    console.log('Inicializando DataTables...');
     var table = $('#dataTable').DataTable({
         "language": {
             "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
         },
-        "order": [], // Desabilita a ordenação inicial para manter a ordem do servidor
+        "order": [],
         "searching": true,
         "lengthChange": false,
         "pageLength": 10,
         "dom": 'rtip',
         "columnDefs": [
             {
-                "targets": [0, 5], // índices das colunas ID e Mês
+                "targets": [0, 5],
                 "visible": false
             }
         ]
-    });
-
-    // Inicializa tooltips do Bootstrap
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl)
-    });
-
-    // Filtro por disciplina
-    $('#filtro_disciplina').on('change', function() {
-        var disciplina = $(this).val();
-        table.column(2) // índice da coluna disciplina
-            .search(disciplina)
-            .draw();
-    });
-
-    // Busca por texto em tempo real
-    $('#filtro_texto').on('keyup', function() {
-        var texto = $(this).val();
-        table.search(texto).draw();
-    });
-
-    // Função para excluir questão
-    $('.confirmar-exclusao').on('click', function() {
-        var questaoId = $(this).data('questao-id');
-        var modal = $('#modalExcluirQuestao' + questaoId);
-        var row = $('tr[data-questao-id="' + questaoId + '"]');
-        var button = $(this);
-        
-        // Mostra indicador de carregamento
-        button.prop('disabled', true)
-              .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Excluindo...');
-        
-        // Faz a requisição AJAX
-        $.ajax({
-            url: '/secretaria_educacao/excluir_questao/' + questaoId,
-            method: 'POST',
-            success: function(response) {
-                if (response.success) {
-                    // Remove a linha da tabela
-                    table.row(row).remove().draw();
-                    
-                    // Fecha o modal corretamente
-                    modal.modal('hide');
-                    $('.modal-backdrop').remove();
-                    $('body').removeClass('modal-open');
-                    
-                    // Mostra mensagem de sucesso
-                    var alert = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                               response.message +
-                               '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                               '</div>';
-                    $('.content').prepend(alert);
-                } else {
-                    // Mostra mensagem de erro
-                    var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                               response.message +
-                               '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                               '</div>';
-                    $('.content').prepend(alert);
-                }
-            },
-            error: function(xhr) {
-                console.error('Erro ao excluir questão:', xhr);
-                var message = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao excluir questão';
-                var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                           message +
-                           '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                           '</div>';
-                $('.content').prepend(alert);
-            },
-            complete: function() {
-                // Restaura o botão
-                button.prop('disabled', false)
-                      .html('Excluir');
-            }
-        });
-    });
-
-    // Função para carregar questão para edição
-    $('.editar-questao').on('click', function() {
-        var questaoId = $(this).data('questao-id');
-        
-        // Faz a requisição AJAX para buscar os dados da questão
-        $.ajax({
-            url: '/secretaria_educacao/buscar_questao/' + questaoId,
-            method: 'GET',
-            success: function(response) {
-                if (response.success) {
-                    var questao = response.questao;
-                    console.log('Questão carregada:', questao); // Debug
-                    
-                    // Preenche o formulário com os dados da questão
-                    $('#edit_questao_id').val(questao.id);
-                    $('#edit_disciplina').val(questao.disciplina_id);
-                    $('#edit_serie').val(questao.serie_id);
-                    $('#edit_mes').val(questao.mes_id);
-                    $('#edit_assunto').val(questao.assunto);
-                    $('#edit_questao').val(questao.questao);
-                    $('#edit_alternativa_a').val(questao.alternativa_a);
-                    $('#edit_alternativa_b').val(questao.alternativa_b);
-                    $('#edit_alternativa_c').val(questao.alternativa_c);
-                    $('#edit_alternativa_d').val(questao.alternativa_d);
-                    $('#edit_alternativa_e').val(questao.alternativa_e);
-                    $('#edit_questao_correta').val(questao.questao_correta);
-                    
-                    // Abre o modal de edição
-                    $('#editarQuestaoModal').modal('show');
-                } else {
-                    alert('Erro ao carregar questão: ' + response.message);
-                }
-            },
-            error: function(xhr) {
-                console.error('Erro ao carregar questão:', xhr);
-                alert('Erro ao carregar questão. Por favor, tente novamente.');
-            }
-        });
-    });
-
-    // Função para salvar edição
-    $('#salvarEdicao').on('click', function() {
-        var form = $('#formEditarQuestao')[0];
-        
-        // Verifica validação do formulário
-        if (!form.checkValidity()) {
-            form.classList.add('was-validated');
-            return;
-        }
-        
-        var questaoId = $('#edit_questao_id').val();
-        var formData = new FormData();
-        
-        // Adiciona os campos manualmente para garantir a ordem correta
-        formData.append('questao', $('#edit_questao').val());
-        formData.append('alternativa_a', $('#edit_alternativa_a').val());
-        formData.append('alternativa_b', $('#edit_alternativa_b').val());
-        formData.append('alternativa_c', $('#edit_alternativa_c').val());
-        formData.append('alternativa_d', $('#edit_alternativa_d').val());
-        formData.append('alternativa_e', $('#edit_alternativa_e').val());
-        formData.append('questao_correta', $('#edit_questao_correta').val());
-        formData.append('disciplina_id', $('#edit_disciplina').val());
-        formData.append('assunto', $('#edit_assunto').val());
-        formData.append('serie_id', $('#edit_serie').val() || '');
-        formData.append('mes_id', $('#edit_mes').val() || '');
-
-        var button = $(this);
-        
-        // Mostra indicador de carregamento
-        button.prop('disabled', true)
-              .html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Salvando...');
-        
-        // Faz a requisição AJAX para atualizar a questão
-        $.ajax({
-            url: '/secretaria_educacao/atualizar_questao/' + questaoId,
-            method: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(response) {
-                if (response.success) {
-                    // Fecha o modal
-                    $('#editarQuestaoModal').modal('hide');
-                    
-                    // Atualiza os dados na tabela sem recarregar a página
-                    var row = $('tr[data-questao-id="' + questaoId + '"]');
-                    var questaoText = $('#edit_questao').val();
-                    var disciplinaNome = $('#edit_disciplina option:selected').text();
-                    var assunto = $('#edit_assunto').val();
-                    
-                    // Atualiza as células da linha
-                    row.find('td:eq(1)').text(questaoText);
-                    row.find('td:eq(2)').text(disciplinaNome);
-                    row.find('td:eq(3)').text(assunto);
-                    
-                    // Mostra mensagem de sucesso
-                    var alert = '<div class="alert alert-success alert-dismissible fade show" role="alert">' +
-                               response.message +
-                               '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                               '</div>';
-                    $('.content').prepend(alert);
-                } else {
-                    // Mostra mensagem de erro
-                    var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                               response.message +
-                               '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                               '</div>';
-                    $('.content').prepend(alert);
-                }
-            },
-            error: function(xhr) {
-                console.error('Erro ao atualizar questão:', xhr);
-                var message = xhr.responseJSON ? xhr.responseJSON.message : 'Erro ao atualizar questão';
-                var alert = '<div class="alert alert-danger alert-dismissible fade show" role="alert">' +
-                           message +
-                           '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
-                           '</div>';
-                $('.content').prepend(alert);
-            },
-            complete: function() {
-                // Restaura o botão
-                button.prop('disabled', false)
-                      .html('Salvar Alterações');
-            }
-        });
-    });
-
-    // Validação do formulário
-    (function() {
-        'use strict';
-        window.addEventListener('load', function() {
-            var forms = document.getElementsByClassName('needs-validation');
-            var validation = Array.prototype.filter.call(forms, function(form) {
-                form.addEventListener('submit', function(event) {
-                    if (form.checkValidity() === false) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    }
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        }, false);
-    })();
-
-    // Desabilita a opção E se o campo estiver vazio
-    $('#alternativa_e').on('input', function() {
-        var optionE = $('#questao_correta option[value="E"]');
-        if ($(this).val().trim() === '') {
-            optionE.prop('disabled', true);
-            if ($('#questao_correta').val() === 'E') {
-                $('#questao_correta').val('');
-            }
-        } else {
-            optionE.prop('disabled', false);
-        }
-    });
-
-    // Desabilita a opção E se o campo estiver vazio (para edição)
-    $('#edit_alternativa_e').on('input', function() {
-        var optionE = $('#edit_questao_correta option[value="E"]');
-        if ($(this).val().trim() === '') {
-            optionE.prop('disabled', true);
-            if ($('#edit_questao_correta').val() === 'E') {
-                $('#edit_questao_correta').val('');
-            }
-        } else {
-            optionE.prop('disabled', false);
-        }
     });
 });
 </script>
