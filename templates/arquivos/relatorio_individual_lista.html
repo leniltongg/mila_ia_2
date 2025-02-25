@@ -10,5 +10,5 @@
     <li><a href="{{ url_for('relatorio_individual', aluno_id=aluno[0]) }}">{{ aluno[1] }}</a></li>
     {% endfor %}
 </ul>
-<a href="{{ url_for('portal_professores') }}">Voltar ao Portal dos Professores</a>
+<a href="{{ url_for('professores.portal_professores') }}">Voltar ao Portal dos Professores</a>
 {% endblock %}

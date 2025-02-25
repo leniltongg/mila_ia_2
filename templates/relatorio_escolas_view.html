@@ -266,11 +266,11 @@
                     <div class="best-school-score">{{ "%.1f"|format(escolas[0].media_geral) }}%</div>
                 </div>
                 <ul class="ranking-list">
-                    {% for serie in series %}
-                    {% if serie.escolas|length > 0 %}
+                    {% for Ano_escolar in Ano_escolar %}
+                    {% if Ano_escolar.escolas|length > 0 %}
                     <li class="ranking-item">
-                        <span><span class="ranking-position">{{ serie.nome|replace("Série", "º Ano") }}</span> {{ serie.escolas[0].nome }}</span>
-                        <span>{{ "%.1f"|format(serie.escolas[0].media) }}%</span>
+                        <span><span class="ranking-position">{{ Ano_escolar.nome|replace("Ano Escolar", "º Ano") }}</span> {{ Ano_escolar.escolas[0].nome }}</span>
+                        <span>{{ "%.1f"|format(Ano_escolar.escolas[0].media) }}%</span>
                     </li>
                     {% endif %}
                     {% endfor %}
@@ -280,10 +280,10 @@
     </div>
 
     <!-- Páginas por Ano Escolar -->
-    {% for serie in series %}
+    {% for Ano_escolar in Ano_escolar %}
     <div class="page">
         <div class="header">
-            <h1>{{ serie.nome|replace("Série", "Ano Escolar") }}</h1>
+            <h1>{{ Ano_escolar.nome|replace("Ano Escolar", "Ano Escolar") }}</h1>
             <div class="data">
                 {{ dados_municipio.municipio }} - Data: {{ data_atual.strftime('%d/%m/%Y') }}
             </div>
@@ -293,10 +293,10 @@
             <div class="progress-item">
                 <div class="progress-label">
                     <span>Média do Ano escolar</span>
-                    <span class="progress-value">{{ "%.1f"|format(serie.media_geral) }}%</span>
+                    <span class="progress-value">{{ "%.1f"|format(Ano_escolar.media_geral) }}%</span>
                 </div>
                 <div class="progress-bar-container">
-                    <div class="progress-bar" data-percentage="{{ serie.media_geral }}" data-type="media"></div>
+                    <div class="progress-bar" data-percentage="{{ Ano_escolar.media_geral }}" data-type="media"></div>
                 </div>
             </div>
         </div>
@@ -304,11 +304,11 @@
         <div class="stats-container">
             <div class="stats-box">
                 <span>Total de Alunos</span>
-                <div class="stats-value">{{ serie.total_alunos }}</div>
+                <div class="stats-value">{{ Ano_escolar.total_alunos }}</div>
             </div>
             <div class="stats-box">
                 <span>Alunos Ativos</span>
-                <div class="stats-value">{{ serie.alunos_ativos }}</div>
+                <div class="stats-value">{{ Ano_escolar.alunos_ativos }}</div>
             </div>
         </div>
 
@@ -321,7 +321,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for escola in serie.escolas %}
+                {% for escola in Ano_escolar.escolas %}
                 <tr>
                     <td>{{ escola.nome }}</td>
                     <td>{{ escola.total_alunos }}</td>

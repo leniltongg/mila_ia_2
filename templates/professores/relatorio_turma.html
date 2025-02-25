@@ -1,13 +1,16 @@
 {% extends "base.html" %}
 
 {% block content %}
+{# Adicionar o filtro zip #}
+{% set zip = namespace(func=zip) %}
+
 <div class="container py-4">
     <!-- Cabeçalho -->
     <div class="card mb-4">
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <h2 class="mb-1">{{ turma.serie }} - Turma {{ turma.nome }}</h2>
+                    <h2 class="mb-1">{{ turma.Ano_escolar }} - Turma {{ turma.turma }}</h2>
                     <p class="text-muted mb-0">{{ turma.escola }}</p>
                 </div>
                 <div>
@@ -32,139 +35,139 @@
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body text-center">
-                    <h6 class="card-title text-muted">Média da Turma</h6>
-                    <h2 class="mb-0">{{ "%.1f"|format(media_turma) if media_turma else "0.0" }}%</h2>
+                    <h6 class="card-title text-muted">Média Geral</h6>
+                    <h2 class="mb-0">{{ "%.1f"|format(media_geral) }}%</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body text-center">
-                    <h6 class="card-title text-muted">Melhor Desempenho</h6>
-                    <h2 class="mb-0">{{ "%.1f"|format(melhores_alunos[0].media_geral) if melhores_alunos else "0.0" }}%</h2>
+                    <h6 class="card-title text-muted">Taxa de Participação</h6>
+                    <h2 class="mb-0">{{ "%.1f"|format(taxa_participacao) }}%</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
             <div class="card">
                 <div class="card-body text-center">
-                    <h6 class="card-title text-muted">Total de Simulados</h6>
-                    <h2 class="mb-0">{{ alunos[0].total_simulados if alunos else 0 }}</h2>
+                    <h6 class="card-title text-muted">Disciplinas</h6>
+                    <h2 class="mb-0">{{ disciplinas|length }}</h2>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Gráficos -->
-    {% if grafico_distribuicao and grafico_medias %}
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Distribuição de Notas</h5>
-                    <img src="data:image/png;base64,{{ grafico_distribuicao }}" class="img-fluid" alt="Distribuição de Notas">
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Médias Individuais</h5>
-                    <img src="data:image/png;base64,{{ grafico_medias }}" class="img-fluid" alt="Médias Individuais">
-                </div>
-            </div>
-        </div>
-    </div>
-    {% else %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-body text-center">
-                    <h5 class="text-muted">Não há dados suficientes para gerar os gráficos</h5>
-                    <p class="mb-0">Aguarde até que os alunos realizem alguns simulados.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- Destaques -->
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Melhores Desempenhos</h5>
-                    <div class="list-group list-group-flush">
-                        {% for aluno in melhores_alunos %}
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0">{{ aluno.nome }}</h6>
-                                    <small class="text-muted">{{ aluno.total_simulados }} simulados realizados</small>
-                                </div>
-                                <h5><span class="badge bg-success">{{ "%.1f"|format(aluno.media_geral) }}%</span></h5>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-body">
-                    <h5 class="card-title">Alunos que Precisam de Atenção</h5>
-                    <div class="list-group list-group-flush">
-                        {% for aluno in alunos_atencao %}
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="mb-0">{{ aluno.nome }}</h6>
-                                    <small class="text-muted">{{ aluno.total_simulados }} simulados realizados</small>
-                                </div>
-                                <h5><span class="badge bg-danger">{{ "%.1f"|format(aluno.media_geral) }}%</span></h5>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lista de Alunos -->
-    <div class="card">
+    <!-- Distribuição de Desempenho -->
+    <div class="card mb-4">
         <div class="card-body">
-            <h5 class="card-title">Lista Completa de Alunos</h5>
+            <h5 class="card-title">Distribuição de Desempenho</h5>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="alert alert-success">
+                        <h6 class="alert-heading">Alto Desempenho (>80%)</h6>
+                        <h3 class="mb-0">{{ grupos.alto_desempenho }} alunos</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-warning">
+                        <h6 class="alert-heading">Médio Desempenho (60-80%)</h6>
+                        <h3 class="mb-0">{{ grupos.medio_desempenho }} alunos</h3>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="alert alert-danger">
+                        <h6 class="alert-heading">Baixo Desempenho (<60%)</h6>
+                        <h3 class="mb-0">{{ grupos.baixo_desempenho }} alunos</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parecer Pedagógico -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Parecer Pedagógico</h5>
+            
+            <h6 class="mt-4">Engajamento</h6>
+            <p>{{ parecer.engajamento | safe }}</p>
+            
+            <h6 class="mt-4">Desempenho</h6>
+            <p>{{ parecer.desempenho | safe }}</p>
+            
+            <h6 class="mt-4">Pontos de Atenção</h6>
+            <p>{{ parecer.pontos_atencao | safe }}</p>
+            
+            <h6 class="mt-4">Recomendações</h6>
+            <p>{{ parecer.recomendacoes | safe }}</p>
+        </div>
+    </div>
+
+    <!-- Distribuição por Disciplina -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Desempenho por Disciplina</h5>
             <div class="table-responsive">
-                <table class="table table-hover">
+                <table class="table">
                     <thead>
                         <tr>
-                            <th>Nome</th>
-                            <th>Email</th>
-                            <th>Simulados</th>
-                            <th>Média Geral</th>
-                            <th>Ações</th>
+                            <th>Disciplina</th>
+                            <th>Média</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for aluno in alunos %}
+                        {% for i in range(disciplinas|length) %}
                         <tr>
-                            <td>{{ aluno.nome }}</td>
-                            <td>{{ aluno.email }}</td>
-                            <td>{{ aluno.total_simulados }}</td>
+                            <td>{{ disciplinas[i] }}</td>
+                            <td>{{ "%.1f"|format(medias_disciplinas[i]) }}%</td>
                             <td>
-                                <span class="badge {% if aluno.media_geral >= 70 %}bg-success{% elif aluno.media_geral >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
-                                    {{ "%.1f"|format(aluno.media_geral) }}%
+                                <span class="badge {% if medias_disciplinas[i] >= 70 %}bg-success{% elif medias_disciplinas[i] >= 60 %}bg-warning{% else %}bg-danger{% endif %}">
+                                    {% if medias_disciplinas[i] >= 70 %}Bom{% elif medias_disciplinas[i] >= 60 %}Regular{% else %}Atenção{% endif %}
                                 </span>
-                            </td>
-                            <td>
-                                <a href="/portal_professores/relatorio_aluno/{{ aluno.id }}" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-chart-line me-1"></i>Ver Relatório
-                                </a>
                             </td>
                         </tr>
                         {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Distribuição de Notas -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Distribuição de Notas</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Faixa</th>
+                            <th>Quantidade de Alunos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>81-100%</td>
+                            <td>{{ distribuicao_notas[4] }}</td>
+                        </tr>
+                        <tr>
+                            <td>61-80%</td>
+                            <td>{{ distribuicao_notas[3] }}</td>
+                        </tr>
+                        <tr>
+                            <td>41-60%</td>
+                            <td>{{ distribuicao_notas[2] }}</td>
+                        </tr>
+                        <tr>
+                            <td>21-40%</td>
+                            <td>{{ distribuicao_notas[1] }}</td>
+                        </tr>
+                        <tr>
+                            <td>0-20%</td>
+                            <td>{{ distribuicao_notas[0] }}</td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

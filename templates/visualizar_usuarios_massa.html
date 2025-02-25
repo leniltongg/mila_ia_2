@@ -12,7 +12,7 @@
                 <th>CPF</th>
                 <th>Escola</th>
                 <th>Tipo de Ensino</th>
-                <th>Série</th>
+                <th>Ano Escolar</th>
                 <th>Turma</th>
                 <th>Cidade</th>
                 <th>Confirmar Cadastro</th>
@@ -26,7 +26,7 @@
                 <td>{{ usuario['cpf'] }}</td>
                 <td>{{ usuario['escola_id'] }}</td>
                 <td>{{ usuario['tipo_ensino_id'] }}</td>
-                <td>{{ usuario['serie_id'] }}</td>
+                <td>{{ usuario['Ano_escolar_id'] }}</td>
                 <td>{{ usuario['turma_id'] }}</td>
                 <td>{{ usuario['codigo_ibge'] }}</td>
                 <td>
@@ -37,7 +37,7 @@
                     <input type="hidden" name="tipo_usuario_id_{{ loop.index }}" value="{{ usuario['tipo_usuario_id'] }}">
                     <input type="hidden" name="escola_id_{{ loop.index }}" value="{{ usuario['escola_id'] }}">
                     <input type="hidden" name="tipo_ensino_id_{{ loop.index }}" value="{{ usuario['tipo_ensino_id'] }}">
-                    <input type="hidden" name="serie_id_{{ loop.index }}" value="{{ usuario['serie_id'] }}">
+                    <input type="hidden" name="Ano_escolar_id_{{ loop.index }}" value="{{ usuario['Ano_escolar_id'] }}">
                     <input type="hidden" name="turma_id_{{ loop.index }}" value="{{ usuario['turma_id'] }}">
                     <input type="hidden" name="codigo_ibge_{{ loop.index }}" value="{{ usuario['codigo_ibge'] }}">
                     <input type="hidden" name="cpf_{{ loop.index }}" value="{{ usuario['cpf'] }}">
@@ -78,7 +78,7 @@
                 tipo_usuario_id: row.find(`input[name="tipo_usuario_id_${index}"]`).val(),
                 escola_id: row.find(`input[name="escola_id_${index}"]`).val(),
                 tipo_ensino_id: row.find(`input[name="tipo_ensino_id_${index}"]`).val(),
-                serie_id: row.find(`input[name="serie_id_${index}"]`).val(),
+                Ano_escolar_id: row.find(`input[name="Ano_escolar_id_${index}"]`).val(),
                 turma_id: row.find(`input[name="turma_id_${index}"]`).val(),
                 codigo_ibge: row.find(`input[name="codigo_ibge_${index}"]`).val(),
                 cpf: row.find(`input[name="cpf_${index}"]`).val(),

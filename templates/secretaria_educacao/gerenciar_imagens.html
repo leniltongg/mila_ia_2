@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Gerenciamento de Imagens</h2>
+    
+    <!-- Upload de Imagens -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Upload de Imagens</h5>
+        </div>
+        <div class="card-body">
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="disciplina">Disciplina</label>
+                            <select class="form-control" id="disciplina" name="disciplina_id" required>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="assunto">Assunto</label>
+                            <input type="text" class="form-control" id="assunto" name="assunto" required>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="tipo">Tipo</label>
+                            <select class="form-control" id="tipo" name="tipo" required>
+                                <option value="enunciado">Enunciado</option>
+                                <option value="alternativa">Alternativa</option>
+                                <option value="outro">Outro</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <div class="form-group">
+                            <label for="descricao">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="imagem">Selecionar Imagem</label>
+                            <input type="file" class="form-control" id="imagem" name="imagem" accept="image/*" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div id="imagePreview" class="text-center" style="display: none;">
+                            <img id="preview" src="" alt="Preview" style="max-width: 300px; max-height: 300px;">
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">Fazer Upload</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filtros de Busca -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Buscar Imagens</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <select class="form-control" id="filtroDisciplina">
+                        <option value="">Todas as Disciplinas</option>
+                        {% for disciplina in disciplinas %}
+                        <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="filtroAssunto" placeholder="Filtrar por assunto">
+                </div>
+                <div class="col-md-3">
+                    <select class="form-control" id="filtroTipo">
+                        <option value="">Todos os Tipos</option>
+                        <option value="enunciado">Enunciado</option>
+                        <option value="alternativa">Alternativa</option>
+                        <option value="outro">Outro</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control" id="busca" placeholder="Buscar por nome/descrição">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid de Imagens -->
+    <div class="row" id="imagensGrid">
+        {% for imagem in imagens %}
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <img src="{{ url_for('static', filename=imagem.url) }}" class="card-img-top" alt="{{ imagem.descricao }}" style="height: 200px; object-fit: contain;">
+                <div class="card-body">
+                    <h6 class="card-title">{{ imagem.nome }}</h6>
+                    <p class="card-text small">{{ imagem.descricao }}</p>
+                    <p class="card-text"><small class="text-muted">{{ imagem.disciplina.nome }} - {{ imagem.assunto }}</small></p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-sm btn-danger" onclick="deletarImagem('{{ imagem.id }}')">Excluir</button>
+                    <button class="btn btn-sm btn-info" onclick="copiarUrl('{{ url_for('static', filename=imagem.url) }}')">Copiar URL</button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- JavaScript para Preview e Upload -->
+<script>
+document.getElementById('imagem').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('preview').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        }
+        reader.readAsDataURL(file);
+    }
+});
+
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    
+    fetch('/secretaria_educacao/upload_imagem', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Imagem enviada com sucesso!');
+            location.reload();
+        } else {
+            alert('Erro ao enviar imagem: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao enviar imagem');
+    });
+});
+
+// Funções auxiliares
+function deletarImagem(id) {
+    if (confirm('Tem certeza que deseja excluir esta imagem?')) {
+        fetch(`/secretaria_educacao/deletar_imagem/${id}`, {
+            method: 'DELETE'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Erro ao excluir imagem: ' + data.message);
+            }
+        });
+    }
+}
+
+function copiarUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        alert('URL copiada para a área de transferência!');
+    });
+}
+
+// Filtros
+function aplicarFiltros() {
+    const disciplina = document.getElementById('filtroDisciplina').value;
+    const assunto = document.getElementById('filtroAssunto').value;
+    const tipo = document.getElementById('filtroTipo').value;
+    const busca = document.getElementById('busca').value;
+
+    fetch(`/secretaria_educacao/filtrar_imagens?disciplina=${disciplina}&assunto=${assunto}&tipo=${tipo}&busca=${busca}`)
+        .then(response => response.json())
+        .then(data => {
+            atualizarGrid(data.imagens);
+        });
+}
+
+function atualizarGrid(imagens) {
+    const grid = document.getElementById('imagensGrid');
+    grid.innerHTML = imagens.map(imagem => `
+        <div class="col-md-3 mb-4">
+            <div class="card h-100">
+                <img src="/static/${imagem.url}" class="card-img-top" alt="${imagem.descricao}" style="height: 200px; object-fit: contain;">
+                <div class="card-body">
+                    <h6 class="card-title">${imagem.nome}</h6>
+                    <p class="card-text small">${imagem.descricao}</p>
+                    <p class="card-text"><small class="text-muted">${imagem.disciplina_nome} - ${imagem.assunto}</small></p>
+                </div>
+                <div class="card-footer">
+                    <button class="btn btn-sm btn-danger" onclick="deletarImagem('${imagem.id}')">Excluir</button>
+                    <button class="btn btn-sm btn-info" onclick="copiarUrl('/static/${imagem.url}')">Copiar URL</button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Adicionar eventos de filtro
+['filtroDisciplina', 'filtroTipo'].forEach(id => {
+    document.getElementById(id).addEventListener('change', aplicarFiltros);
+});
+
+['filtroAssunto', 'busca'].forEach(id => {
+    document.getElementById(id).addEventListener('input', debounce(aplicarFiltros, 300));
+});
+
+// Função debounce para evitar muitas requisições
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+</script>
+{% endblock %}

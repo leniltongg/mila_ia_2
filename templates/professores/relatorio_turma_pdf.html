@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Relatório da Turma - {{ turma.serie }} {{ turma.turma }}</title>
+    <title>Relatório da Turma - {{ turma.Ano_escolar }} {{ turma.turma }}</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -90,7 +90,7 @@
 <body>
     <div class="header">
         <h1>Relatório da Turma</h1>
-        <p>{{ turma.serie }} {{ turma.turma }} - {{ turma.escola }}</p>
+        <p>{{ turma.Ano_escolar }} {{ turma.turma }} - {{ turma.escola }}</p>
         <p>Data de Geração: {{ data_geracao }}</p>
     </div>
 

@@ -1,65 +1,59 @@
-from flask import Blueprint, render_template, request, jsonify, current_app, make_response, send_file, g, flash, redirect, url_for
+from flask import Blueprint, render_template, g, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from openai import OpenAI
+from extensions import db
+from models import Usuarios, SimuladosEnviados, AlunoSimulado, SimuladosGeradosProfessor, SimuladoQuestoesProfessor, BancoQuestoes, SimuladosGerados, Disciplinas, MESES, DesempenhoSimulado
+from sqlalchemy import func, case, exists, and_
+import openai
 import json
 import os
 from dotenv import load_dotenv
 import re
 from weasyprint import HTML as WeasyHTML
-import sqlite3
+
+# Carregar variáveis de ambiente
+load_dotenv()
 
 # Criar o blueprint
 alunos_bp = Blueprint('alunos_bp', __name__, url_prefix='/alunos')
 
-# Carregar variáveis de ambiente
-load_dotenv()
-client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-
-def get_db():
-    if 'db' not in g:
-        g.db = sqlite3.connect('educacional.db')
-        g.db.row_factory = sqlite3.Row
-    return g.db
-
 @alunos_bp.route('/portal')
 @login_required
 def portal_alunos():
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
 
-    db = get_db()
-    cursor = db.cursor()
-
-    # Buscar simulados pendentes do aluno, ordenando por status (Pendente primeiro) e data
-    cursor.execute("""
-        SELECT sg.id, d.nome AS disciplina_nome, sg.mes_id, 
-               strftime('%d-%m-%Y', date(sg.data_envio)) as data_envio,
-               CASE 
-                   WHEN EXISTS (
-                       SELECT 1 
-                       FROM desempenho_simulado ds 
-                       WHERE ds.simulado_id = sg.id 
-                       AND ds.aluno_id = ?
-                   ) THEN 'Respondido'
-                   ELSE 'Pendente'
-               END as status
-        FROM simulados_gerados sg
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        WHERE sg.serie_id = ?
-        ORDER BY 
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM desempenho_simulado ds 
-                    WHERE ds.simulado_id = sg.id 
-                    AND ds.aluno_id = ?
-                ) THEN 1 
-                ELSE 0 
-            END,
-            sg.data_envio DESC
-    """, (current_user.id, current_user.serie_id, current_user.id))
-    simulados = cursor.fetchall()
+    # Buscar simulados pendentes do aluno usando SQLAlchemy
+    simulados = db.session.query(
+        SimuladosGerados.id,
+        Disciplinas.nome.label('disciplina_nome'),
+        SimuladosGerados.mes_id,
+        func.date_format(SimuladosGerados.data_envio, '%d-%m-%Y').label('data_envio'),
+        case(
+            (exists().where(
+                and_(
+                    DesempenhoSimulado.simulado_id == SimuladosGerados.id,
+                    DesempenhoSimulado.aluno_id == current_user.id
+                )
+            ), 'Respondido'),
+            else_='Pendente'
+        ).label('status')
+    ).join(
+        Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
+    ).filter(
+        SimuladosGerados.Ano_escolar_id == current_user.Ano_escolar_id
+    ).order_by(
+        case(
+            (exists().where(
+                and_(
+                    DesempenhoSimulado.simulado_id == SimuladosGerados.id,
+                    DesempenhoSimulado.aluno_id == current_user.id
+                )
+            ), 1),
+            else_=0
+        ),
+        SimuladosGerados.data_envio.desc()
+    ).all()
 
     # Lista de meses para exibição
     meses = [
@@ -74,7 +68,7 @@ def portal_alunos():
 @alunos_bp.route('/tutor-virtual')
 @login_required
 def tutor_virtual():
-    return render_template('alunos/tutor_virtual.html')
+    return render_template('alunos/tutor-virtual.html')
 
 @alunos_bp.route('/resolver-exercicios')
 @login_required
@@ -87,6 +81,7 @@ def criar_resumo():
     return render_template('alunos/criar_resumo.html')
 
 @alunos_bp.route('/gerar_resumo', methods=['POST'])
+@login_required
 def gerar_resumo():
     try:
         data = request.get_json()
@@ -143,14 +138,12 @@ def gerar_resumo():
         prompt += f"\n\nConteúdo para resumir:\n{conteudo}"
         
         # Fazer a chamada para a API
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é um assistente especializado em criar resumos educacionais concisos e objetivos."},
                 {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=1000
+            ]
         )
         
         # Extrair e formatar o resumo
@@ -276,14 +269,12 @@ def gerar_flashcards():
         # Fazer a chamada para a API
         try:
             print("Chamando API OpenAI...")
-            response = client.chat.completions.create(
+            response = openai.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=[
                     {"role": "system", "content": "Você é um assistente especializado em criar flashcards educacionais."},
                     {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                max_tokens=1500
+                ]
             )
             print("Resposta da API recebida")
             
@@ -371,7 +362,7 @@ def download_flashcards():
         </body>
         </html>
         """
-        
+
         # Criar PDF
         pdf = WeasyHTML(string=html).write_pdf()
         
@@ -465,14 +456,12 @@ Responda em formato JSON com os seguintes campos:
 - sugestoes: string com sugestões de melhoria em HTML"""
 
         # Fazer a chamada para o OpenAI
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo-16k",
             messages=[
                 {"role": "system", "content": "Você é um professor especializado em redação, com vasta experiência em correção de textos do ENEM e vestibulares."},
                 {"role": "user", "content": prompt}
-            ],
-            max_tokens=4000,
-            temperature=0.7
+            ]
         )
 
         # Processar resposta
@@ -699,40 +688,48 @@ def download_analise_redacao():
 def processar_chat():
     try:
         data = request.get_json()
-        message = data.get('message', '')
-        if not message:
-            return jsonify({"error": "Mensagem não pode estar vazia"}), 400
-
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": """Você é um tutor virtual educacional, especializado em ajudar estudantes com suas dúvidas acadêmicas. 
-                Siga estas diretrizes rigorosamente:
-                1. NUNCA forneça respostas diretas para questões de múltipla escolha ou qualquer outro tipo de questão
-                2. Em vez disso, guie o aluno através do raciocínio necessário para chegar à resposta
-                3. Explique os conceitos fundamentais relacionados à questão
-                4. Faça perguntas que levem o aluno a refletir sobre o problema
-                5. Use analogias e exemplos práticos para facilitar o entendimento
-                6. Incentive o aluno a chegar à sua própria conclusão
-                7. Se o aluno insistir em pedir a resposta, reforce a importância do processo de aprendizagem
-
-                Seu objetivo é desenvolver o pensamento crítico e a autonomia do aluno, não apenas fornecer respostas."""},
-                {"role": "assistant", "content": message}
-            ],
-            max_tokens=500,
-            temperature=0.7
-        )
-        
-        return jsonify({
-            "success": True, 
-            "response": response.choices[0].message.content
-        })
+        if not data or 'message' not in data:
+            return jsonify({"success": False, "error": "Mensagem não fornecida"}), 400
             
+        message = data['message']
+        if not message.strip():
+            return jsonify({"success": False, "error": "Mensagem vazia"}), 400
+
+        try:
+            response = openai.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": """Você é um tutor virtual educacional, especializado em ajudar estudantes com suas dúvidas acadêmicas. 
+                    Siga estas diretrizes rigorosamente:
+                    1. NUNCA forneça respostas diretas para questões de múltipla escolha ou qualquer outro tipo de questão
+                    2. Em vez disso, guie o aluno através do raciocínio necessário para chegar à resposta
+                    3. Explique os conceitos fundamentais relacionados à questão
+                    4. Faça perguntas que levem o aluno a refletir sobre o problema
+                    5. Use analogias e exemplos práticos para facilitar o entendimento
+                    6. Incentive o aluno a chegar à sua própria conclusão
+                    7. Se o aluno insistir em pedir a resposta, reforce a importância do processo de aprendizagem
+
+                    Seu objetivo é desenvolver o pensamento crítico e a autonomia do aluno, não apenas fornecer respostas."""},
+                    {"role": "user", "content": message}
+                ]
+            )
+            
+            return jsonify({
+                "success": True, 
+                "response": response.choices[0].message.content
+            })
+        except Exception as e:
+            print(f"Erro ao processar chat: {str(e)}")
+            return jsonify({
+                "success": False, 
+                "error": str(e)
+            }), 500
+
     except Exception as e:
         print(f"Erro ao processar chat: {str(e)}")
         return jsonify({
             "success": False, 
-            "error": "Erro ao processar sua mensagem"
+            "error": str(e)
         }), 500
 
 @alunos_bp.route('/gerar-quiz', methods=['POST'])
@@ -762,14 +759,12 @@ def gerar_quiz():
         
         Conteúdo: {conteudo}"""
 
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é um professor especializado em criar questões educativas e desafiadoras. Responda APENAS com o JSON solicitado, sem nenhum texto adicional."},
                 {"role": "user", "content": prompt}
-            ],
-            max_tokens=2000,
-            temperature=0.7
+            ]
         )
 
         # Processar resposta
@@ -847,13 +842,12 @@ Por favor, forneça feedback estruturado em 4 áreas:
 Forneça o feedback em formato HTML com tags <p> para parágrafos."""
 
         # Chamar a API do OpenAI
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-4",
             messages=[
                 {"role": "system", "content": "Você é um especialista em apresentações e oratória, com vasta experiência em avaliar e orientar alunos."},
                 {"role": "user", "content": prompt}
-            ],
-            temperature=0.7
+            ]
         )
 
         # Processar a resposta
@@ -954,7 +948,7 @@ def processar_entrevista():
         messages.append({"role": "user", "content": mensagem})
         
         # Gerar resposta do entrevistador e feedback
-        completion = client.chat.completions.create(
+        completion = openai.chat.completions.create(
             model="gpt-4",
             messages=messages + [
                 {"role": "system", "content": "Agora forneça duas respostas: 1) Sua próxima pergunta ou comentário como entrevistador 2) Um breve feedback construtivo sobre a última resposta do candidato. Separe as duas respostas com [FEEDBACK]"}
@@ -1016,7 +1010,7 @@ def finalizar_entrevista():
         })
         
         # Gerar avaliação
-        completion = client.chat.completions.create(
+        completion = openai.chat.completions.create(
             model="gpt-4",
             messages=messages
         )
@@ -1109,14 +1103,12 @@ def feedback_apresentacao():
         {conteudo}"""
         
         # Fazer a chamada para a API
-        response = client.chat.completions.create(
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "Você é um assistente especializado em dar feedback sobre apresentações."},
                 {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_tokens=2000
+            ]
         )
         
         # Extrair e processar o feedback
@@ -1207,47 +1199,41 @@ def download_feedback():
 @login_required
 def simulados():
     try:
-        db = get_db()
-        cursor = db.cursor()
-
         # Primeiro, pegar a série do aluno logado
-        cursor.execute("""
-            SELECT serie_id 
-            FROM usuarios 
-            WHERE id = ?
-        """, (current_user.id,))
-        serie_id = cursor.fetchone()[0]
+        Ano_escolar_id = current_user.Ano_escolar_id
 
         # Buscar apenas simulados da série do aluno
-        cursor.execute("""
-            SELECT 
-                sg.id,
-                sg.mes_id,
-                sg.status,
-                sg.data_envio,
-                d.nome as disciplina_nome,
-                m.nome as mes_nome
-            FROM simulados_gerados sg
-            JOIN disciplinas d ON sg.disciplina_id = d.id
-            JOIN meses m ON sg.mes_id = m.id
-            WHERE sg.serie_id = ?
-            AND sg.status = 'enviado'
-            ORDER BY sg.data_envio DESC
-        """, (serie_id,))
-        
-        simulados = cursor.fetchall()
+        simulados = db.session.query(
+            SimuladosGerados.id,
+            SimuladosGerados.mes_id,
+            SimuladosGerados.status,
+            func.date_format(SimuladosGerados.data_envio, '%d-%m-%Y').label('data_envio'),
+            Disciplinas.nome.label('disciplina_nome'),
+            MESES.nome.label('mes_nome')
+        ).join(
+            Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
+        ).join(
+            MESES, MESES.id == SimuladosGerados.mes_id
+        ).filter(
+            SimuladosGerados.Ano_escolar_id == Ano_escolar_id
+        ).filter(
+            SimuladosGerados.status == 'enviado'
+        ).order_by(
+            SimuladosGerados.data_envio.desc()
+        ).all()
 
         # Buscar simulados já respondidos pelo aluno (tipo_usuario_id = 5 para secretaria)
-        cursor.execute("""
-            SELECT 
-                simulado_id,
-                desempenho
-            FROM desempenho_simulado
-            WHERE aluno_id = ? AND tipo_usuario_id = 5
-        """, (current_user.id,))
+        desempenho_simulado = db.session.query(
+            DesempenhoSimulado.simulado_id,
+            DesempenhoSimulado.desempenho
+        ).filter(
+            DesempenhoSimulado.aluno_id == current_user.id
+        ).filter(
+            DesempenhoSimulado.tipo_usuario_id == 5
+        ).all()
         
         # Criar um dicionário com os simulados respondidos
-        desempenho_simulado = {row[0]: {'desempenho': row[1]} for row in cursor.fetchall()}
+        desempenho_simulado = {row[0]: {'desempenho': row[1]} for row in desempenho_simulado}
         
         return render_template('alunos/simulados.html', 
                              simulados=simulados,

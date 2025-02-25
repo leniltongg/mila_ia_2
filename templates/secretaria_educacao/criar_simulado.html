@@ -14,18 +14,18 @@
                     <form id="simulado-form">
                         <input type="hidden" id="simulado_id" name="simulado_id" value="{{ simulado.id if simulado else '' }}">
                         <div class="mb-3">
-                            <label for="serie_id" class="form-label">Série</label>
-                            <select class="form-select" id="serie_id" name="serie_id" required>
+                            <label for="Ano_escolar" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="Ano_escolar" name="Ano_escolar" required>
                                 <option value="">Selecione...</option>
-                                {% for serie in series %}
-                                <option value="{{ serie.id }}" {% if simulado and simulado.serie_id == serie.id %}selected{% endif %}>{{ serie.nome }}</option>
+                                {% for Ano_escolar in Ano_escolar %}
+                                <option value="{{ Ano_escolar.id }}" {% if simulado and simulado.Ano_escolar_id == Ano_escolar.id %}selected{% endif %}>{{ Ano_escolar.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
 
                         <div class="mb-3">
-                            <label for="mes_id" class="form-label">Mês</label>
-                            <select class="form-select" id="mes_id" name="mes_id" required>
+                            <label for="mes" class="form-label">Mês</label>
+                            <select class="form-select" id="mes" name="mes" required>
                                 <option value="">Selecione...</option>
                                 {% for mes in meses %}
                                 <option value="{{ mes.id }}" {% if simulado and simulado.mes_id == mes.id %}selected{% endif %}>{{ mes.nome }}</option>
@@ -34,8 +34,8 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="disciplina_id" class="form-label">Disciplina</label>
-                            <select class="form-select" id="disciplina_id" name="disciplina_id" required>
+                            <label for="disciplina" class="form-label">Disciplina</label>
+                            <select class="form-select" id="disciplina" name="disciplina" required>
                                 <option value="">Selecione...</option>
                                 {% for disciplina in disciplinas %}
                                 <option value="{{ disciplina.id }}" {% if simulado and simulado.disciplina_id == disciplina.id %}selected{% endif %}>{{ disciplina.nome }}</option>
@@ -66,8 +66,8 @@
                             <strong id="total-questoes">0</strong>
                         </div>
                         <div class="resumo-item">
-                            <span>Série:</span>
-                            <strong id="resumo-serie">-</strong>
+                            <span>Ano Escolar:</span>
+                            <strong id="resumo-Ano_escolar">-</strong>
                         </div>
                         <div class="resumo-item">
                             <span>Disciplina:</span>
@@ -92,16 +92,16 @@
                     <!-- Filtros -->
                     <form id="pesquisa-form" class="mb-3">
                         <div class="row g-2">
-                            <div class="col-md-4">
-                                <label for="filtro-serie" class="form-label">Série</label>
-                                <select class="form-select" id="filtro-serie">
+                            <div class="col-md-3">
+                                <label for="filtro-Ano_escolar" class="form-label">Ano Escolar</label>
+                                <select class="form-select" id="filtro-Ano_escolar">
                                     <option value="">Todas</option>
-                                    {% for serie in series %}
-                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                    {% for Ano_escolar in Ano_escolar %}
+                                    <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
                                 <label for="filtro-disciplina" class="form-label">Disciplina</label>
                                 <select class="form-select" id="filtro-disciplina">
                                     <option value="">Todas</option>
@@ -110,14 +110,23 @@
                                     {% endfor %}
                                 </select>
                             </div>
-                            <div class="col-md-4">
+                            <div class="col-md-3">
+                                <label for="filtro-mes" class="form-label">Mês</label>
+                                <select class="form-select" id="filtro-mes">
+                                    <option value="">Todos</option>
+                                    {% for mes in meses %}
+                                    <option value="{{ mes.id }}">{{ mes.nome }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
                                 <label for="filtro-assunto" class="form-label">Assunto</label>
-                                <div class="input-group">
-                                    <input type="text" class="form-control" id="filtro-assunto" placeholder="Digite...">
-                                    <button class="btn btn-primary" type="submit">
-                                        <i class="bi bi-search"></i>
-                                    </button>
-                                </div>
+                                <input type="text" class="form-control" id="filtro-assunto" placeholder="Digite o assunto...">
+                            </div>
+                            <div class="col-12">
+                                <button type="button" class="btn btn-primary w-100" onclick="buscarQuestoes()">
+                                    <i class="bi bi-search me-2"></i>Buscar Questões
+                                </button>
                             </div>
                         </div>
                     </form>
@@ -165,6 +174,10 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <div class="input-group me-2" style="max-width: 150px;">
+                    <span class="input-group-text">Pontuação</span>
+                    <input type="number" class="form-control" id="pontuacao-questao" value="1.0" min="0.1" step="0.1">
+                </div>
                 <button type="button" class="btn btn-primary" id="btnAdicionarQuestaoModal">
                     <i class="bi bi-plus-circle me-2"></i>Adicionar ao Simulado
                 </button>
@@ -232,6 +245,10 @@ function drop(ev) {
 function visualizarQuestao(questao) {
     console.log('Visualizando questão:', questao); // Debug
     questaoAtualModal = questao;
+    
+    // Resetar o campo de pontuação para 1.0
+    document.getElementById('pontuacao-questao').value = '1.0';
+    
     const modalBody = document.querySelector('.modal-questao');
     modalBody.innerHTML = `
         <div class="questao-preview">
@@ -269,7 +286,7 @@ function visualizarQuestao(questao) {
             <div class="mt-3 text-muted">
                 <small>
                     <strong>Disciplina:</strong> ${questao.disciplina_nome} | 
-                    <strong>Série:</strong> ${questao.serie_nome} | 
+                    <strong>Ano Escolar:</strong> ${questao.Ano_escolar_nome} | 
                     <strong>Assunto:</strong> ${questao.assunto}
                 </small>
             </div>
@@ -293,31 +310,33 @@ function visualizarQuestao(questao) {
 }
 
 async function buscarQuestoes() {
-    const serie = document.getElementById('filtro-serie').value;
+    const Ano_escolar = document.getElementById('filtro-Ano_escolar').value;
     const disciplina = document.getElementById('filtro-disciplina').value;
+    const mes = document.getElementById('filtro-mes').value;
     const assunto = document.getElementById('filtro-assunto').value;
     
-    // Mostrar mensagem de carregamento
     document.getElementById('questoes-disponiveis').innerHTML = '<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Carregando questões...</p></div>';
     
     try {
-        const response = await fetch(`/secretaria_educacao/buscar_questoes?serie_id=${serie}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        const response = await fetch(`/secretaria_educacao/buscar_questoes?Ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&mes_id=${mes}&assunto=${assunto}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const questoes = await response.json();
+        const data = await response.json();
         
-        // Limpar a área de questões disponíveis
+        if (!data.success) {
+            throw new Error(data.message || 'Erro ao buscar questões');
+        }
+        
         const questoesDisponiveis = document.getElementById('questoes-disponiveis');
         questoesDisponiveis.innerHTML = '';
         
-        if (questoes.length === 0) {
+        if (data.questoes.length === 0) {
             questoesDisponiveis.innerHTML = '<div class="alert alert-info">Nenhuma questão encontrada com os filtros selecionados.</div>';
             return;
         }
         
-        // Adicionar cada questão à lista
-        questoes.forEach(questao => {
+        data.questoes.forEach(questao => {
             const questaoElement = document.createElement('div');
             questaoElement.className = 'questao-row border-bottom p-3';
             questaoElement.draggable = true;
@@ -328,16 +347,11 @@ async function buscarQuestoes() {
             questaoElement.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
-                        <strong class="d-block mb-1">
-                            Questão ${questao.id}
-                            <span class="badge bg-secondary ms-2" title="Número de vezes que esta questão foi usada">
-                                <i class="bi bi-repeat"></i> ${questao.total_usos || 0}
-                            </span>
-                        </strong>
+                        <strong class="d-block mb-1">Questão ${questao.id}</strong>
                         <p class="mb-1">${questao.questao.substring(0, 200)}...</p>
                         <small class="text-muted">
                             <strong>Disciplina:</strong> ${questao.disciplina_nome} | 
-                            <strong>Série:</strong> ${questao.serie_nome} | 
+                            <strong>Ano Escolar:</strong> ${questao.Ano_escolar_nome} | 
                             <strong>Assunto:</strong> ${questao.assunto}
                         </small>
                     </div>
@@ -345,7 +359,7 @@ async function buscarQuestoes() {
                         <button class="btn btn-sm btn-outline-primary" onclick="visualizarQuestao(${questaoJSON})">
                             <i class="bi bi-eye"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-success" onclick="adicionarQuestao(${questaoJSON})">
+                        <button class="btn btn-sm btn-outline-success" onclick="visualizarQuestao(${questaoJSON})">
                             <i class="bi bi-plus"></i>
                         </button>
                     </div>
@@ -356,9 +370,7 @@ async function buscarQuestoes() {
     } catch (error) {
         console.error('Error:', error);
         document.getElementById('questoes-disponiveis').innerHTML = `
-            <div class="alert alert-danger">
-                Erro ao carregar questões. Por favor, tente novamente.
-            </div>
+            <div class="alert alert-danger">Erro ao buscar questões: ${error.message}</div>
         `;
     }
 }
@@ -369,6 +381,9 @@ function adicionarQuestao(questao) {
         mostrarFeedback('Questão já adicionada', 'warning');
         return;
     }
+    
+    const pontuacao = document.getElementById('pontuacao-questao').value;
+    questao.pontuacao = parseFloat(pontuacao);
     
     questoesSelecionadas.add(questao.id.toString()); // Convertendo para string para garantir consistência
     
@@ -387,9 +402,19 @@ function adicionarQuestao(questao) {
                 <strong class="d-block mb-1">Questão ${questao.id}</strong>
                 <p class="mb-1">${questao.questao.substring(0, 100)}...</p>
             </div>
-            <button class="btn btn-sm btn-outline-danger ms-3" onclick="removerQuestao(${questao.id})">
-                <i class="bi bi-trash"></i>
-            </button>
+            <div class="ms-3 d-flex gap-2 align-items-center">
+                <div class="input-group input-group-sm" style="width: 100px;">
+                    <span class="input-group-text">Pts</span>
+                    <input type="number" class="form-control form-control-sm" 
+                           value="${questao.pontuacao || 1.0}" 
+                           min="0.1" 
+                           step="0.1"
+                           onchange="atualizarPontuacao(${questao.id}, this.value)">
+                </div>
+                <button class="btn btn-sm btn-outline-danger" onclick="removerQuestao(${questao.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
         </div>
     `;
     
@@ -417,59 +442,66 @@ function removerQuestao(questaoId) {
     mostrarFeedback('Questão removida com sucesso!', 'success');
 }
 
-function salvarSimulado() {
-    const questoesSelecionadas = Array.from(document.getElementById('questoes-selecionadas').children)
-        .map(div => div.getAttribute('data-questao-id'));
+async function salvarSimulado() {
+    // Validar dados básicos
+    const Ano_escolar = document.getElementById('Ano_escolar').value;
+    const mes = document.getElementById('mes').value;
+    const disciplina = document.getElementById('disciplina').value;
 
-    // Verifica se há questões selecionadas
-    if (questoesSelecionadas.length === 0) {
-        mostrarFeedback('Selecione pelo menos uma questão para criar o simulado', 'warning');
-        return;
-    }
-    
-    // Verifica se os campos obrigatórios foram preenchidos
-    const serie_id = document.getElementById('serie_id').value;
-    const mes_id = document.getElementById('mes_id').value;
-    const disciplina_id = document.getElementById('disciplina_id').value;
-    
-    if (!serie_id || !mes_id || !disciplina_id) {
+    if (!Ano_escolar || !mes || !disciplina) {
         mostrarFeedback('Por favor, preencha todos os campos obrigatórios', 'warning');
         return;
     }
 
-    const formData = new FormData();
-    const simuladoId = document.getElementById('simulado_id').value;
-    
-    formData.append('simulado_id', simuladoId);
-    formData.append('serie_id', serie_id);
-    formData.append('disciplina_id', disciplina_id);
-    formData.append('mes_id', mes_id);
-    
-    // Adicionar cada questão individualmente ao FormData
-    questoesSelecionadas.forEach(questaoId => {
-        formData.append('questoes[]', questaoId);
-    });
-    
-    fetch('/secretaria_educacao/salvar_simulado', {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
+    // Pegar todas as questões selecionadas com suas pontuações
+    const questoesSelecionadas = Array.from(document.querySelectorAll('.questao-selecionada'))
+        .map(div => {
+            const questaoId = div.getAttribute('data-questao-id');
+            const pontuacaoInput = div.querySelector('input[type="number"]');
+            const pontuacao = pontuacaoInput ? pontuacaoInput.value : 1.0;
+            return { 
+                id: parseInt(questaoId), 
+                pontuacao: parseFloat(pontuacao) 
+            };
+        });
+
+    if (questoesSelecionadas.length === 0) {
+        mostrarFeedback('Adicione pelo menos uma questão ao simulado', 'warning');
+        return;
+    }
+
+    // Preparar dados para envio
+    const dados = {
+        Ano_escolar_id: parseInt(Ano_escolar),
+        mes_id: parseInt(mes),
+        disciplina_id: parseInt(disciplina),
+        questoes: questoesSelecionadas
+    };
+
+    try {
+        const response = await fetch('/secretaria_educacao/salvar_simulado', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(dados)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
             mostrarFeedback('Simulado salvo com sucesso!', 'success');
-            if (!simuladoId) {
-                // Se for um novo simulado, redireciona para a página de edição
-                window.location.href = `/secretaria_educacao/criar_simulado?id=${data.simulado_id}`;
-            }
+            // Redirecionar após 2 segundos
+            setTimeout(() => {
+                window.location.href = '/secretaria_educacao/meus_simulados';
+            }, 2000);
         } else {
-            mostrarFeedback(data.message || 'Erro ao salvar simulado', 'danger');
+            throw new Error(result.message || 'Erro ao salvar simulado');
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error:', error);
-        mostrarFeedback('Erro ao salvar simulado', 'danger');
-    });
+        mostrarFeedback(`Erro ao salvar simulado: ${error.message}`, 'danger');
+    }
 }
 
 function mostrarFeedback(mensagem, tipo) {
@@ -486,13 +518,13 @@ function mostrarFeedback(mensagem, tipo) {
 }
 
 function atualizarResumo() {
-    const serie = document.getElementById('serie_id');
-    const disciplina = document.getElementById('disciplina_id');
-    const mes = document.getElementById('mes_id');
+    const Ano_escolar = document.getElementById('Ano_escolar');
+    const disciplina = document.getElementById('disciplina');
+    const mes = document.getElementById('mes');
     
     // Atualiza cada elemento individualmente
     document.getElementById('total-questoes').textContent = questoesSelecionadas.size;
-    document.getElementById('resumo-serie').textContent = serie.options[serie.selectedIndex]?.text || '-';
+    document.getElementById('resumo-Ano_escolar').textContent = Ano_escolar.options[Ano_escolar.selectedIndex]?.text || '-';
     document.getElementById('resumo-disciplina').textContent = disciplina.options[disciplina.selectedIndex]?.text || '-';
     document.getElementById('resumo-mes').textContent = mes.options[mes.selectedIndex]?.text || '-';
 }
@@ -512,8 +544,9 @@ function preCarregarQuestoesSelecionadas() {
                 questao_correta: `{{ questao.questao_correta }}`,
                 assunto: `{{ questao.assunto|safe }}`,
                 disciplina_id: {{ questao.disciplina_id }},
-                serie_id: {{ questao.serie_id }},
-                mes_id: {{ questao.mes_id }}
+                Ano_escolar_id: {{ questao.Ano_escolar_id }},
+                mes_id: {{ questao.mes_id }},
+                pontuacao: {{ questao.pontuacao }}
             });
         {% endfor %}
         atualizarResumo();
@@ -532,38 +565,37 @@ document.addEventListener('DOMContentLoaded', function() {
     const questoesDisponiveis = document.getElementById('questoes-disponiveis');
     
     // Event listeners para os campos do simulado
-    document.getElementById('serie_id').addEventListener('change', function() {
+    document.getElementById('Ano_escolar').addEventListener('change', function() {
         atualizarResumo();
         buscarQuestoes();
     });
     
-    document.getElementById('disciplina_id').addEventListener('change', function() {
-        sincronizarDisciplina('disciplina_id', 'filtro-disciplina');
+    document.getElementById('disciplina').addEventListener('change', function() {
+        sincronizarDisciplina('disciplina', 'filtro-disciplina');
         atualizarResumo();
         buscarQuestoes();
     });
     
-    document.getElementById('mes_id').addEventListener('change', function() {
+    document.getElementById('mes').addEventListener('change', function() {
         atualizarResumo();
         buscarQuestoes();
     });
     
     // Event listeners para os filtros
     document.getElementById('filtro-disciplina').addEventListener('change', function() {
-        sincronizarDisciplina('filtro-disciplina', 'disciplina_id');
+        sincronizarDisciplina('filtro-disciplina', 'disciplina');
         atualizarResumo();
         buscarQuestoes();
     });
     
-    document.getElementById('filtro-serie').addEventListener('change', buscarQuestoes);
+    document.getElementById('filtro-Ano_escolar').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-assunto').addEventListener('input', buscarQuestoes);
     
     // Event listener para o botão de adicionar no modal
     document.getElementById('btnAdicionarQuestaoModal').addEventListener('click', function() {
         if (questaoAtualModal) {
             adicionarQuestao(questaoAtualModal);
-            const modalElement = document.getElementById('modalVisualizarQuestao');
-            const modal = bootstrap.Modal.getInstance(modalElement);
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalVisualizarQuestao'));
             modal.hide();
         }
     });
@@ -575,7 +607,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Inicialização
-    sincronizarDisciplina('disciplina_id', 'filtro-disciplina');
+    sincronizarDisciplina('disciplina', 'filtro-disciplina');
     atualizarResumo();
     buscarQuestoes();
     preCarregarQuestoesSelecionadas();
@@ -583,10 +615,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function abrirModalGeracaoAutomatica() {
     // Verificar se série e disciplina foram selecionadas
-    const serie_id = document.getElementById('serie_id').value;
-    const disciplina_id = document.getElementById('disciplina_id').value;
+    const Ano_escolar_id = document.getElementById('Ano_escolar').value;
+    const disciplina_id = document.getElementById('disciplina').value;
     
-    if (!serie_id || !disciplina_id) {
+    if (!Ano_escolar_id || !disciplina_id) {
         mostrarFeedback('Selecione a série e a disciplina antes de gerar automaticamente', 'warning');
         return;
     }
@@ -597,8 +629,8 @@ function abrirModalGeracaoAutomatica() {
 }
 
 async function gerarSimuladoAutomatico() {
-    const serie_id = document.getElementById('serie_id').value;
-    const disciplina_id = document.getElementById('disciplina_id').value;
+    const Ano_escolar_id = document.getElementById('Ano_escolar').value;
+    const disciplina_id = document.getElementById('disciplina').value;
     const quantidade = document.getElementById('quantidade_questoes').value;
     
     try {
@@ -608,7 +640,7 @@ async function gerarSimuladoAutomatico() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                serie_id: serie_id,
+                Ano_escolar_id: Ano_escolar_id,
                 disciplina_id: disciplina_id,
                 quantidade: quantidade
             })
@@ -656,6 +688,38 @@ async function gerarSimuladoAutomatico() {
     }
 }
 
+function atualizarPontuacao(questaoId, novaPontuacao) {
+    const questoes = Array.from(document.querySelectorAll('.questao-selecionada'))
+        .map(el => {
+            const id = el.getAttribute('data-questao-id');
+            if (id === questaoId.toString()) {
+                return {
+                    id: parseInt(id),
+                    pontuacao: parseFloat(novaPontuacao)
+                };
+            }
+            return {
+                id: parseInt(id),
+                pontuacao: parseFloat(el.querySelector('input[type="number"]').value)
+            };
+        });
+    
+    // Atualizar o estado das questões selecionadas
+    questoes.forEach(q => {
+        if (questoesSelecionadas.has(q.id.toString())) {
+            const questaoAtual = Array.from(document.querySelectorAll('.questao-selecionada'))
+                .find(el => el.getAttribute('data-questao-id') === q.id.toString());
+            if (questaoAtual) {
+                const questaoObj = JSON.parse(questaoAtual.getAttribute('data-questao-json') || '{}');
+                questaoObj.pontuacao = q.pontuacao;
+                questaoAtual.setAttribute('data-questao-json', JSON.stringify(questaoObj));
+            }
+        }
+    });
+    
+    // Atualizar o resumo
+    atualizarResumo();
+}
 </script>
 <style>
 .questoes-container {
@@ -705,6 +769,84 @@ async function gerarSimuladoAutomatico() {
 
 .questoes-container:empty #empty-state {
     display: block;
+}
+
+.questao-card {
+    border: 1px solid #ddd;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    background-color: #fff;
+    cursor: move;
+}
+
+.questao-card .questao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.questao-card .questao-pontuacao {
+    font-weight: bold;
+    color: #0d6efd;
+    margin-left: 10px;
+}
+
+.questao-card .questao-acoes {
+    display: flex;
+    gap: 10px;
+}
+
+.questao-card .questao-texto {
+    margin-bottom: 10px;
+    font-size: 0.9em;
+}
+
+.questao-card .questao-info {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.questao-card.dragging {
+    opacity: 0.5;
+}
+
+.questoes-container {
+    min-height: 200px;
+    border: 2px dashed #ddd;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.questoes-container.dragover {
+    background-color: #f8f9fa;
+    border-color: #0d6efd;
+}
+
+#empty-state {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.resumo-simulado {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.resumo-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.resumo-item:last-child {
+    border-bottom: none;
 }
 </style>
 {% endblock %}

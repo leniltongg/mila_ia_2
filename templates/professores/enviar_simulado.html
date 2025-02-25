@@ -1,0 +1,125 @@
+{% extends "professores/base_professores.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Enviar Simulado</h5>
+                    <a href="{{ url_for('simulados.visualizar_simulado_professor', simulado_id=simulado.id) }}" class="btn btn-light">
+                        <i class="bi bi-arrow-left"></i> Voltar
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Informações do Simulado -->
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h6 class="mb-2">Disciplina</h6>
+                                <p class="mb-0">{{ disciplina_nome }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h6 class="mb-2">Ano Escolar</h6>
+                                <p class="mb-0">{{ Ano_escolar_nome }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="border rounded p-3">
+                                <h6 class="mb-2">Mês</h6>
+                                <p class="mb-0">{{ mes_nome }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulário de Envio -->
+                    <form id="enviarSimuladoForm" onsubmit="return enviarSimulado(event)">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Selecione as Turmas</label>
+                                    <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
+                                        {% for turma in turmas %}
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="turmas" value="{{ turma.turma_id }}" id="turma{{ turma.turma_id }}">
+                                            <label class="form-check-label" for="turma{{ turma.turma_id }}">
+                                                Turma {{ turma.turma.turma }}
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="dataLimite" class="form-label">Data Limite para Resposta</label>
+                                    <input type="datetime-local" class="form-control" id="dataLimite" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end mt-3">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send"></i> Enviar Simulado
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function enviarSimulado(event) {
+    event.preventDefault();
+    
+    // Coletar turmas selecionadas
+    const turmasCheckboxes = document.querySelectorAll('input[name="turmas"]:checked');
+    const turmas = Array.from(turmasCheckboxes).map(cb => parseInt(cb.value));
+    
+    if (turmas.length === 0) {
+        alert('Selecione pelo menos uma turma');
+        return false;
+    }
+    
+    const dataLimite = document.getElementById('dataLimite').value;
+    if (!dataLimite) {
+        alert('Selecione uma data limite');
+        return false;
+    }
+    
+    try {
+        const response = await fetch('/professores/enviar-simulado', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                simulado_id: {{ simulado.id }},
+                turmas: turmas,
+                data_limite: dataLimite
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            alert('Simulado enviado com sucesso!');
+            window.location.href = '/professores/simulados';
+        } else {
+            alert(data.error || 'Erro ao enviar simulado');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao enviar simulado');
+    }
+    
+    return false;
+}
+</script>
+{% endblock %}

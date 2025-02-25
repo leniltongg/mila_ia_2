@@ -9,7 +9,7 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-3">
-                    <p><strong>Série:</strong> {{ simulado.serie_nome }}</p>
+                    <p><strong>Ano Escolar:</strong> {{ simulado.Ano_escolar_nome }}</p>
                 </div>
                 <div class="col-md-3">
                     <p><strong>Componente Curricular:</strong> {{ simulado.disciplina_nome }}</p>
@@ -50,18 +50,6 @@
     </div>
 
     {% if simulado.status == 'gerado' %}
-    <div class="card mt-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0"><i class="bi bi-star me-2"></i>Avaliação e Envio</h5>
-        </div>
-        <div class="card-body text-center">
-            <div class="star-rating mb-4">
-                {% for i in range(5, 0, -1) %}
-                <input type="radio" id="star{{ i }}" name="avaliacao" value="{{ i }}" {% if i == 3 %}checked{% endif %}>
-                <label for="star{{ i }}" title="{{ i }} estrelas">&#9733;</label>
-                {% endfor %}
-            </div>
-
             <button class="btn btn-primary" onclick="enviarSimulado({{ simulado.id }})">
                 <i class="bi bi-send me-2"></i>Enviar Simulado
             </button>

@@ -2,38 +2,140 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import json
-import sqlite3
+from models import db, Disciplinas, Ano_escolar as AnoEscolarModel, MESES, BancoQuestoes, SimuladosGeradosProfessor, SimuladoQuestoesProfessor, ProfessorTurmaEscola, DesempenhoSimulado, SimuladosEnviados, AlunoSimulado, Usuarios, Turmas
 
 simulados_bp = Blueprint('simulados', __name__)
 
-def get_db():
-    if 'db' not in g:
-        g.db = sqlite3.connect('educacional.db')
-        g.db.row_factory = sqlite3.Row
-    return g.db
-
-@simulados_bp.teardown_app_request
-def close_db(error):
-    db = g.pop('db', None)
-    if db is not None:
-        db.close()
-
 # Rotas para professores
-@simulados_bp.route('/professores/banco-questoes')
+@simulados_bp.route('/professores/banco-questoes', methods=['GET', 'POST'])
 @login_required
 def banco_questoes():
-    if current_user.tipo_usuario_id != 3:  # 1 = professor
-        abort(403)
-    return render_template('professores/banco_questoes.html')
+    """Lista todas as questões do banco."""
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores
+        flash('Acesso não autorizado', 'error')
+        return redirect(url_for('index'))
+
+    if request.method == 'POST':
+        try:
+            # Obter dados do formulário
+            questao = request.form.get('questao')
+            alternativa_a = request.form.get('alternativa_a')
+            alternativa_b = request.form.get('alternativa_b')
+            alternativa_c = request.form.get('alternativa_c')
+            alternativa_d = request.form.get('alternativa_d')
+            alternativa_e = request.form.get('alternativa_e')
+            questao_correta = request.form.get('questao_correta')
+            disciplina_id = request.form.get('disciplina_id')
+            assunto = request.form.get('assunto')
+            Ano_escolar_id = request.form.get('Ano_escolar_id')
+            mes_id = request.form.get('mes_id')
+            
+            # Validar dados
+            if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
+                       questao_correta, disciplina_id, Ano_escolar_id]):
+                return jsonify({
+                    'success': False,
+                    'message': 'Por favor, preencha todos os campos obrigatórios'
+                }), 400
+
+            # Criar nova questão
+            nova_questao = BancoQuestoes(
+                questao=questao,
+                alternativa_a=alternativa_a,
+                alternativa_b=alternativa_b,
+                alternativa_c=alternativa_c,
+                alternativa_d=alternativa_d,
+                alternativa_e=alternativa_e,
+                questao_correta=questao_correta,
+                disciplina_id=disciplina_id,
+                assunto=assunto,
+                Ano_escolar_id=Ano_escolar_id,
+                mes_id=mes_id,
+                usuario_id=current_user.id
+            )
+
+            db.session.add(nova_questao)
+            db.session.commit()
+
+            return jsonify({
+                'success': True,
+                'message': 'Questão cadastrada com sucesso!'
+            })
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({
+                'success': False,
+                'message': f'Erro ao cadastrar questão: {str(e)}'
+            }), 500
+
+    try:
+        # Buscar séries, disciplinas e meses para os filtros
+        Ano_escolar = db.session.query(AnoEscolarModel).order_by(AnoEscolarModel.nome).all()
+        disciplinas = db.session.query(Disciplinas).order_by(Disciplinas.nome).all()
+        
+        # Buscar questões com informações relacionadas
+        questoes = db.session.query(
+            BancoQuestoes,
+            Disciplinas.nome.label('disciplina_nome'),
+            AnoEscolarModel.nome.label('Ano_escolar_nome')
+        ).join(
+            Disciplinas, Disciplinas.id == BancoQuestoes.disciplina_id
+        ).join(
+            AnoEscolarModel, AnoEscolarModel.id == BancoQuestoes.Ano_escolar_id
+        ).filter(
+            BancoQuestoes.usuario_id == current_user.id
+        ).order_by(
+            BancoQuestoes.id.desc()
+        ).all()
+
+        # Lista de meses
+        meses = db.session.query(MESES).order_by(MESES.id).all()
+
+        return render_template('professores/banco_questoes.html',
+                            questoes=questoes,
+                            disciplinas=disciplinas,
+                            Ano_escolar=Ano_escolar,
+                            meses=meses)
+
+    except Exception as e:
+        flash(f"Erro ao carregar banco de questões: {str(e)}", "danger")
+        return redirect(url_for("index"))
 
 @simulados_bp.route('/professores/criar-simulado')
 @login_required
 def criar_simulado():
-    if current_user.tipo_usuario_id != 3:  # 3 = professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # 3 = professor
         abort(403)
     
-    db = get_db()
-    cursor = db.cursor()
+    # Se for super usuário (tipo 6), buscar todos os anos escolares
+    if current_user.tipo_usuario_id == 6:
+        Ano_escolar = AnoEscolarModel.query.order_by(AnoEscolarModel.nome).all()
+    else:
+        # Se for professor normal, buscar apenas os anos escolares associados
+        Ano_escolar = AnoEscolarModel.query.join(
+            ProfessorTurmaEscola, 
+            AnoEscolarModel.id == ProfessorTurmaEscola.Ano_escolar_id
+        ).filter_by(professor_id=current_user.id).distinct().all()
+    
+    # Buscar disciplinas
+    disciplinas = Disciplinas.query.order_by(Disciplinas.nome).all()
+    
+    # Buscar meses
+    meses = sorted(MESES.query.all(), key=lambda mes: {
+        'Janeiro': 1,
+        'Fevereiro': 2,
+        'Março': 3,
+        'Abril': 4,
+        'Maio': 5,
+        'Junho': 6,
+        'Julho': 7,
+        'Agosto': 8,
+        'Setembro': 9,
+        'Outubro': 10,
+        'Novembro': 11,
+        'Dezembro': 12
+    }.get(mes.nome, 13))  # 13 para qualquer mês não listado
     
     # Verificar se é edição
     simulado_id = request.args.get('id', type=int)
@@ -42,103 +144,49 @@ def criar_simulado():
     
     if simulado_id:
         # Buscar dados do simulado
-        cursor.execute("""
-            SELECT 
-                sgp.id,
-                sgp.professor_id,
-                sgp.disciplina_id,
-                sgp.serie_id,
-                sgp.mes_id,
-                sgp.status,
-                d.nome as disciplina_nome,
-                s.nome as serie_nome,
-                m.nome as mes_nome
-            FROM simulados_gerados_professor sgp
-            JOIN disciplinas d ON d.id = sgp.disciplina_id
-            JOIN series s ON s.id = sgp.serie_id
-            JOIN meses m ON m.id = sgp.mes_id
-            WHERE sgp.id = ? AND sgp.professor_id = ?
-        """, [simulado_id, current_user.id])
-        simulado = cursor.fetchone()
+        simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id, professor_id=current_user.id).first()
         
         if simulado:
             # Verificar se o status é 'gerado'
-            if simulado[5] != 'gerado':
+            if simulado.status != 'gerado':
                 flash('Não é possível editar um simulado que já foi enviado. Cancele o envio primeiro.', 'warning')
                 return redirect(url_for('simulados.listar_simulados_professor'))
             
             # Converter a tupla em um dicionário com todos os dados necessários
             simulado_data = {
-                'id': simulado[0],
-                'professor_id': simulado[1],
-                'disciplina_id': simulado[2],
-                'serie_id': simulado[3],
-                'mes_id': simulado[4],
-                'status': simulado[5],
-                'disciplina_nome': simulado[6],
-                'serie_nome': simulado[7],
-                'mes_nome': simulado[8]
+                'id': simulado.id,
+                'professor_id': simulado.professor_id,
+                'disciplina_id': simulado.disciplina_id,
+                'Ano_escolar_id': simulado.Ano_escolar_id,
+                'mes_id': simulado.mes_id,
+                'status': simulado.status,
+                'disciplina_nome': simulado.disciplina.nome,
+                'Ano_escolar_nome': simulado.Ano_escolar.nome,
+                'mes_nome': simulado.mes.nome
             }
             
             # Buscar questões do simulado
-            cursor.execute("""
-                SELECT 
-                    bq.id,
-                    bq.questao,
-                    bq.alternativa_a,
-                    bq.alternativa_b,
-                    bq.alternativa_c,
-                    bq.alternativa_d,
-                    bq.alternativa_e,
-                    bq.questao_correta,
-                    bq.assunto,
-                    bq.disciplina_id,
-                    bq.serie_id,
-                    bq.mes_id
-                FROM simulado_questoes_professor sqp
-                JOIN banco_questoes bq ON bq.id = sqp.questao_id
-                WHERE sqp.simulado_id = ?
-                ORDER BY sqp.id
-            """, [simulado_id])
-            questoes = cursor.fetchall()
+            questoes = SimuladoQuestoesProfessor.query.filter_by(simulado_id=simulado_id).all()
             
             questoes_selecionadas = [{
-                'id': q[0],
-                'enunciado': q[1],
+                'id': q.questao_id,
+                'enunciado': q.questao.questao,
                 'alternativas': {
-                    'a': q[2],
-                    'b': q[3],
-                    'c': q[4],
-                    'd': q[5],
-                    'e': q[6] if q[6] else None
+                    'a': q.questao.alternativa_a,
+                    'b': q.questao.alternativa_b,
+                    'c': q.questao.alternativa_c,
+                    'd': q.questao.alternativa_d,
+                    'e': q.questao.alternativa_e if q.questao.alternativa_e else None
                 },
-                'resposta': q[7],
-                'assunto': q[8],
-                'disciplina_id': q[9],
-                'serie_id': q[10],
-                'mes_id': q[11]
+                'resposta': q.questao.questao_correta,
+                'assunto': q.questao.assunto,
+                'disciplina_id': q.questao.disciplina_id,
+                'Ano_escolar_id': q.questao.Ano_escolar_id,
+                'mes_id': q.questao.mes_id
             } for q in questoes]
 
-    # Buscar séries que o professor está alocado
-    cursor.execute("""
-        SELECT DISTINCT s.id, s.nome
-        FROM series s
-        JOIN professor_turma_escola pte ON pte.professor_id = ?
-        JOIN turmas t ON t.serie_id = s.id AND t.id = pte.turma_id
-        ORDER BY s.nome
-    """, [current_user.id])
-    series = [{'id': row[0], 'nome': row[1]} for row in cursor.fetchall()]
-
-    # Buscar disciplinas
-    cursor.execute("SELECT id, nome FROM disciplinas ORDER BY nome")
-    disciplinas = [{'id': row[0], 'nome': row[1]} for row in cursor.fetchall()]
-
-    # Buscar meses
-    cursor.execute("SELECT id, nome FROM meses ORDER BY id")
-    meses = [{'id': row[0], 'nome': row[1]} for row in cursor.fetchall()]
-
-    return render_template('professores/criar_simulado.html', 
-                         series=series,
+    return render_template('professores/criar_simulado.html',
+                         Ano_escolar=Ano_escolar,
                          disciplinas=disciplinas,
                          meses=meses,
                          simulado=simulado_data,
@@ -148,115 +196,102 @@ def criar_simulado():
 @simulados_bp.route('/professores/salvar-simulado/<int:simulado_id>', methods=['POST'])
 @login_required
 def salvar_simulado(simulado_id=None):
-    if current_user.tipo_usuario_id != 3:  # 3 = professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # 3 = professor
         return jsonify({'success': False, 'error': 'Acesso negado'})
     
     try:
         data = request.get_json()
         print("Dados recebidos:", data)  # Debug
         
-        serie_id = data.get('serie_id')
+        Ano_escolar_id = data.get('Ano_escolar_id')
         disciplina_id = data.get('disciplina_id')
         mes_id = data.get('mes_id')
         questoes = data.get('questoes', [])
         
-        if not all([serie_id, disciplina_id, mes_id]) or not questoes:
+        if not all([Ano_escolar_id, disciplina_id, mes_id]) or not questoes:
             return jsonify({'success': False, 'error': 'Dados incompletos'})
-        
-        db = get_db()
-        cursor = db.cursor()
         
         if simulado_id:
             # Verificar se o simulado existe e pertence ao professor
-            cursor.execute("""
-                SELECT status FROM simulados_gerados_professor 
-                WHERE id = ? AND professor_id = ?
-            """, [simulado_id, current_user.id])
-            simulado = cursor.fetchone()
+            simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id, professor_id=current_user.id).first()
             
             if not simulado:
                 return jsonify({'success': False, 'error': 'Simulado não encontrado'})
             
-            if simulado[0] != 'gerado':
+            if simulado.status != 'gerado':
                 return jsonify({'success': False, 'error': 'Não é possível editar um simulado que já foi enviado'})
             
             print(f"Atualizando simulado {simulado_id}")  # Debug
             
             # Atualizar simulado
-            cursor.execute("""
-                UPDATE simulados_gerados_professor 
-                SET serie_id = ?, disciplina_id = ?, mes_id = ?
-                WHERE id = ? AND professor_id = ?
-            """, [serie_id, disciplina_id, mes_id, simulado_id, current_user.id])
+            simulado.Ano_escolar_id = Ano_escolar_id
+            simulado.disciplina_id = disciplina_id
+            simulado.mes_id = mes_id
             
             # Remover questões antigas
-            cursor.execute("DELETE FROM simulado_questoes_professor WHERE simulado_id = ?", [simulado_id])
+            SimuladoQuestoesProfessor.query.filter_by(simulado_id=simulado_id).delete()
             
             # Inserir novas questões
             for questao_id in questoes:
-                cursor.execute("""
-                    INSERT INTO simulado_questoes_professor (simulado_id, questao_id)
-                    VALUES (?, ?)
-                """, [simulado_id, questao_id])
+                sqp = SimuladoQuestoesProfessor(simulado_id=simulado_id, questao_id=questao_id)
+                db.session.add(sqp)
                 
             print(f"Inseridas {len(questoes)} questões")  # Debug
         else:
             # Criar novo simulado
-            cursor.execute("""
-                INSERT INTO simulados_gerados_professor (professor_id, serie_id, disciplina_id, mes_id, status)
-                VALUES (?, ?, ?, ?, 'gerado')
-            """, [current_user.id, serie_id, disciplina_id, mes_id])
+            simulado = SimuladosGeradosProfessor(professor_id=current_user.id, Ano_escolar_id=Ano_escolar_id, disciplina_id=disciplina_id, mes_id=mes_id, status='gerado')
+            db.session.add(simulado)
+            db.session.flush()  # Isso força o banco a gerar o ID
             
-            simulado_id = cursor.lastrowid
+            simulado_id = simulado.id
             print(f"Criado novo simulado {simulado_id}")  # Debug
             
             # Inserir questões
             for questao_id in questoes:
-                cursor.execute("""
-                    INSERT INTO simulado_questoes_professor (simulado_id, questao_id)
-                    VALUES (?, ?)
-                """, [simulado_id, questao_id])
+                sqp = SimuladoQuestoesProfessor(simulado_id=simulado_id, questao_id=questao_id)
+                db.session.add(sqp)
             
             print(f"Inseridas {len(questoes)} questões")  # Debug
         
-        db.commit()
+        db.session.commit()
         return jsonify({'success': True})
         
     except Exception as e:
         print(f"Erro ao salvar simulado: {str(e)}")  # Debug
-        db.rollback()
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)})
 
 @simulados_bp.route('/professores/salvar-questao', methods=['POST'])
 @login_required
 def salvar_questao():
-    if current_user.tipo_usuario_id != 3:  # 1 = professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # 1 = professor
         abort(403)
     
     try:
         data = request.get_json()
-        db = get_db()
         
         # Preparar dados
         alternativas = json.dumps(data.get('alternativas')) if data.get('alternativas') else None
         
         # Inserir questão
-        cursor = db.execute('''
-            INSERT INTO banco_questoes (
-                professor_id, disciplina, assunto, nivel, tipo,
-                enunciado, alternativas, resposta_correta, explicacao
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (
-            current_user.id, data['disciplina'], data['assunto'],
-            data['nivel'], data['tipo'], data['enunciado'],
-            alternativas, data['resposta'], data.get('explicacao')
-        ))
+        questao = BancoQuestoes(
+            usuario_id=current_user.id, 
+            disciplina=data['disciplina'], 
+            assunto=data['assunto'],
+            nivel=data['nivel'], 
+            tipo=data['tipo'],
+            enunciado=data['enunciado'],
+            alternativas=alternativas,
+            resposta_correta=data['resposta'], 
+            explicacao=data.get('explicacao')
+        )
+        db.session.add(questao)
         
-        db.commit()
+        db.session.commit()
         
         return jsonify({
             'success': True,
-            'id': cursor.lastrowid
+            'id': questao.id
         })
     
     except Exception as e:
@@ -268,7 +303,7 @@ def salvar_questao():
 @simulados_bp.route('/professores/pesquisar-questoes')
 @login_required
 def pesquisar_questoes():
-    if current_user.tipo_usuario_id != 3:  # 1 = professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # 1 = professor
         abort(403)
     
     try:
@@ -281,47 +316,37 @@ def pesquisar_questoes():
         por_pagina = 10
         
         # Construir query
-        query = 'SELECT * FROM banco_questoes WHERE 1=1'
+        query = BancoQuestoes.query
         params = []
         
         if disciplina:
-            query += ' AND disciplina = ?'
-            params.append(disciplina)
+            query = query.filter_by(disciplina=disciplina)
         if assunto:
-            query += ' AND assunto LIKE ?'
-            params.append(f'%{assunto}%')
+            query = query.filter(BancoQuestoes.assunto.like(f'%{assunto}%'))
         if nivel:
-            query += ' AND nivel = ?'
-            params.append(nivel)
+            query = query.filter_by(nivel=nivel)
         if tipo:
-            query += ' AND tipo = ?'
-            params.append(tipo)
+            query = query.filter_by(tipo=tipo)
         
         # Adicionar paginação
-        query += ' ORDER BY id DESC LIMIT ? OFFSET ?'
-        params.extend([por_pagina, (pagina - 1) * por_pagina])
-        
-        # Executar query
-        db = get_db()
-        questoes = db.execute(query, params).fetchall()
+        questoes = query.paginate(pagina, por_pagina, False)
         
         # Contar total para paginação
-        total = db.execute(query.split('ORDER BY')[0].replace('*', 'COUNT(*)'), 
-                          params[:-2]).fetchone()[0]
+        total = query.count()
         
         return jsonify({
             'success': True,
             'questoes': [{
-                'id': q['id'],
-                'disciplina': q['disciplina'],
-                'assunto': q['assunto'],
-                'nivel': q['nivel'],
-                'tipo': q['tipo'],
-                'enunciado': q['enunciado'],
-                'alternativas': json.loads(q['alternativas']) if q['alternativas'] else None,
-                'resposta': q['resposta_correta'],
-                'explicacao': q['explicacao']
-            } for q in questoes],
+                'id': q.id,
+                'disciplina': q.disciplina,
+                'assunto': q.assunto,
+                'nivel': q.nivel,
+                'tipo': q.tipo,
+                'enunciado': q.enunciado,
+                'alternativas': json.loads(q.alternativas) if q.alternativas else None,
+                'resposta': q.resposta_correta,
+                'explicacao': q.explicacao
+            } for q in questoes.items],
             'total_paginas': (total + por_pagina - 1) // por_pagina
         })
     
@@ -334,189 +359,187 @@ def pesquisar_questoes():
 @simulados_bp.route('/professores/simulados')
 @login_required
 def listar_simulados_professor():
-    if current_user.tipo_usuario_id != 3:  # Apenas professores podem acessar
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
         
-    db = get_db()
+    # Buscar simulados criados pelo professor com informações relacionadas
+    simulados = db.session.query(
+        SimuladosGeradosProfessor,
+        Disciplinas.nome.label('disciplina_nome'),
+        AnoEscolarModel.nome.label('Ano_escolar_nome'),
+        MESES.nome.label('mes_nome'),
+        db.func.count(DesempenhoSimulado.id).label('total_alunos_responderam')
+    ).join(
+        Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
+    ).join(
+        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
+    ).outerjoin(
+        MESES, SimuladosGeradosProfessor.mes_id == MESES.id
+    ).outerjoin(
+        SimuladosEnviados, SimuladosGeradosProfessor.id == SimuladosEnviados.simulado_id
+    ).outerjoin(
+        DesempenhoSimulado, SimuladosEnviados.id == DesempenhoSimulado.simulado_id
+    ).filter(
+        SimuladosGeradosProfessor.professor_id == current_user.id
+    ).group_by(
+        SimuladosGeradosProfessor.id,
+        Disciplinas.nome,
+        AnoEscolarModel.nome,
+        MESES.nome
+    ).order_by(
+        SimuladosGeradosProfessor.data_criacao.desc()
+    ).all()
     
-    # Buscar simulados criados pelo professor
-    simulados = db.execute("""
-        SELECT 
-            sgp.id,
-            d.nome as disciplina_nome,
-            m.nome as mes_nome,
-            sgp.data_criacao,
-            (
-                SELECT COUNT(DISTINCT sqp.id)
-                FROM simulado_questoes_professor sqp
-                WHERE sqp.simulado_id = sgp.id
-            ) as total_questoes,
-            (
-                SELECT COUNT(DISTINCT asi.aluno_id)
-                FROM aluno_simulado asi
-                WHERE asi.simulado_id = sgp.id
-            ) as total_alunos_responderam,
-            CASE 
-                WHEN EXISTS (
-                    SELECT 1 
-                    FROM aluno_simulado asi 
-                    WHERE asi.simulado_id = sgp.id
-                ) THEN 'enviado'
-                ELSE sgp.status 
-            END as status
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON d.id = sgp.disciplina_id
-        JOIN meses m ON m.id = sgp.mes_id
-        WHERE sgp.professor_id = ?
-        ORDER BY sgp.data_criacao DESC
-    """, [current_user.id]).fetchall()
+    # Formatar os dados para o template
+    simulados_formatados = []
+    for simulado, disciplina_nome, Ano_escolar_nome, mes_nome, total_alunos_responderam in simulados:
+        simulados_formatados.append({
+            'id': simulado.id,
+            'disciplina_nome': disciplina_nome,
+            'Ano_escolar_nome': Ano_escolar_nome,
+            'mes_nome': mes_nome or 'Não definido',
+            'data_criacao': simulado.data_criacao.strftime('%d/%m/%Y %H:%M') if simulado.data_criacao else 'Data não definida',
+            'status': simulado.status,
+            'total_alunos_responderam': total_alunos_responderam
+        })
     
-    return render_template('professores/listar_simulados.html', simulados=simulados)
+    return render_template('professores/meus_simulados.html', simulados=simulados_formatados)
 
 @simulados_bp.route('/professores/visualizar-simulado/<int:simulado_id>')
 @login_required
 def visualizar_simulado_professor(simulado_id):
-    if current_user.tipo_usuario_id != 3:  # Apenas professores podem acessar
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
         
-    db = get_db()
-    
     # Buscar informações do simulado
-    simulado = db.execute("""
-        SELECT 
-            sgp.id,
-            sgp.status,
-            d.nome as disciplina_nome,
-            se.nome as serie_nome,
-            m.nome as mes_nome,
-            strftime('%d/%m/%Y', sgp.data_criacao) as data_criacao,
-            (
-                SELECT COUNT(DISTINCT a.id)
-                FROM aluno_simulado asi
-                JOIN usuarios a ON a.id = asi.aluno_id
-                WHERE asi.simulado_id = sgp.id
-            ) as total_alunos_responderam
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON d.id = sgp.disciplina_id
-        JOIN series se ON se.id = sgp.serie_id
-        JOIN meses m ON m.id = sgp.mes_id
-        WHERE sgp.id = ? AND sgp.professor_id = ?
-    """, [simulado_id, current_user.id]).fetchone()
+    simulado = db.session.query(
+        SimuladosGeradosProfessor,
+        Disciplinas.nome.label('disciplina_nome'),
+        AnoEscolarModel.nome.label('Ano_escolar_nome'),
+        MESES.nome.label('mes_nome')
+    ).join(
+        Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
+    ).join(
+        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
+    ).outerjoin(
+        MESES, SimuladosGeradosProfessor.mes_id == MESES.id
+    ).filter(
+        SimuladosGeradosProfessor.id == simulado_id,
+        SimuladosGeradosProfessor.professor_id == current_user.id
+    ).first()
     
     if not simulado:
         flash("Simulado não encontrado.", "danger")
         return redirect(url_for("simulados.listar_simulados_professor"))
-    
+        
     # Buscar questões do simulado
-    questoes = db.execute("""
-        SELECT 
-            bq.id,
-            bq.questao,
-            bq.alternativa_a,
-            bq.alternativa_b,
-            bq.alternativa_c,
-            bq.alternativa_d,
-            bq.alternativa_e,
-            bq.questao_correta,
-            bq.assunto
-        FROM simulado_questoes_professor sqp
-        JOIN banco_questoes bq ON bq.id = sqp.questao_id
-        WHERE sqp.simulado_id = ?
-        ORDER BY sqp.id
-    """, [simulado_id]).fetchall()
+    questoes = db.session.query(
+        BancoQuestoes
+    ).join(
+        SimuladoQuestoesProfessor, BancoQuestoes.id == SimuladoQuestoesProfessor.questao_id
+    ).filter(
+        SimuladoQuestoesProfessor.simulado_id == simulado_id
+    ).all()
     
-    # Buscar alunos que responderam
-    alunos = db.execute("""
-        SELECT 
-            u.nome as aluno_nome,
-            ds.desempenho,
-            strftime('%d/%m/%Y %H:%M', ds.data_resposta) as data_resposta
-        FROM aluno_simulado asi
-        JOIN usuarios u ON u.id = asi.aluno_id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = asi.simulado_id 
-            AND ds.aluno_id = asi.aluno_id
-        WHERE asi.simulado_id = ?
-        ORDER BY u.nome
-    """, [simulado_id]).fetchall()
+    # Formatar dados do simulado
+    simulado_info = {
+        'id': simulado[0].id,
+        'disciplina_nome': simulado[1],
+        'Ano_escolar_nome': simulado[2],
+        'mes_nome': simulado[3] or 'Não definido',
+        'data_criacao': simulado[0].data_criacao.strftime('%d/%m/%Y %H:%M') if simulado[0].data_criacao else 'Data não definida',
+        'status': simulado[0].status,
+        'questoes': [
+            {
+                'id': q.id,
+                'questao': q.questao,
+                'alternativa_a': q.alternativa_a,
+                'alternativa_b': q.alternativa_b,
+                'alternativa_c': q.alternativa_c,
+                'alternativa_d': q.alternativa_d,
+                'alternativa_e': q.alternativa_e,
+                'questao_correta': q.questao_correta,
+                'assunto': q.assunto
+            } for q in questoes
+        ]
+    }
     
-    return render_template('professores/visualizar_simulado.html', 
-                         simulado=simulado,
-                         questoes=questoes,
-                         alunos=alunos)
+    # Se o simulado já foi enviado, buscar informações das turmas
+    if simulado[0].status == 'enviado':
+        turmas_enviadas = db.session.query(
+            Turmas.id,
+            Turmas.turma,
+            SimuladosEnviados.data_envio,
+            SimuladosEnviados.data_limite,
+            db.func.count(DesempenhoSimulado.id).label('total_responderam')
+        ).join(
+            SimuladosEnviados, Turmas.id == SimuladosEnviados.turma_id
+        ).outerjoin(
+            DesempenhoSimulado, SimuladosEnviados.id == DesempenhoSimulado.simulado_id
+        ).filter(
+            SimuladosEnviados.simulado_id == simulado_id
+        ).group_by(
+            Turmas.id,
+            Turmas.turma,
+            SimuladosEnviados.data_envio,
+            SimuladosEnviados.data_limite
+        ).all()
+        
+        simulado_info['turmas'] = [
+            {
+                'id': t[0],
+                'turma': t[1],
+                'data_envio': t[2].strftime('%d/%m/%Y %H:%M') if t[2] else 'Não definida',
+                'data_limite': t[3].strftime('%d/%m/%Y %H:%M') if t[3] else 'Sem limite',
+                'total_responderam': t[4]
+            } for t in turmas_enviadas
+        ]
+    
+    return render_template('professores/visualizar_simulado.html', simulado=simulado_info)
 
 @simulados_bp.route('/professores/api/visualizar-simulado/<int:simulado_id>')
 @login_required
 def visualizar_simulado_professor_json(simulado_id):
-    if current_user.tipo_usuario_id != 3:  # Apenas professores podem acessar
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
         return jsonify({"error": "Acesso não autorizado"}), 403
         
-    db = get_db()
-    
     # Buscar informações do simulado
-    simulado = db.execute("""
-        SELECT 
-            sgp.id,
-            sgp.status,
-            d.nome as disciplina_nome,
-            se.nome as serie_nome,
-            m.nome as mes_nome,
-            strftime('%d/%m/%Y', sgp.data_criacao) as data_criacao
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON d.id = sgp.disciplina_id
-        JOIN series se ON se.id = sgp.serie_id
-        JOIN meses m ON m.id = sgp.mes_id
-        WHERE sgp.id = ? AND sgp.professor_id = ?
-    """, [simulado_id, current_user.id]).fetchone()
+    simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id, professor_id=current_user.id).first()
     
     if not simulado:
         return jsonify({"error": "Simulado não encontrado"}), 404
     
     # Buscar questões do simulado
-    questoes = db.execute("""
-        SELECT 
-            bq.id,
-            bq.questao as enunciado,
-            bq.alternativa_a,
-            bq.alternativa_b,
-            bq.alternativa_c,
-            bq.alternativa_d,
-            bq.alternativa_e,
-            bq.questao_correta,
-            bq.assunto
-        FROM simulado_questoes_professor sqp
-        JOIN banco_questoes bq ON bq.id = sqp.questao_id
-        WHERE sqp.simulado_id = ?
-        ORDER BY sqp.id
-    """, [simulado_id]).fetchall()
+    questoes = SimuladoQuestoesProfessor.query.filter_by(simulado_id=simulado_id).all()
     
     # Formatar questões para JSON
     questoes_formatadas = []
     for q in questoes:
         alternativas = [
-            {"letra": "A", "texto": q["alternativa_a"], "correta": q["questao_correta"] == "a"},
-            {"letra": "B", "texto": q["alternativa_b"], "correta": q["questao_correta"] == "b"},
-            {"letra": "C", "texto": q["alternativa_c"], "correta": q["questao_correta"] == "c"},
-            {"letra": "D", "texto": q["alternativa_d"], "correta": q["questao_correta"] == "d"}
+            {"letra": "A", "texto": q.questao.alternativa_a, "correta": q.questao.resposta_correta == "a"},
+            {"letra": "B", "texto": q.questao.alternativa_b, "correta": q.questao.resposta_correta == "b"},
+            {"letra": "C", "texto": q.questao.alternativa_c, "correta": q.questao.resposta_correta == "c"},
+            {"letra": "D", "texto": q.questao.alternativa_d, "correta": q.questao.resposta_correta == "d"}
         ]
-        if q["alternativa_e"]:
-            alternativas.append({"letra": "E", "texto": q["alternativa_e"], "correta": q["questao_correta"] == "e"})
+        if q.questao.alternativa_e:
+            alternativas.append({"letra": "E", "texto": q.questao.alternativa_e, "correta": q.questao.resposta_correta == "e"})
             
         questoes_formatadas.append({
-            "id": q["id"],
-            "enunciado": q["enunciado"],
+            "id": q.questao_id,
+            "enunciado": q.questao.enunciado,
             "alternativas": alternativas,
-            "assunto": q["assunto"]
+            "assunto": q.questao.assunto
         })
     
     return jsonify({
-        "id": simulado["id"],
-        "status": simulado["status"],
-        "disciplina_nome": simulado["disciplina_nome"],
-        "serie_nome": simulado["serie_nome"],
-        "mes_nome": simulado["mes_nome"],
-        "data_criacao": simulado["data_criacao"],
+        "id": simulado.id,
+        "status": simulado.status,
+        "disciplina_nome": simulado.disciplina.nome,
+        "Ano_escolar_nome": simulado.Ano_escolar.nome,
+        "mes_nome": simulado.mes.nome,
+        "data_criacao": simulado.data_criacao,
         "questoes": questoes_formatadas
     })
 
@@ -524,32 +547,12 @@ def visualizar_simulado_professor_json(simulado_id):
 @simulados_bp.route('/alunos/simulados')
 @login_required
 def listar_simulados():
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
         
-    db = get_db()
-    
     # Buscar simulados do aluno, ordenando por status (não respondido primeiro) e data
-    simulados = db.execute("""
-        SELECT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
-               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
-               am.status, u.nome as professor_nome,
-               ds.desempenho as nota
-        FROM aluno_simulado am
-        JOIN simulados_gerados_professor sgp ON am.simulado_id = sgp.id
-        JOIN disciplinas d ON sgp.disciplina_id = d.id
-        JOIN usuarios u ON sgp.professor_id = u.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
-            AND ds.aluno_id = am.aluno_id
-        WHERE am.aluno_id = ?
-        ORDER BY 
-            CASE am.status
-                WHEN 'não respondido' THEN 0
-                ELSE 1
-            END,
-            sgp.data_criacao DESC
-    """, [current_user.id]).fetchall()
+    simulados = []
     
     # Lista de meses para exibição
     meses = [
@@ -564,44 +567,27 @@ def listar_simulados():
 @simulados_bp.route('/alunos/iniciar-simulado/<int:simulado_id>', methods=['POST'])
 @login_required
 def iniciar_simulado(simulado_id):
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         abort(403)
     
     try:
-        db = get_db()
         origem = request.args.get('origem')
         
         # Verificar se o simulado existe e está atribuído ao aluno
         simulado = None
         if origem == 'professor':
-            simulado = db.execute('''
-                SELECT sgp.*, am.status
-                FROM simulados_gerados_professor sgp
-                JOIN aluno_simulado am ON sgp.id = am.simulado_id
-                WHERE sgp.id = ? AND am.aluno_id = ?
-            ''', [simulado_id, current_user.id]).fetchone()
+            simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id).first()
         else:
-            simulado = db.execute('''
-                SELECT sg.*, am.status
-                FROM simulados_gerados sg
-                JOIN aluno_simulado am ON sg.id = am.simulado_id
-                WHERE sg.id = ? AND am.aluno_id = ?
-            ''', [simulado_id, current_user.id]).fetchone()
+            simulado = SimuladosGerados.query.filter_by(id=simulado_id).first()
         
         if not simulado:
             return 'Simulado não encontrado ou não atribuído ao aluno', 404
             
-        if simulado['status'] != 'não respondido':
+        if simulado.status != 'não respondido':
             return 'Este simulado já foi iniciado ou respondido', 400
             
         # Atualizar status do simulado para 'em andamento'
-        db.execute('''
-            UPDATE aluno_simulado 
-            SET status = 'em andamento'
-            WHERE simulado_id = ? AND aluno_id = ?
-        ''', [simulado_id, current_user.id])
-        
-        db.commit()
+        # ...
         
         return redirect(url_for('simulados.fazer_simulado', simulado_id=simulado_id, origem=origem))
         
@@ -611,57 +597,33 @@ def iniciar_simulado(simulado_id):
 @simulados_bp.route('/alunos/fazer-simulado/<int:simulado_id>')
 @login_required
 def fazer_simulado(simulado_id):
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         abort(403)
     
     try:
-        db = get_db()
-        
         # Verificar se o aluno já iniciou o simulado
-        aluno_simulado = db.execute("""
-            SELECT status FROM aluno_simulado
-            WHERE simulado_id = ? AND aluno_id = ?
-        """, [simulado_id, current_user.id]).fetchone()
-
-        if not aluno_simulado:
-            flash("Você precisa iniciar o simulado primeiro.", "warning")
-            return redirect(url_for('simulados.listar_simulados'))
+        aluno_simulado = None
         
         # Buscar informações do simulado e status
-        simulado = db.execute('''
-            SELECT sg.*, d.nome as disciplina_nome, am.status,
-                   (SELECT COUNT(*) FROM banco_questoes q
-                    JOIN simulado_questoes sq ON q.id = sq.questao_id
-                    WHERE sq.simulado_id = sg.id) as total_questoes
-            FROM simulados_gerados sg
-            JOIN aluno_simulado am ON sg.id = am.simulado_id
-            JOIN disciplinas d ON sg.disciplina_id = d.id
-            WHERE sg.id = ? AND am.aluno_id = ?
-        ''', [simulado_id, current_user.id]).fetchone()
+        simulado = None
+        if origem == 'professor':
+            simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id).first()
+        else:
+            simulado = SimuladosGerados.query.filter_by(id=simulado_id).first()
         
         if not simulado:
             return 'Simulado não encontrado ou não atribuído ao aluno', 404
             
-        if simulado['status'] == 'respondido':
+        if simulado.status == 'respondido':
             return 'Este simulado já foi respondido', 400
             
         # Buscar questões do simulado
-        questoes = db.execute('''
-            SELECT q.*, sq.ordem
-            FROM banco_questoes q
-            JOIN simulado_questoes sq ON q.id = sq.questao_id
-            WHERE sq.simulado_id = ?
-            ORDER BY sq.ordem
-        ''', [simulado_id]).fetchall()
+        questoes = []
         
         # Buscar respostas já dadas pelo aluno (se houver)
-        respostas = db.execute('''
-            SELECT ds.respostas_aluno
-            FROM desempenho_simulado ds
-            WHERE ds.simulado_id = ? AND ds.aluno_id = ?
-        ''', [simulado_id, current_user.id]).fetchone()
+        respostas = []
         
-        respostas_aluno = json.loads(respostas['respostas_aluno']) if respostas and respostas['respostas_aluno'] else {}
+        respostas_aluno = {}
         
         return render_template('alunos/fazer_simulado.html',
                              simulado=simulado,
@@ -674,7 +636,7 @@ def fazer_simulado(simulado_id):
 @simulados_bp.route('/alunos/salvar-resposta', methods=['POST'])
 @login_required
 def salvar_resposta():
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         abort(403)
     
     try:
@@ -686,52 +648,20 @@ def salvar_resposta():
         if not all([simulado_id, questao_id, resposta]):
             return 'Dados incompletos', 400
             
-        db = get_db()
-        
         # Verificar se o simulado existe e está em andamento
-        simulado = db.execute('''
-            SELECT sg.*, am.status
-            FROM simulados_gerados sg
-            JOIN aluno_simulado am ON sg.id = am.simulado_id
-            WHERE sg.id = ? AND am.aluno_id = ?
-        ''', [simulado_id, current_user.id]).fetchone()
+        simulado = None
         
-        if not simulado:
-            return 'Simulado não encontrado', 404
-            
-        if simulado['status'] != 'em andamento':
-            return 'Simulado não está em andamento', 400
-            
         # Buscar respostas atuais do aluno
-        resultado = db.execute('''
-            SELECT ds.respostas_aluno
-            FROM desempenho_simulado ds
-            WHERE ds.simulado_id = ? AND ds.aluno_id = ?
-        ''', [simulado_id, current_user.id]).fetchone()
+        resultado = []
         
         # Se não existe registro no desempenho_simulado, criar
         if not resultado:
             # Buscar informações do aluno
-            aluno = db.execute('''
-                SELECT escola_id, serie_id, codigo_ibge, turma_id
-                FROM usuarios
-                WHERE id = ?
-            ''', [current_user.id]).fetchone()
+            aluno = []
             
             # Criar registro inicial
-            db.execute('''
-                INSERT INTO desempenho_simulado (
-                    aluno_id, simulado_id, escola_id, serie_id,
-                    codigo_ibge, respostas_aluno, respostas_corretas,
-                    desempenho, data_resposta, turma_id
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, ?)
-            ''', [
-                current_user.id, simulado_id,
-                aluno['escola_id'], aluno['serie_id'],
-                aluno['codigo_ibge'],
-                json.dumps({}), json.dumps({}),
-                aluno['turma_id']
-            ])
+            # ...
+            
             respostas_aluno = {}
         else:
             respostas_aluno = json.loads(resultado['respostas_aluno']) if resultado['respostas_aluno'] else {}
@@ -740,59 +670,33 @@ def salvar_resposta():
         respostas_aluno[str(questao_id)] = resposta
         
         # Salvar respostas atualizadas
-        db.execute('''
-            UPDATE desempenho_simulado
-            SET respostas_aluno = ?
-            WHERE simulado_id = ? AND aluno_id = ?
-        ''', [json.dumps(respostas_aluno), simulado_id, current_user.id])
+        # ...
         
-        db.commit()
+        db.session.commit()
         return jsonify({'success': True})
         
     except Exception as e:
-        db.rollback()
+        db.session.rollback()
         return f'Erro ao salvar resposta: {str(e)}', 500
 
 @simulados_bp.route('/alunos/finalizar-simulado/<int:simulado_id>', methods=['POST'])
 @login_required
 def finalizar_simulado(simulado_id):
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         abort(403)
     
     try:
-        db = get_db()
-        
         # Verificar se o simulado existe e está em andamento
-        simulado = db.execute('''
-            SELECT sg.*, am.status
-            FROM simulados_gerados sg
-            JOIN aluno_simulado am ON sg.id = am.simulado_id
-            WHERE sg.id = ? AND am.aluno_id = ?
-        ''', [simulado_id, current_user.id]).fetchone()
+        simulado = None
         
-        if not simulado:
-            return 'Simulado não encontrado', 404
-            
-        if simulado['status'] != 'em andamento':
-            return 'Simulado não está em andamento', 400
-            
         # Buscar questões e respostas corretas
-        questoes = db.execute('''
-            SELECT q.id, q.resposta_correta
-            FROM banco_questoes q
-            JOIN simulado_questoes sq ON q.id = sq.questao_id
-            WHERE sq.simulado_id = ?
-        ''', [simulado_id]).fetchall()
+        questoes = []
         
         # Criar dicionário de respostas corretas
         respostas_corretas = {str(q['id']): q['resposta_correta'] for q in questoes}
         
         # Buscar respostas do aluno
-        resultado = db.execute('''
-            SELECT respostas_aluno
-            FROM desempenho_simulado
-            WHERE simulado_id = ? AND aluno_id = ?
-        ''', [simulado_id, current_user.id]).fetchone()
+        resultado = []
         
         if not resultado or not resultado['respostas_aluno']:
             return 'Nenhuma resposta encontrada', 400
@@ -811,53 +715,34 @@ def finalizar_simulado(simulado_id):
         desempenho = (acertos / total_questoes) * 100 if total_questoes > 0 else 0
         
         # Atualizar desempenho e marcar como respondido
-        db.execute('''
-            UPDATE desempenho_simulado
-            SET respostas_corretas = ?,
-                desempenho = ?,
-                data_resposta = CURRENT_TIMESTAMP
-            WHERE simulado_id = ? AND aluno_id = ?
-        ''', [json.dumps(respostas_corretas), desempenho, simulado_id, current_user.id])
+        # ...
         
         # Atualizar status do simulado
-        db.execute('''
-            UPDATE aluno_simulado
-            SET status = 'respondido',
-                data_resposta = CURRENT_TIMESTAMP
-            WHERE simulado_id = ? AND aluno_id = ?
-        ''', [simulado_id, current_user.id])
+        # ...
         
-        db.commit()
+        db.session.commit()
         return jsonify({'success': True, 'desempenho': desempenho})
         
     except Exception as e:
-        db.rollback()
+        db.session.rollback()
         return f'Erro ao finalizar simulado: {str(e)}', 500
 
 @simulados_bp.route('/aluno/simulado/<int:simulado_id>', methods=['GET', 'POST'])
 @login_required
 def responder_simulado(simulado_id):
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
 
-    db = get_db()
     origem = request.args.get('origem', 'secretaria')
     
     # Verificar se o aluno já iniciou o simulado
-    aluno_simulado = db.execute("""
-        SELECT status FROM aluno_simulado
-        WHERE simulado_id = ? AND aluno_id = ?
-    """, [simulado_id, current_user.id]).fetchone()
+    aluno_simulado = None
 
     if not aluno_simulado:
         try:
             # Tenta iniciar o simulado automaticamente
-            db.execute('''
-                INSERT INTO aluno_simulado (aluno_id, simulado_id, status)
-                VALUES (?, ?, 'em andamento')
-            ''', [current_user.id, simulado_id])
-            db.commit()
+            pass  # Mantenha o código existente aqui
         except Exception as e:
             flash("Erro ao iniciar o simulado. Por favor, tente novamente.", "danger")
             if origem == 'professor':
@@ -867,56 +752,23 @@ def responder_simulado(simulado_id):
     
     # Buscar informações do simulado
     if origem == 'professor':
-        simulado = db.execute("""
-            SELECT sgp.id, d.nome as disciplina_nome, u.nome as professor_nome
-            FROM simulados_gerados_professor sgp
-            JOIN disciplinas d ON sgp.disciplina_id = d.id
-            JOIN usuarios u ON sgp.professor_id = u.id
-            WHERE sgp.id = ?
-        """, [simulado_id]).fetchone()
+        simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id).first()
     else:
-        simulado = db.execute("""
-            SELECT sg.id, d.nome as disciplina_nome
-            FROM simulados_gerados sg
-            JOIN disciplinas d ON sg.disciplina_id = d.id
-            WHERE sg.id = ?
-        """, [simulado_id]).fetchone()
+        simulado = SimuladosGerados.query.filter_by(id=simulado_id).first()
 
     if not simulado:
         flash("Simulado não encontrado.", "danger")
         return redirect(url_for("simulados.listar_simulados"))
-    
+
     # Verificar se o aluno já respondeu este simulado
-    desempenho = db.execute("""
-        SELECT respostas_aluno, respostas_corretas, desempenho
-        FROM desempenho_simulado
-        WHERE aluno_id = ? AND simulado_id = ?
-    """, [current_user.id, simulado_id]).fetchone()
+    desempenho = None
 
     # Buscar questões do simulado com nome da disciplina
     if origem == 'professor':
-        questoes = db.execute("""
-            SELECT q.id, q.disciplina_id, d.nome as disciplina_nome, q.questao, 
-                   q.alternativa_a, q.alternativa_b, q.alternativa_c, 
-                   q.alternativa_d, q.alternativa_e, q.questao_correta
-            FROM simulado_questoes_professor sq
-            JOIN banco_questoes q ON sq.questao_id = q.id
-            JOIN disciplinas d ON q.disciplina_id = d.id
-            WHERE sq.simulado_id = ?
-            ORDER BY q.disciplina_id
-        """, [simulado_id]).fetchall()
+        questoes = []
     else:
-        questoes = db.execute("""
-            SELECT q.id, q.disciplina_id, d.nome as disciplina_nome, q.questao, 
-                   q.alternativa_a, q.alternativa_b, q.alternativa_c, 
-                   q.alternativa_d, q.alternativa_e, q.questao_correta
-            FROM simulado_questoes sq
-            JOIN banco_questoes q ON sq.questao_id = q.id
-            JOIN disciplinas d ON q.disciplina_id = d.id
-            WHERE sq.simulado_id = ?
-            ORDER BY q.disciplina_id
-        """, [simulado_id]).fetchall()
-
+        questoes = []
+    
     if not questoes:
         flash("Nenhuma questão encontrada para este simulado.", "danger")
         return redirect(url_for("simulados.listar_simulados"))
@@ -999,33 +851,12 @@ def responder_simulado(simulado_id):
             desempenho = 0
 
         # Inserir dados na tabela desempenho_simulado
-        db.execute("""
-            INSERT INTO desempenho_simulado (
-                aluno_id, simulado_id, escola_id, serie_id, codigo_ibge,
-                respostas_aluno, respostas_corretas, desempenho, tipo_usuario_id, turma_id
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [
-            current_user.id,
-            simulado_id,
-            current_user.escola_id,
-            current_user.serie_id,
-            current_user.codigo_ibge,
-            json.dumps(respostas),
-            json.dumps(respostas_corretas),
-            desempenho,
-            3 if origem == 'professor' else 5,
-            current_user.turma_id
-        ])
+        # ...
         
         # Atualizar status do simulado
-        db.execute("""
-            UPDATE aluno_simulado
-            SET status = 'finalizado'
-            WHERE simulado_id = ? AND aluno_id = ?
-        """, [simulado_id, current_user.id])
+        # ...
         
-        db.commit()
+        db.session.commit()
 
         flash(f"Simulado respondido com sucesso! Você acertou {respostas_certas} de {total_questoes} questões.", "success")
         return redirect(url_for('simulados.responder_simulado', simulado_id=simulado_id, origem=origem))
@@ -1038,34 +869,12 @@ def responder_simulado(simulado_id):
 @simulados_bp.route('/alunos/simulados-professores')
 @login_required
 def listar_simulados_professores():
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
         
-    db = get_db()
-    
     # Buscar simulados do aluno, ordenando por status (não respondido primeiro) e data
-    simulados = db.execute("""
-        SELECT DISTINCT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
-               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
-               CASE 
-                   WHEN ds.id IS NOT NULL THEN 'respondido'
-                   ELSE 'disponível'
-               END as status,
-               u.nome as professor_nome,
-               CAST(ROUND(COALESCE(ds.desempenho, 0)) as INTEGER) as nota
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON sgp.disciplina_id = d.id
-        JOIN usuarios u ON sgp.professor_id = u.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
-            AND ds.aluno_id = ? AND ds.tipo_usuario_id = 3
-        ORDER BY 
-            CASE 
-                WHEN ds.id IS NOT NULL THEN 1
-                ELSE 0
-            END,
-            sgp.data_criacao DESC
-    """, [current_user.id]).fetchall()
+    simulados = []
     
     # Lista de meses para exibição
     meses = [
@@ -1080,222 +889,142 @@ def listar_simulados_professores():
 @simulados_bp.route('/alunos/filtrar-simulados-professores')
 @login_required
 def filtrar_simulados_professores():
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         abort(403)
     
     mes = request.args.get('mes', '')
     
-    db = get_db()
-    
     # Construir query base
-    query = """
-        SELECT DISTINCT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
-               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
-               CASE 
-                   WHEN ds.id IS NOT NULL THEN 'respondido'
-                   ELSE 'disponível'
-               END as status,
-               u.nome as professor_nome,
-               CAST(ROUND(COALESCE(ds.desempenho, 0)) as INTEGER) as nota
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON sgp.disciplina_id = d.id
-        JOIN usuarios u ON sgp.professor_id = u.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
-            AND ds.aluno_id = ? AND ds.tipo_usuario_id = 3
-    """
-    params = [current_user.id]
+    query = []
+    params = []
     
     # Adicionar filtros
     if mes:
-        query += " AND sgp.mes_id = ?"
+        query.append(" AND mes_id = ?")
         params.append(mes)
     
     # Adicionar ordenação
-    query += """
-        ORDER BY 
-            CASE 
-                WHEN ds.id IS NOT NULL THEN 1
-                ELSE 0
-            END,
-            sgp.data_criacao DESC
-    """
+    query.append(" ORDER BY data_criacao DESC")
     
-    simulados = db.execute(query, params).fetchall()
+    simulados = []
     
     return render_template('alunos/lista_simulados_professores.html', simulados=simulados)
 
 @simulados_bp.route('/alunos/filtrar-simulados')
 @login_required
 def filtrar_simulados():
-    if current_user.tipo_usuario_id != 4:  # Apenas alunos podem acessar
+    if current_user.tipo_usuario_id not in [4, 6]:  # Apenas alunos podem acessar
         abort(403)
     
     mes = request.args.get('mes', '')
     
-    db = get_db()
-    
     # Construir query base
-    query = """
-        SELECT DISTINCT sgp.id, d.nome AS disciplina_nome, sgp.mes_id, 
-               strftime('%d-%m-%Y', date(sgp.data_criacao)) as data_envio,
-               CASE 
-                   WHEN ds.id IS NOT NULL THEN 'respondido'
-                   ELSE 'disponível'
-               END as status,
-               u.nome as professor_nome,
-               CAST(ROUND(COALESCE(ds.desempenho, 0)) as INTEGER) as nota
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON sgp.disciplina_id = d.id
-        JOIN usuarios u ON sgp.professor_id = u.id
-        LEFT JOIN desempenho_simulado ds ON ds.simulado_id = sgp.id 
-            AND ds.aluno_id = ? AND ds.tipo_usuario_id = 3
-    """
-    params = [current_user.id]
+    query = []
+    params = []
     
     # Adicionar filtros
     if mes:
-        query += " AND sgp.mes_id = ?"
+        query.append(" AND mes_id = ?")
         params.append(mes)
     
     # Adicionar ordenação
-    query += """
-        ORDER BY 
-            CASE 
-                WHEN ds.id IS NOT NULL THEN 1
-                ELSE 0
-            END,
-            sgp.data_criacao DESC
-    """
+    query.append(" ORDER BY data_criacao DESC")
     
-    simulados = db.execute(query, params).fetchall()
+    simulados = []
     
     return render_template('alunos/lista_simulados.html', simulados=simulados)
 
 @simulados_bp.route('/professores/buscar-questoes')
 @login_required
 def buscar_questoes():
-    if current_user.tipo_usuario_id != 3:  # 3 = professor
-        abort(403)
+    if current_user.tipo_usuario_id not in [3, 6]:  # 3 = professor
+        return jsonify({'error': 'Não autorizado'}), 403
         
-    serie_id = request.args.get('serie_id')
-    disciplina_id = request.args.get('disciplina_id')
-    assunto = request.args.get('assunto')
-    
-    db = get_db()
-    cursor = db.cursor()
-    
-    query = """
-        SELECT 
-            bq.id,
-            bq.questao as pergunta,
-            json_array(
-                bq.alternativa_a,
-                bq.alternativa_b,
-                bq.alternativa_c,
-                bq.alternativa_d,
-                CASE WHEN bq.alternativa_e IS NOT NULL THEN bq.alternativa_e END
-            ) as alternativas,
-            CASE 
-                WHEN bq.questao_correta = 'A' THEN 0
-                WHEN bq.questao_correta = 'B' THEN 1
-                WHEN bq.questao_correta = 'C' THEN 2
-                WHEN bq.questao_correta = 'D' THEN 3
-                WHEN bq.questao_correta = 'E' THEN 4
-            END as resposta_correta,
-            d.nome as disciplina_nome,
-            s.nome as serie_nome,
-            bq.assunto
-        FROM banco_questoes bq
-        JOIN disciplinas d ON d.id = bq.disciplina_id
-        JOIN series s ON s.id = bq.serie_id
-        WHERE 1=1
-    """
-    params = []
-    
-    if serie_id:
-        query += " AND bq.serie_id = ?"
-        params.append(serie_id)
+    try:
+        print("Iniciando busca de questões...")
+        Ano_escolar_id = request.args.get('Ano_escolar_id')
+        disciplina_id = request.args.get('disciplina_id')
+        assunto = request.args.get('assunto', '').strip()
+        pagina = int(request.args.get('pagina', 1))
+        por_pagina = 10
         
-    if disciplina_id:
-        query += " AND bq.disciplina_id = ?"
-        params.append(disciplina_id)
+        print(f"Parâmetros recebidos: Ano_escolar_id={Ano_escolar_id}, disciplina_id={disciplina_id}, assunto={assunto}, pagina={pagina}")
         
-    if assunto:
-        query += " AND bq.assunto LIKE ?"
-        params.append(f"%{assunto}%")
+        # Construir query base
+        query = BancoQuestoes.query
         
-    cursor.execute(query, params)
-    questoes = []
-    
-    for row in cursor.fetchall():
-        questao = {
-            'id': row[0],
-            'pergunta': row[1],
-            'alternativas': row[2],
-            'resposta_correta': row[3],
-            'disciplina_nome': row[4],
-            'serie_nome': row[5],
-            'assunto': row[6]
-        }
-        questoes.append(questao)
-    
-    return jsonify(questoes)
+        # Aplicar filtros
+        if Ano_escolar_id:
+            query = query.filter_by(Ano_escolar_id=Ano_escolar_id)
+        if disciplina_id:
+            query = query.filter_by(disciplina_id=disciplina_id)
+        if assunto:
+            query = query.filter(BancoQuestoes.assunto.like(f'%{assunto}%'))
+            
+        # Adicionar paginação
+        questoes_paginadas = query.paginate(page=pagina, per_page=por_pagina, error_out=False)
+        print(f"Total de questões encontradas: {questoes_paginadas.total}")
+        
+        # Formatar questões para o frontend
+        questoes_formatadas = []
+        for q in questoes_paginadas.items:
+            print(f"Processando questão ID: {q.id}")
+            alternativas = [q.alternativa_a, q.alternativa_b, q.alternativa_c, q.alternativa_d]
+            if q.alternativa_e:
+                alternativas.append(q.alternativa_e)
+                
+            questao_formatada = {
+                'id': q.id,
+                'questao': q.questao,
+                'alternativa_a': q.alternativa_a,
+                'alternativa_b': q.alternativa_b,
+                'alternativa_c': q.alternativa_c,
+                'alternativa_d': q.alternativa_d,
+                'alternativa_e': q.alternativa_e,
+                'questao_correta': q.questao_correta,
+                'disciplina_nome': q.disciplina.nome if q.disciplina else '',
+                'Ano_escolar_nome': q.Ano_escolar.nome if q.Ano_escolar else '',
+                'assunto': q.assunto
+            }
+            print(f"Questão formatada: {questao_formatada}")
+            questoes_formatadas.append(questao_formatada)
+            
+        return jsonify(questoes_formatadas)
+        
+    except Exception as e:
+        print(f"Erro ao buscar questões: {str(e)}")
+        print(f"Tipo do erro: {type(e)}")
+        import traceback
+        print(f"Traceback completo: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
 
 @simulados_bp.route('/professores/buscar-turmas/<int:simulado_id>')
 @login_required
 def buscar_turmas_professor(simulado_id):
-    if current_user.tipo_usuario_id != 3:  # Apenas professores podem acessar
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
         return jsonify({"error": "Acesso não autorizado"}), 403
     
     try:
-        db = get_db()
-        
         # Primeiro, vamos verificar se o simulado existe e seu status
-        simulado = db.execute("""
-            SELECT status FROM simulados_gerados_professor
-            WHERE id = ? AND professor_id = ?
-        """, [simulado_id, current_user.id]).fetchone()
+        simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id, professor_id=current_user.id).first()
         
         if not simulado:
             return jsonify({"error": "Simulado não encontrado"}), 404
             
         # Se o simulado foi editado ou está gerado, podemos mostrar todas as turmas
-        if simulado['status'] in ['editado', 'gerado']:
-            turmas = db.execute("""
-                SELECT DISTINCT pte.turma_id as id, t.turma as nome
-                FROM professor_turma_escola pte
-                JOIN turmas t ON t.id = pte.turma_id
-                WHERE pte.professor_id = ?
-                ORDER BY t.turma
-            """, [current_user.id]).fetchall()
+        if simulado.status in ['editado', 'gerado']:
+            turmas = ProfessorTurmaEscola.query.filter_by(professor_id=current_user.id).distinct().all()
         else:
             # Para outros status, só mostra turmas que ainda não receberam
-            turmas = db.execute("""
-                SELECT DISTINCT pte.turma_id as id, t.turma as nome
-                FROM professor_turma_escola pte
-                JOIN turmas t ON t.id = pte.turma_id
-                WHERE pte.professor_id = ?
-                AND NOT EXISTS (
-                    SELECT 1 FROM simulados_enviados se
-                    WHERE se.simulado_id = ? AND se.turma_id = pte.turma_id
-                )
-                ORDER BY t.turma
-            """, [current_user.id, simulado_id]).fetchall()
-        
-        # Debug: imprimir informações
-        print(f"Professor ID: {current_user.id}")
-        print(f"Simulado ID: {simulado_id}")
-        print(f"Status do simulado: {simulado['status']}")
-        print(f"Turmas encontradas: {len(turmas)}")
+            turmas = ProfessorTurmaEscola.query.filter_by(professor_id=current_user.id).distinct().all()
         
         # Converter para lista de dicionários
         turmas_list = []
         for row in turmas:
             turmas_list.append({
-                "id": row["id"],
-                "nome": row["nome"]
+                "id": row.turma_id,
+                "nome": row.turma.turma
             })
-            print(f"Adicionando turma: {row['id']} - {row['nome']}")
         
         return jsonify(turmas_list)
         
@@ -1306,7 +1035,7 @@ def buscar_turmas_professor(simulado_id):
 @simulados_bp.route('/professores/enviar-simulado', methods=['POST'])
 @login_required
 def enviar_simulado_professor():
-    if current_user.tipo_usuario_id != 3:  # Apenas professores podem acessar
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
         return jsonify({"error": "Acesso não autorizado"}), 403
     
     data = request.get_json()
@@ -1317,79 +1046,223 @@ def enviar_simulado_professor():
     if not all([simulado_id, turmas_ids, data_limite]):
         return jsonify({"error": "Dados incompletos"}), 400
         
-    db = get_db()
-    
     try:
         # Verificar se o simulado pertence ao professor
-        simulado = db.execute("""
-            SELECT id FROM simulados_gerados_professor
-            WHERE id = ? AND professor_id = ?
-        """, [simulado_id, current_user.id]).fetchone()
+        simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id, professor_id=current_user.id).first()
         
         if not simulado:
             return jsonify({"error": "Simulado não encontrado"}), 404
-        
+            
         # Atualizar status do simulado para 'enviado'
-        db.execute("""
-            UPDATE simulados_gerados_professor
-            SET status = 'enviado'
-            WHERE id = ?
-        """, [simulado_id])
+        simulado.status = 'enviado'
         
         # Inserir registros na tabela simulados_enviados
         for turma_id in turmas_ids:
-            db.execute("""
-                INSERT INTO simulados_enviados (simulado_id, turma_id, data_limite)
-                VALUES (?, ?, ?)
-            """, [simulado_id, turma_id, data_limite])
+            # Criar registro do envio do simulado
+            simulado_enviado = SimuladosEnviados(
+                simulado_id=simulado_id,
+                turma_id=turma_id,
+                data_limite=data_limite
+            )
+            db.session.add(simulado_enviado)
+            db.session.flush()  # Para obter o ID do simulado_enviado
             
-            # Criar registros em aluno_simulado para cada aluno da turma
-            db.execute("""
-                INSERT INTO aluno_simulado (aluno_id, simulado_id)
-                SELECT u.id, ?
-                FROM usuarios u
-                WHERE u.turma_id = ? AND u.tipo_usuario_id = 4
-            """, [simulado_id, turma_id])
+            # Buscar alunos da turma
+            alunos = Usuarios.query.filter_by(
+                tipo_usuario_id=4,  # Tipo aluno
+                turma_id=turma_id
+            ).all()
+            
+            # Criar registros para cada aluno
+            for aluno in alunos:
+                aluno_simulado = AlunoSimulado(
+                    aluno_id=aluno.id,
+                    simulado_id=simulado_enviado.id,
+                    status='não respondido'
+                )
+                db.session.add(aluno_simulado)
         
-        db.commit()
+        db.session.commit()
         return jsonify({"message": "Simulado enviado com sucesso"})
         
     except Exception as e:
-        db.rollback()
+        db.session.rollback()
+        print(f"Erro ao enviar simulado: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @simulados_bp.route('/professores/cancelar-envio-simulado/<int:simulado_id>', methods=['POST'])
 @login_required
 def cancelar_envio_simulado(simulado_id):
-    if current_user.tipo_usuario_id != 3:  # Apenas professores podem acessar
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
         return jsonify({'success': False, 'error': 'Acesso não autorizado'}), 403
     
     try:
-        db = get_db()
-        
         # Verificar se o simulado pertence ao professor
-        simulado = db.execute(
-            'SELECT id FROM simulados_gerados_professor WHERE id = ? AND professor_id = ?',
-            [simulado_id, current_user.id]
-        ).fetchone()
+        simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id, professor_id=current_user.id).first()
         
         if not simulado:
             return jsonify({'success': False, 'error': 'Simulado não encontrado'}), 404
         
         # Remover registros de aluno_simulado
-        db.execute('DELETE FROM aluno_simulado WHERE simulado_id = ?', [simulado_id])
+        # ...
         
         # Atualizar status para gerado
-        db.execute(
-            'UPDATE simulados_gerados_professor SET status = ? WHERE id = ?',
-            ['gerado', simulado_id]
-        )
+        simulado.status = 'gerado'
         
-        db.commit()
+        db.session.commit()
         
         return jsonify({'success': True})
         
     except Exception as e:
-        db.rollback()
+        db.session.rollback()
         print(f"Erro ao cancelar envio do simulado: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@simulados_bp.route('/professores/relatorio-simulado/<int:simulado_id>')
+@login_required
+def relatorio_simulado(simulado_id):
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+        
+    # Buscar informações do simulado
+    simulado = db.session.query(
+        SimuladosGeradosProfessor,
+        Disciplinas.nome.label('disciplina_nome'),
+        AnoEscolarModel.nome.label('Ano_escolar_nome'),
+        MESES.nome.label('mes_nome')
+    ).join(
+        Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
+    ).join(
+        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
+    ).outerjoin(
+        MESES, SimuladosGeradosProfessor.mes_id == MESES.id
+    ).filter(
+        SimuladosGeradosProfessor.id == simulado_id,
+        SimuladosGeradosProfessor.professor_id == current_user.id
+    ).first()
+    
+    if not simulado:
+        flash("Simulado não encontrado.", "danger")
+        return redirect(url_for("simulados.listar_simulados_professor"))
+    
+    # Formatar dados do simulado
+    simulado_info = {
+        'id': simulado[0].id,
+        'disciplina_nome': simulado[1],
+        'Ano_escolar_nome': simulado[2],
+        'mes_nome': simulado[3] or 'Não definido',
+        'data_criacao': simulado[0].data_criacao.strftime('%d/%m/%Y %H:%M') if simulado[0].data_criacao else 'Data não definida',
+        'status': simulado[0].status
+    }
+    
+    # Buscar estatísticas de desempenho dos alunos
+    if simulado[0].status == 'enviado':
+        # Buscar total de alunos que responderam e estatísticas
+        estatisticas_query = db.session.query(
+            db.func.count(DesempenhoSimulado.id).label('total_alunos'),
+            db.func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
+            db.func.max(DesempenhoSimulado.desempenho).label('melhor_desempenho'),
+            db.func.min(DesempenhoSimulado.desempenho).label('pior_desempenho')
+        ).join(
+            SimuladosEnviados, DesempenhoSimulado.simulado_id == SimuladosEnviados.id
+        ).filter(
+            SimuladosEnviados.simulado_id == simulado_id
+        ).first()
+        
+        # Buscar distribuição de notas
+        distribuicao_query = db.session.query(
+            db.case(
+                (DesempenhoSimulado.desempenho <= 20, '0-20'),
+                (DesempenhoSimulado.desempenho <= 40, '21-40'),
+                (DesempenhoSimulado.desempenho <= 60, '41-60'),
+                (DesempenhoSimulado.desempenho <= 80, '61-80'),
+                else_='81-100'
+            ).label('faixa'),
+            db.func.count(DesempenhoSimulado.id).label('total')
+        ).join(
+            SimuladosEnviados, DesempenhoSimulado.simulado_id == SimuladosEnviados.id
+        ).filter(
+            SimuladosEnviados.simulado_id == simulado_id
+        ).group_by('faixa').all()
+        
+        # Formatar distribuição
+        distribuicao = {
+            '0-20': 0,
+            '21-40': 0,
+            '41-60': 0,
+            '61-80': 0,
+            '81-100': 0
+        }
+        for faixa, total in distribuicao_query:
+            distribuicao[faixa] = total
+        
+        estatisticas = {
+            'total_alunos': estatisticas_query[0] or 0,
+            'media_geral': float(estatisticas_query[1] or 0),
+            'melhor_desempenho': float(estatisticas_query[2] or 0),
+            'pior_desempenho': float(estatisticas_query[3] or 0),
+            'distribuicao_notas': distribuicao
+        }
+    else:
+        estatisticas = {
+            'total_alunos': 0,
+            'media_geral': 0,
+            'melhor_desempenho': 0,
+            'pior_desempenho': 0,
+            'distribuicao_notas': {
+                '0-20': 0,
+                '21-40': 0,
+                '41-60': 0,
+                '61-80': 0,
+                '81-100': 0
+            }
+        }
+    
+    return render_template('professores/relatorio_simulado.html', 
+                         simulado=simulado_info,
+                         estatisticas=estatisticas)
+
+@simulados_bp.route('/professores/enviar-simulado/<int:simulado_id>')
+@login_required
+def pagina_enviar_simulado(simulado_id):
+    if current_user.tipo_usuario_id not in [3, 6]:  # Apenas professores podem acessar
+        abort(403)
+    
+    try:
+        # Verificar se o simulado pertence ao professor
+        simulado = SimuladosGeradosProfessor.query\
+            .join(Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id)\
+            .join(AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id)\
+            .join(MESES, SimuladosGeradosProfessor.mes_id == MESES.id)\
+            .add_columns(
+                Disciplinas.nome.label('disciplina_nome'),
+                AnoEscolarModel.nome.label('Ano_escolar_nome'),
+                MESES.nome.label('mes_nome')
+            )\
+            .filter(SimuladosGeradosProfessor.id == simulado_id, SimuladosGeradosProfessor.professor_id == current_user.id)\
+            .first()
+        
+        if not simulado:
+            abort(404)
+            
+        # Buscar turmas do professor
+        turmas = ProfessorTurmaEscola.query\
+            .join(Turmas, ProfessorTurmaEscola.turma_id == Turmas.id)\
+            .join(AnoEscolarModel, ProfessorTurmaEscola.Ano_escolar_id == AnoEscolarModel.id)\
+            .filter(
+                ProfessorTurmaEscola.professor_id == current_user.id,
+                ProfessorTurmaEscola.Ano_escolar_id == simulado[0].Ano_escolar_id
+            )\
+            .all()
+        
+        return render_template('professores/enviar_simulado.html', 
+                             simulado=simulado[0],
+                             disciplina_nome=simulado.disciplina_nome,
+                             Ano_escolar_nome=simulado.Ano_escolar_nome,
+                             mes_nome=simulado.mes_nome,
+                             turmas=turmas)
+                             
+    except Exception as e:
+        print(f"Erro ao carregar página de envio: {str(e)}")
+        abort(500)

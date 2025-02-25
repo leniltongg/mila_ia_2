@@ -38,12 +38,12 @@
                 </select>
 
                 <label for="tipo_ensino_1">Tipo de Ensino:</label>
-                <select id="tipo_ensino_1" name="tipo_ensino[]" onchange="carregarSeries(1)" required>
+                <select id="tipo_ensino_1" name="tipo_ensino[]" onchange="carregarAno_escolar(1)" required>
                     <option value="">Selecione uma escola primeiro</option>
                 </select>
 
-                <label for="serie_1">Série:</label>
-                <select id="serie_1" name="serie[]" onchange="carregarTurmas(1)" required>
+                <label for="Ano_escolar_1">Ano Escolar:</label>
+                <select id="Ano_escolar_1" name="Ano_escolar[]" onchange="carregarTurmas(1)" required>
                     <option value="">Selecione o tipo de ensino primeiro</option>
                 </select>
 
@@ -99,12 +99,12 @@ function adicionarTurma() {
         </select>
 
         <label for="tipo_ensino_${turmaCount}">Tipo de Ensino:</label>
-        <select id="tipo_ensino_${turmaCount}" name="tipo_ensino[]" onchange="carregarSeries(${turmaCount})" required>
+        <select id="tipo_ensino_${turmaCount}" name="tipo_ensino[]" onchange="carregarAno_escolar(${turmaCount})" required>
             <option value="">Selecione uma escola primeiro</option>
         </select>
 
-        <label for="serie_${turmaCount}">Série:</label>
-        <select id="serie_${turmaCount}" name="serie[]" onchange="carregarTurmas(${turmaCount})" required>
+        <label for="Ano_escolar_${turmaCount}">Ano Escolar:</label>
+        <select id="Ano_escolar_${turmaCount}" name="Ano_escolar[]" onchange="carregarTurmas(${turmaCount})" required>
             <option value="">Selecione o tipo de ensino primeiro</option>
         </select>
 
@@ -138,22 +138,22 @@ async function carregarTiposDeEnsino(index) {
     }
 }
 
-async function carregarSeries(index) {
+async function carregarAno_escolar(index) {
     const tipoEnsinoId = document.getElementById(`tipo_ensino_${index}`).value;
-    const serieSelect = document.getElementById(`serie_${index}`);
-    serieSelect.innerHTML = '<option value="">Carregando...</option>';
+    const Ano_escolarelect = document.getElementById(`Ano_escolar_${index}`);
+    Ano_escolarelect.innerHTML = '<option value="">Carregando...</option>';
 
     if (!tipoEnsinoId) {
-        serieSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+        Ano_escolarelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
         return;
     }
 
     try {
-        const response = await fetch(`/get_serie_ids?tipo_ensino_id=${tipoEnsinoId}`);
-        const series = await response.json();
-        serieSelect.innerHTML = '<option value="">Selecione...</option>';
-        series.forEach(serie => {
-            serieSelect.innerHTML += `<option value="${serie.id}">${serie.nome}</option>`;
+        const response = await fetch(`/get_Ano_escolar_ids?tipo_ensino_id=${tipoEnsinoId}`);
+        const Ano_escolar = await response.json();
+        Ano_escolarelect.innerHTML = '<option value="">Selecione...</option>';
+        Ano_escolar.forEach(Ano_escolar => {
+            Ano_escolarelect.innerHTML += `<option value="${Ano_escolar.id}">${Ano_escolar.nome}</option>`;
         });
     } catch (error) {
         console.error("Erro ao carregar séries:", error);
@@ -163,17 +163,17 @@ async function carregarSeries(index) {
 async function carregarTurmas(index) {
     const escolaId = document.getElementById(`escola_id_${index}`).value;
     const tipoEnsinoId = document.getElementById(`tipo_ensino_${index}`).value;
-    const serieId = document.getElementById(`serie_${index}`).value;
+    const Ano_escolarId = document.getElementById(`Ano_escolar_${index}`).value;
     const turmaSelect = document.getElementById(`turma_id_${index}`);
     turmaSelect.innerHTML = '<option value="">Carregando...</option>';
 
-    if (!escolaId || !tipoEnsinoId || !serieId) {
+    if (!escolaId || !tipoEnsinoId || !Ano_escolarId) {
         turmaSelect.innerHTML = '<option value="">Preencha os campos anteriores</option>';
         return;
     }
 
     try {
-        const response = await fetch(`/get_turmas?escola_id=${escolaId}&tipo_ensino_id=${tipoEnsinoId}&serie_id=${serieId}`);
+        const response = await fetch(`/get_turmas?escola_id=${escolaId}&tipo_ensino_id=${tipoEnsinoId}&Ano_escolar_id=${Ano_escolarId}`);
         const turmas = await response.json();
         turmaSelect.innerHTML = '<option value="">Selecione...</option>';
         turmas.forEach(turma => {

@@ -4,7 +4,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app_factory import create_app
 from models import db
-from populate_series import populate_series
+from populate_Ano_escolar import populate_Ano_escolar
 
 def update_database():
     """Atualiza o banco de dados com as novas tabelas e popula os dados iniciais."""
@@ -15,7 +15,7 @@ def update_database():
         db.create_all()
         
         # Popular tabela de séries
-        populate_series()
+        populate_Ano_escolar()
         
         print("Banco de dados atualizado com sucesso!")
 

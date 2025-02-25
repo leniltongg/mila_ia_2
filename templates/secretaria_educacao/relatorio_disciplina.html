@@ -125,32 +125,77 @@
         </div>
     </div>
 
-    <!-- Desempenho por Série -->
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <!-- Gráfico de Anos Escolares -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="anosChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Escolas -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Escola</h6>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="escolasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Distribuição de Alunos -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Distribuição de Alunos por Escola</h6>
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="distribuicaoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Desempenho por Ano Escolar -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Desempenho por Série</h6>
+            <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-bordered" width="100%" cellspacing="0">
                     <thead>
                         <tr>
-                            <th>Série</th>
+                            <th>Ano Escolar</th>
                             <th>Total de Alunos</th>
                             <th>Total de Questões</th>
                             <th>Média</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for serie in series %}
+                        {% for ano in Ano_escolar %}
                         <tr>
-                            <td>{{ serie.nome }}</td>
-                            <td>{{ serie.total_alunos }}</td>
-                            <td>{{ serie.total_questoes }}</td>
+                            <td>{{ ano["Ano_escolar_nome"] }}</td>
+                            <td>{{ ano.total_alunos }}</td>
+                            <td>{{ ano.total_questoes }}</td>
                             <td>
                                 <div class="d-flex align-items-center">
-                                    <span class="performance-indicator {% if serie.media >= 70 %}high-performance{% elif serie.media >= 50 %}medium-performance{% else %}low-performance{% endif %}"></span>
-                                    {{ "%.1f"|format(serie.media) }}%
+                                    <span class="performance-indicator {% if ano.media >= 70 %}high-performance{% elif ano.media >= 50 %}medium-performance{% else %}low-performance{% endif %}"></span>
+                                    {{ "%.1f"|format(ano.media) }}%
                                 </div>
                             </td>
                         </tr>
@@ -202,4 +247,181 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Cores para os gráficos
+        const colors = {
+            blue: {
+                primary: '#4e73df',
+                light: '#4e73df80'
+            },
+            green: {
+                primary: '#1cc88a',
+                light: '#1cc88a80'
+            },
+            red: {
+                primary: '#e74a3b',
+                light: '#e74a3b80'
+            }
+        };
+
+        // Dados para os gráficos
+        const anosData = {
+            labels: {{ Ano_escolar|map(attribute='Ano_escolar_nome')|list|tojson }},
+            data: {{ Ano_escolar|map(attribute='media')|list|tojson }}
+        };
+
+        const escolasData = {
+            labels: {{ escolas|map(attribute='nome')|list|tojson }},
+            data: {{ escolas|map(attribute='media_acertos')|list|tojson }}
+        };
+
+        const distribuicaoData = {
+            labels: {{ escolas|map(attribute='nome')|list|tojson }},
+            data: {{ escolas|map(attribute='total_alunos')|list|tojson }}
+        };
+
+        console.log('Dados dos gráficos:', {
+            anos: anosData,
+            escolas: escolasData,
+            distribuicao: distribuicaoData
+        });
+
+        // Gráfico de Anos Escolares
+        new Chart(
+            document.getElementById('anosChart'),
+            {
+                type: 'bar',
+                data: {
+                    labels: anosData.labels,
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: anosData.data,
+                        backgroundColor: colors.blue.light,
+                        borderColor: colors.blue.primary,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#eee'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Escolas
+        new Chart(
+            document.getElementById('escolasChart'),
+            {
+                type: 'line',
+                data: {
+                    labels: escolasData.labels,
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: escolasData.data,
+                        borderColor: colors.green.primary,
+                        backgroundColor: colors.green.light,
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#eee'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Distribuição de Alunos
+        new Chart(
+            document.getElementById('distribuicaoChart'),
+            {
+                type: 'pie',
+                data: {
+                    labels: distribuicaoData.labels,
+                    datasets: [{
+                        data: distribuicaoData.data,
+                        backgroundColor: [
+                            colors.blue.primary,
+                            colors.green.primary,
+                            colors.red.primary,
+                            '#36b9cc',
+                            '#2ecc71',
+                            '#9b59b6',
+                            '#34495e',
+                            '#f39c12'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            }
+        );
+
+        console.log('Gráficos carregados com sucesso');
+    } catch (error) {
+        console.error('Erro ao carregar gráfico:', error);
+    }
+});
+</script>
 {% endblock %}

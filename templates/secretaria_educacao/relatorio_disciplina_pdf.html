@@ -117,12 +117,12 @@
                 </tr>
             </thead>
             <tbody>
-                {% for serie in series %}
+                {% for Ano_escolar in Ano_escolar %}
                 <tr>
-                    <td>{{ serie.nome }}</td>
-                    <td>{{ serie.total_alunos }}</td>
-                    <td>{{ serie.total_questoes }}</td>
-                    <td>{{ "%.1f"|format(serie.media) }}%</td>
+                    <td>{{ Ano_escolar.nome }}</td>
+                    <td>{{ Ano_escolar.total_alunos }}</td>
+                    <td>{{ Ano_escolar.total_questoes }}</td>
+                    <td>{{ "%.1f"|format(Ano_escolar.media) }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>

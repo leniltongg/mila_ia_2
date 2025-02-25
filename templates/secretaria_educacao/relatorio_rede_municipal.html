@@ -121,7 +121,7 @@
     <!-- Gráficos -->
     <div class="row mb-4">
         <!-- Gráfico de Desempenho por Escola -->
-        <div class="col-12">
+        <div class="col-lg-6">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">Desempenho por Escola</h6>
@@ -129,6 +129,48 @@
                 <div class="card-body">
                     <div class="chart-container" style="position: relative; height:50vh;">
                         <canvas id="escolasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Desempenho por Ano Escolar -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:50vh;">
+                        <canvas id="anosChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Desempenho por Disciplina -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Disciplina</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:50vh;">
+                        <canvas id="disciplinasChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Participação -->
+        <div class="col-lg-6">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Taxa de Participação por Escola</h6>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container" style="position: relative; height:50vh;">
+                        <canvas id="participacaoChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -178,54 +220,217 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 {{ super() }}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Dados do gráfico de escolas
-    const escolasData = {
-        labels: {{ escolas_nomes|tojson }},
-        datasets: [{
-            label: 'Média (%)',
-            data: {{ escolas_medias|tojson }},
-            backgroundColor: 'rgba(78, 115, 223, 0.8)',
-            borderColor: 'rgba(78, 115, 223, 1)',
-            borderWidth: 1
-        }]
-    };
+console.log('Iniciando carregamento dos gráficos');
 
-    // Configuração do gráfico de barras
-    const escolasChart = new Chart(
-        document.getElementById('escolasChart'),
-        {
-            type: 'bar',
-            data: escolasData,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        max: 100
-                    }
+// Debug dos dados
+console.log('Dados escolas:', {{ escolas_nomes|tojson }}, {{ escolas_medias|tojson }});
+console.log('Dados anos:', {{ anos_nomes|tojson }}, {{ anos_medias|tojson }});
+console.log('Dados disciplinas:', {{ disciplinas_nomes|tojson }}, {{ disciplinas_medias|tojson }});
+console.log('Dados participação:', {{ participacao_escolas|tojson }});
+
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Cores para os gráficos
+        const colors = {
+            blue: {
+                primary: '#4e73df',
+                light: '#4e73df80'
+            },
+            green: {
+                primary: '#1cc88a',
+                light: '#1cc88a80'
+            },
+            red: {
+                primary: '#e74a3b',
+                light: '#e74a3b80'
+            },
+            yellow: {
+                primary: '#f6c23e',
+                light: '#f6c23e80'
+            }
+        };
+
+        // Gráfico de Desempenho por Escola
+        new Chart(
+            document.getElementById('escolasChart'),
+            {
+                type: 'bar',
+                data: {
+                    labels: {{ escolas_nomes|tojson }},
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: {{ escolas_medias|tojson }},
+                        backgroundColor: colors.blue.light,
+                        borderColor: colors.blue.primary,
+                        borderWidth: 2
+                    }]
                 },
-                plugins: {
-                    legend: {
-                        display: false
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#eee'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
                     }
                 }
             }
-        }
-    );
+        );
 
-    // Adicionar evento de clique nas linhas da tabela
-    document.querySelectorAll('.school-row').forEach(row => {
-        row.addEventListener('click', function() {
-            const escolaId = this.dataset.escolaId;
-            window.location.href = `/secretaria_educacao/relatorio_escola/${escolaId}`;
-        });
-    });
+        // Gráfico de Desempenho por Ano Escolar
+        new Chart(
+            document.getElementById('anosChart'),
+            {
+                type: 'line',
+                data: {
+                    labels: {{ anos_nomes|tojson }},
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: {{ anos_medias|tojson }},
+                        borderColor: colors.green.primary,
+                        backgroundColor: colors.green.light,
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#eee'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Desempenho por Disciplina
+        new Chart(
+            document.getElementById('disciplinasChart'),
+            {
+                type: 'radar',
+                data: {
+                    labels: {{ disciplinas_nomes|tojson }},
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: {{ disciplinas_medias|tojson }},
+                        backgroundColor: colors.red.light,
+                        borderColor: colors.red.primary,
+                        borderWidth: 2,
+                        pointBackgroundColor: colors.red.primary,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colors.red.primary,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20
+                            },
+                            grid: {
+                                color: '#eee'
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Taxa de Participação
+        new Chart(
+            document.getElementById('participacaoChart'),
+            {
+                type: 'doughnut',
+                data: {
+                    labels: {{ escolas_nomes|tojson }},
+                    datasets: [{
+                        data: {{ participacao_escolas|tojson }},
+                        backgroundColor: [
+                            colors.blue.primary,
+                            colors.green.primary,
+                            colors.red.primary,
+                            colors.yellow.primary,
+                            '#36b9cc',
+                            '#2ecc71',
+                            '#9b59b6',
+                            '#34495e'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 20
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            }
+        );
+        console.log('Gráficos carregados com sucesso');
+    } catch (error) {
+        console.error('Erro ao carregar gráficos:', error);
+    }
 });
 </script>
 {% endblock %}

@@ -18,7 +18,7 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Série</th>
+                                        <th>Ano Escolar</th>
                                         <th>Componente Curricular</th>
                                         <th>Mês</th>
                                         <th>Data Envio</th>
@@ -29,7 +29,7 @@
                                 <tbody>
                                     {% for simulado in simulados %}
                                     <tr>
-                                        <td>{{ simulado.serie_nome }}</td>
+                                        <td>{{ simulado.Ano_escolar_nome }}</td>
                                         <td>{{ simulado.disciplina_nome }}</td>
                                         <td>{{ simulado.mes_nome }}</td>
                                         <td>{{ simulado.data_envio }}</td>

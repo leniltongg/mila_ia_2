@@ -1,0 +1,310 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 text-gray-800">Desempenho Individual - {{ ano }}</h1>
+        <div class="d-flex gap-2">
+            <form method="GET" class="d-flex align-items-center">
+                {% if aluno_data %}
+                <input type="hidden" name="aluno_id" value="{{ request.args.get('aluno_id') }}">
+                {% endif %}
+                <select name="mes" class="form-select me-2" onchange="this.form.submit()">
+                    <option value="">Todos os meses</option>
+                    {% for i in range(1, 13) %}
+                    <option value="{{ i }}" {% if mes == i %}selected{% endif %}>
+                        {% if i == 1 %}Janeiro
+                        {% elif i == 2 %}Fevereiro
+                        {% elif i == 3 %}Março
+                        {% elif i == 4 %}Abril
+                        {% elif i == 5 %}Maio
+                        {% elif i == 6 %}Junho
+                        {% elif i == 7 %}Julho
+                        {% elif i == 8 %}Agosto
+                        {% elif i == 9 %}Setembro
+                        {% elif i == 10 %}Outubro
+                        {% elif i == 11 %}Novembro
+                        {% elif i == 12 %}Dezembro
+                        {% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    {% if not aluno_data %}
+    <!-- Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filtros</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="nome" class="form-label">Nome do Aluno</label>
+                    <input type="text" class="form-control" id="nome" name="nome" value="{{ nome_filtro }}" placeholder="Digite o nome...">
+                </div>
+                <div class="col-md-3">
+                    <label for="escola_id" class="form-label">Escola</label>
+                    <select class="form-select" id="escola_id" name="escola_id">
+                        <option value="">Todas as escolas</option>
+                        {% for escola in escolas %}
+                        <option value="{{ escola.id }}" {% if escola_id == escola.id %}selected{% endif %}>
+                            {{ escola.nome_da_escola }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                    <select class="form-select" id="ano_escolar_id" name="ano_escolar_id">
+                        <option value="">Todos os anos</option>
+                        {% for ano in anos_escolares %}
+                        <option value="{{ ano.id }}" {% if ano_escolar_id == ano.id %}selected{% endif %}>
+                            {{ ano.nome }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="turma_id" class="form-label">Turma</label>
+                    <select class="form-select" id="turma_id" name="turma_id">
+                        <option value="">Todas as turmas</option>
+                        {% for turma in turmas %}
+                        <option value="{{ turma.id }}" {% if turma_id == turma.id %}selected{% endif %}>
+                            {{ turma.turma }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="{{ url_for('secretaria_educacao.relatorio_individual') }}" class="btn btn-secondary">
+                        <i class="fas fa-times"></i> Limpar Filtros
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Alunos -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Lista de Alunos</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Aluno</th>
+                            <th>Escola</th>
+                            <th>Ano Escolar</th>
+                            <th>Turma</th>
+                            <th>Total de Simulados</th>
+                            <th>Média Geral</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for aluno in alunos %}
+                        <tr>
+                            <td>{{ aluno.nome }}</td>
+                            <td>{{ aluno.escola }}</td>
+                            <td>{{ aluno.ano_escolar }}</td>
+                            <td>{{ aluno.turma }}</td>
+                            <td>{{ aluno.total_simulados }}</td>
+                            <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
+                            <td>
+                                <a href="{{ url_for('secretaria_educacao.relatorio_individual', aluno_id=aluno.id, mes=mes) }}" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-chart-line"></i> Ver Desempenho
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <!-- Informações do Aluno -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <a href="{{ url_for('secretaria_educacao.relatorio_individual', mes=mes) }}" class="btn btn-secondary mb-3">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+            <div class="card shadow">
+                <div class="card-body">
+                    <h4>{{ aluno_data.info.nome }}</h4>
+                    <p class="mb-0">
+                        <strong>Escola:</strong> {{ aluno_data.info.escola }} |
+                        <strong>Ano Escolar:</strong> {{ aluno_data.info.ano_escolar }} |
+                        <strong>Turma:</strong> {{ aluno_data.info.turma }}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <!-- Gráfico de Desempenho por Disciplina -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Desempenho por Disciplina</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoDesempenhoDisciplina"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráfico de Evolução do Desempenho -->
+        <div class="col-xl-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Evolução do Desempenho</h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="graficoEvolucaoDesempenho"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Histórico -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Histórico de Simulados</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Disciplina</th>
+                            <th>Nota</th>
+                            <th>Questões Corretas</th>
+                            <th>Total de Questões</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in aluno_data.historico %}
+                        <tr>
+                            <td>{{ item.data_resposta.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ item.disciplina }}</td>
+                            <td>{{ "%.1f"|format(item.nota) }}%</td>
+                            <td>{{ item.questoes_corretas }}</td>
+                            <td>{{ item.total_questoes }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+    {% if aluno_data %}
+    // Dados para o gráfico de desempenho por disciplina
+    const disciplinas = {{ aluno_data.disciplinas|map(attribute='disciplina')|list|tojson }};
+    const medias = {{ aluno_data.disciplinas|map(attribute='media')|list|tojson }};
+
+    // Configuração do gráfico de desempenho por disciplina
+    new Chart(document.getElementById('graficoDesempenhoDisciplina'), {
+        type: 'radar',
+        data: {
+            labels: disciplinas,
+            datasets: [{
+                label: 'Média por Disciplina',
+                data: medias,
+                backgroundColor: 'rgba(78, 115, 223, 0.2)',
+                borderColor: 'rgba(78, 115, 223, 1)',
+                borderWidth: 2,
+                pointBackgroundColor: 'rgba(78, 115, 223, 1)',
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: 'rgba(78, 115, 223, 1)'
+            }]
+        },
+        options: {
+            scales: {
+                r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+
+    // Dados para o gráfico de evolução do desempenho
+    const historico = {{ aluno_data.historico|tojson }};
+    const datasFormatadas = historico.map(item => {
+        const data = new Date(item.data_resposta);
+        return data.toLocaleDateString('pt-BR');
+    });
+    const notas = historico.map(item => item.nota);
+    const disciplinasHistorico = historico.map(item => item.disciplina);
+
+    // Configuração do gráfico de evolução do desempenho
+    new Chart(document.getElementById('graficoEvolucaoDesempenho'), {
+        type: 'line',
+        data: {
+            labels: datasFormatadas,
+            datasets: [{
+                label: 'Desempenho ao Longo do Tempo',
+                data: notas,
+                borderColor: 'rgba(78, 115, 223, 1)',
+                backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                        stepSize: 20
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${disciplinasHistorico[context.dataIndex]}: ${context.parsed.y.toFixed(1)}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}

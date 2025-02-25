@@ -1,0 +1,156 @@
+{% extends "alunos/base_alunos.html" %}
+
+{% block title %}Mila{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <h1 class="h2 mb-0">Mila</h1>
+            <p class="text-muted mb-4">Sua tutora virtual inteligente</p>
+
+            <div id="chat-messages" class="bg-light p-4 rounded mb-4" style="height: 500px; overflow-y: auto;">
+                <div class="d-flex mb-3">
+                    <div class="bg-white p-3 rounded shadow-sm" style="max-width: 80%;">
+                        Olá! Eu sou a Mila, sua tutora virtual. Como posso ajudar você hoje?
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-3 rounded">
+                <div class="input-group">
+                    <input type="text" id="message-input" class="form-control" placeholder="Digite sua mensagem...">
+                    <button type="button" id="send-button" class="btn btn-primary px-4">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
+                </div>
+                <small id="typing-indicator" class="text-muted d-none mt-2">
+                    Mila está digitando...
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#chat-messages .message-user {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+#chat-messages .message-user > div {
+    background-color: #0d6efd;
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    max-width: 80%;
+}
+
+#chat-messages .message-tutor {
+    display: flex;
+    margin-bottom: 1rem;
+}
+
+#chat-messages .message-tutor > div {
+    background-color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    max-width: 80%;
+    box-shadow: 0 0.125rem 0.25rem rgba(0,0,0,0.075);
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener('load', function() {
+    let isProcessing = false;
+    const messageInput = document.getElementById('message-input');
+    const sendButton = document.getElementById('send-button');
+    const chatMessages = document.getElementById('chat-messages');
+    const typingIndicator = document.getElementById('typing-indicator');
+
+    function showTyping() {
+        typingIndicator.classList.remove('d-none');
+    }
+
+    function hideTyping() {
+        typingIndicator.classList.add('d-none');
+    }
+
+    function addMessage(content, isUser = false) {
+        const wrapper = document.createElement('div');
+        wrapper.className = isUser ? 'message-user' : 'message-tutor';
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.textContent = content;
+        
+        wrapper.appendChild(messageDiv);
+        chatMessages.appendChild(wrapper);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function sendMessage() {
+        if (isProcessing) return;
+        
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        isProcessing = true;
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+
+        // Add user message
+        addMessage(message, true);
+        messageInput.value = '';
+        
+        // Show typing indicator
+        showTyping();
+
+        // Send to server
+        fetch('/alunos/processar-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        })
+        .then(response => response.json())
+        .then(data => {
+            hideTyping();
+            if (data.success) {
+                addMessage(data.response);
+            } else {
+                addMessage('Erro: ' + data.error);
+            }
+        })
+        .catch(error => {
+            hideTyping();
+            console.error('Error:', error);
+            addMessage('Erro ao processar mensagem. Por favor, tente novamente.');
+        })
+        .finally(() => {
+            isProcessing = false;
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.focus();
+        });
+    }
+
+    // Event listeners
+    sendButton.addEventListener('click', sendMessage);
+    
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Focus input on load
+    messageInput.focus();
+});
+</script>
+{% endblock %}

@@ -1,203 +1,180 @@
 from flask import render_template, jsonify, g, redirect, url_for, flash, make_response, request
 from flask_login import login_required, current_user
-import sqlite3
 import logging
 import matplotlib
 matplotlib.use('Agg')  # Configurar o backend antes de importar pyplot
 import matplotlib.pyplot as plt
 from . import professores_bp
+from extensions import db
+from datetime import datetime
 from models import (
-    User, Turma, Disciplina, 
-    TIPO_USUARIO_PROFESSOR, TIPO_USUARIO_ALUNO,
-    professor_turma_escola
+    Turmas, Disciplinas, Ano_escolar, Escolas, Usuarios, ProfessorTurmaEscola,
+    DesempenhoSimulado, SimuladosGerados, SimuladosGeradosProfessor, BancoQuestoes
 )
 
 # Configurar logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-def get_db():
-    """Conecta ao banco de dados."""
-    if 'db' not in g:
-        g.db = sqlite3.connect('educacional.db')
-        g.db.row_factory = sqlite3.Row
-    return g.db
-
 @professores_bp.route('/')
 @login_required
 def portal_professores():
     """Rota principal do portal de professores."""
-    if not current_user.is_authenticated or current_user.tipo_usuario_id != TIPO_USUARIO_PROFESSOR:
+    if not current_user.is_authenticated or current_user.tipo_usuario_id not in [3, 6]:  # Professor ou Admin
         return render_template('error.html', message='Acesso não autorizado'), 403
         
-    # Buscar turmas do professor
-    db = get_db()
-    cursor = db.cursor()
+    # Se for admin, busca todas as turmas
+    if current_user.tipo_usuario_id == 6:
+        turmas = db.session.query(
+            Turmas, 
+            Ano_escolar,
+            Escolas
+        ).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, Turmas.escola_id == Escolas.id
+        ).order_by(
+            Turmas.turma
+        ).all()
+    else:
+        # Buscar turmas do professor
+        turmas = db.session.query(
+            Turmas, 
+            Ano_escolar,
+            Escolas
+        ).join(
+            ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+        ).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, Turmas.escola_id == Escolas.id
+        ).filter(
+            ProfessorTurmaEscola.professor_id == current_user.id
+        ).order_by(
+            Turmas.turma
+        ).all()
     
-    cursor.execute("""
-        SELECT 
-            t.id,
-            t.turma,
-            t.tipo_ensino_id,
-            t.serie_id,
-            e.nome_da_escola as escola_nome,
-            s.nome as serie_nome
-        FROM turmas t
-        JOIN professor_turma_escola pte ON t.id = pte.turma_id
-        JOIN escolas e ON e.id = t.escola_id
-        JOIN series s ON s.id = t.serie_id
-        WHERE pte.professor_id = ?
-        ORDER BY t.tipo_ensino_id, t.serie_id, t.turma
-    """, (current_user.id,))
-    
-    turmas = cursor.fetchall()
-    
-    return render_template('professores/portal.html', 
-                         turmas=turmas)
+    return render_template('professores/portal.html', turmas=turmas)
 
 @professores_bp.route('/listar_turmas', methods=['GET'])
 @login_required
 def listar_turmas():
     """Lista as turmas do professor."""
-    if not current_user.is_authenticated or current_user.tipo_usuario_id != TIPO_USUARIO_PROFESSOR:  
+    if not current_user.is_authenticated or current_user.tipo_usuario_id not in [3, 6]:  
         return render_template('error.html', message='Acesso não autorizado'), 403
 
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""
-        SELECT 
-            t.id,
-            t.serie_id,
-            t.turma,
-            e.nome_da_escola as escola_nome,
-            s.nome as serie_nome
-        FROM turmas t
-        JOIN professor_turma_escola pte ON t.id = pte.turma_id
-        JOIN escolas e ON e.id = pte.escola_id
-        JOIN series s ON s.id = t.serie_id
-        WHERE pte.professor_id = ?
-        ORDER BY t.serie_id, t.turma
-    """, (current_user.id,))
-    
-    turmas = cursor.fetchall()
+    if current_user.tipo_usuario_id == 6:
+        turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, Turmas.escola_id == Escolas.id
+        ).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
+    else:
+        turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
+            ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+        ).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, ProfessorTurmaEscola.escola_id == Escolas.id
+        ).filter(ProfessorTurmaEscola.professor_id == current_user.id).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
     return render_template('professores/listar_turmas.html', turmas=turmas)
 
 @professores_bp.route('/api/turmas', methods=['GET'])
 @login_required
 def api_listar_turmas():
     """API para listar as turmas do professor."""
-    if not current_user.is_authenticated or current_user.tipo_usuario_id != TIPO_USUARIO_PROFESSOR:
+    if not current_user.is_authenticated or current_user.tipo_usuario_id not in [3, 6]:
         return jsonify([])
 
-    db = get_db()
-    cursor = db.cursor()
-
-    cursor.execute("""
-        SELECT 
-            t.id,
-            t.serie_id,
-            t.turma,
-            e.nome_da_escola as escola_nome,
-            s.nome as serie_nome
-        FROM turmas t
-        JOIN professor_turma_escola pte ON t.id = pte.turma_id
-        JOIN escolas e ON e.id = pte.escola_id
-        JOIN series s ON s.id = t.serie_id
-        WHERE pte.professor_id = ?
-        ORDER BY t.serie_id, t.turma
-    """, (current_user.id,))
-    
-    turmas = cursor.fetchall()
+    if current_user.tipo_usuario_id == 6:
+        turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, Turmas.escola_id == Escolas.id
+        ).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
+    else:
+        turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
+            ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+        ).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, ProfessorTurmaEscola.escola_id == Escolas.id
+        ).filter(ProfessorTurmaEscola.professor_id == current_user.id).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
     return jsonify([{
-        'id': turma[0],
-        'serie': turma[1],
-        'turma': turma[2],
-        'escola': turma[3],
-        'serie_nome': turma[4]
+        'id': turma[0].id,
+        'Ano_escolar': turma[1].id,
+        'turma': turma[0].turma,
+        'escola': turma[2].nome_da_escola,
+        'Ano_escolar_nome': turma[1].nome
     } for turma in turmas])
 
 @professores_bp.route('/turma/<int:turma_id>/relatorio')
 @login_required
 def relatorio_turma(turma_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # Verifica se é professor
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('home'))
         
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Verificar se o professor tem acesso a esta turma
-    cursor.execute("""
-        SELECT t.id, t.turma, s.nome as serie, e.nome_da_escola as escola
-        FROM turmas t
-        JOIN professor_turma_escola pte ON t.id = pte.turma_id
-        JOIN series s ON t.serie_id = s.id
-        JOIN escolas e ON e.id = pte.escola_id
-        WHERE t.id = ? AND pte.professor_id = ?
-    """, (turma_id, current_user.id))
-    
-    turma_info = cursor.fetchone()
+    if current_user.tipo_usuario_id == 6:
+        turma_info = db.session.query(Turmas, Ano_escolar, Escolas).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, Turmas.escola_id == Escolas.id
+        ).filter(Turmas.id == turma_id).first()
+    else:
+        turma_info = db.session.query(Turmas, Ano_escolar, Escolas).join(
+            ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+        ).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, ProfessorTurmaEscola.escola_id == Escolas.id
+        ).filter(Turmas.id == turma_id, ProfessorTurmaEscola.professor_id == current_user.id).first()
     if not turma_info:
         flash('Você não tem acesso a esta turma.', 'danger')
         return redirect(url_for('professores.listar_turmas'))
     
-    # Buscar alunos da turma
-    cursor.execute("""
-        SELECT u.id, u.nome, u.email
-        FROM usuarios u
-        WHERE u.turma_id = ? AND u.tipo_usuario_id = 4
-        ORDER BY u.nome
-    """, (turma_id,))
+    alunos = db.session.query(Usuarios).filter(Usuarios.turma_id == turma_id, Usuarios.tipo_usuario_id == 4).order_by(Usuarios.nome).all()
     
-    alunos = []
-    for aluno in cursor.fetchall():
-        # Buscar desempenho do aluno
-        cursor.execute("""
-            SELECT ds.desempenho, ds.data_resposta,
-                   d.nome as disciplina
-            FROM desempenho_simulado ds
-            JOIN simulados_gerados sg ON ds.simulado_id = sg.id
-            JOIN disciplinas d ON sg.disciplina_id = d.id
-            WHERE ds.aluno_id = ?
-            ORDER BY ds.data_resposta DESC
-        """, (aluno[0],))
+    # Buscar desempenho do aluno
+    desempenhos = []
+    for aluno in alunos:
+        desempenho_aluno = db.session.query(DesempenhoSimulado, SimuladosGerados, Disciplinas).join(
+            SimuladosGerados, DesempenhoSimulado.simulado_id == SimuladosGerados.id
+        ).join(
+            Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id
+        ).filter(DesempenhoSimulado.aluno_id == aluno.id).order_by(DesempenhoSimulado.data_resposta.desc()).all()
         
-        desempenhos = cursor.fetchall()
+        # Calcular média do aluno
+        media_aluno = 0
+        total_simulados = len(desempenho_aluno)
+        if total_simulados > 0:
+            media_aluno = sum(float(d[0].desempenho) for d in desempenho_aluno) / total_simulados
         
-        # Calcular médias por disciplina
-        disciplinas_dict = {}
-        for d in desempenhos:
-            disciplina = d[2]
+        desempenhos.append({
+            'aluno': aluno,
+            'desempenho': desempenho_aluno,
+            'media_geral': media_aluno
+        })
+    
+    # Calcular médias por disciplina
+    disciplinas_dict = {}
+    for d in desempenhos:
+        for desempenho in d['desempenho']:
+            disciplina = desempenho[2].nome
             if disciplina not in disciplinas_dict:
                 disciplinas_dict[disciplina] = {
                     'total': 0,
                     'count': 0
                 }
-            disciplinas_dict[disciplina]['total'] += float(d[0])
+            disciplinas_dict[disciplina]['total'] += float(desempenho[0].desempenho)
             disciplinas_dict[disciplina]['count'] += 1
-        
-        # Calcular média geral do aluno
-        media_geral = 0
-        if disciplinas_dict:
-            total_medias = sum(d['total']/d['count'] for d in disciplinas_dict.values())
-            media_geral = total_medias / len(disciplinas_dict)
-        
-        alunos.append({
-            'id': aluno[0],
-            'nome': aluno[1],
-            'email': aluno[2],
-            'media_geral': media_geral,
-            'total_simulados': len(desempenhos),
-            'disciplinas': disciplinas_dict
-        })
     
-    # Calcular estatísticas da turma
+    # Calcular média geral da turma
     total_alunos = len(alunos)
-    media_turma = sum(a['media_geral'] for a in alunos) / total_alunos if total_alunos > 0 else 0
+    media_turma = sum(a['media_geral'] for a in desempenhos) / total_alunos if total_alunos > 0 else 0
     
     # Ordenar alunos por média geral
-    alunos_ordenados = sorted(alunos, key=lambda x: x['media_geral'], reverse=True) if alunos else []
+    alunos_ordenados = sorted(desempenhos, key=lambda x: x['media_geral'], reverse=True) if desempenhos else []
     
     # Identificar melhores alunos e alunos que precisam de atenção
     melhores_alunos = alunos_ordenados[:3] if len(alunos_ordenados) >= 3 else alunos_ordenados
@@ -205,194 +182,234 @@ def relatorio_turma(turma_id):
     
     # Calcular distribuição de notas
     faixas_notas = {
-        'Excelente (90-100)': len([a for a in alunos if a['media_geral'] >= 90]),
-        'Ótimo (80-89)': len([a for a in alunos if 80 <= a['media_geral'] < 90]),
-        'Bom (70-79)': len([a for a in alunos if 70 <= a['media_geral'] < 80]),
-        'Regular (60-69)': len([a for a in alunos if 60 <= a['media_geral'] < 70]),
-        'Precisa Melhorar (<60)': len([a for a in alunos if a['media_geral'] < 60])
+        'Excelente (90-100)': len([a for a in desempenhos if a['media_geral'] >= 90]),
+        'Ótimo (80-89)': len([a for a in desempenhos if 80 <= a['media_geral'] < 90]),
+        'Bom (70-79)': len([a for a in desempenhos if 70 <= a['media_geral'] < 80]),
+        'Regular (60-69)': len([a for a in desempenhos if 60 <= a['media_geral'] < 70]),
+        'Precisa Melhorar (<60)': len([a for a in desempenhos if a['media_geral'] < 60])
     }
     
-    # Gerar gráficos apenas se houver dados
-    grafico_distribuicao = ''
-    grafico_medias = ''
-    
-    if alunos:
-        import matplotlib
-        matplotlib.use('Agg')  # Usar backend não-interativo
-        import matplotlib.pyplot as plt
-        import io
-        import base64
-        from datetime import datetime
-        
-        # Configuração do estilo dos gráficos
-        plt.style.use('bmh')
-        plt.rcParams['figure.facecolor'] = 'white'
-        plt.rcParams['axes.facecolor'] = 'white'
-        plt.rcParams['axes.grid'] = True
-        plt.rcParams['grid.alpha'] = 0.3
-        plt.rcParams['axes.labelcolor'] = '#333333'
-        plt.rcParams['xtick.color'] = '#333333'
-        plt.rcParams['ytick.color'] = '#333333'
-        
-        try:
-            # Gráfico de distribuição de notas
-            fig, ax = plt.subplots(figsize=(10, 6))
-            bars = ax.bar(list(faixas_notas.keys()), list(faixas_notas.values()), color='#0d6efd', alpha=0.7)
-            ax.set_title('Distribuição de Notas da Turma', pad=20, color='#333333', fontsize=14)
-            ax.set_xlabel('Faixas de Notas', color='#333333')
-            ax.set_ylabel('Número de Alunos', color='#333333')
-            plt.xticks(rotation=45, ha='right', color='#333333')
-            
-            # Adicionar valores sobre as barras
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                        f'{int(height)}',
-                        ha='center', va='bottom', color='#333333')
-            
-            # Salvar gráfico como base64
-            buffer = io.BytesIO()
-            plt.savefig(buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-            buffer.seek(0)
-            grafico_distribuicao = base64.b64encode(buffer.getvalue()).decode()
-            plt.close()
-            
-            # Gráfico de médias individuais
-            fig, ax = plt.subplots(figsize=(12, 6))
-            
-            # Tratar nomes vazios e pegar apenas o primeiro nome
-            nomes = []
-            for aluno in alunos_ordenados:
-                nome_completo = aluno['nome'].strip()
-                if nome_completo:
-                    partes_nome = nome_completo.split()
-                    if partes_nome:
-                        nomes.append(partes_nome[0])
-                    else:
-                        nomes.append('Aluno')
-                else:
-                    nomes.append('Aluno')
-            
-            medias = [a['media_geral'] for a in alunos_ordenados]
-            
-            bars = ax.bar(nomes, medias, color='#0d6efd', alpha=0.7)
-            ax.axhline(y=media_turma, color='red', linestyle='--', label=f'Média da Turma: {media_turma:.1f}%')
-            
-            ax.set_title('Médias Individuais dos Alunos', pad=20, color='#333333', fontsize=14)
-            ax.set_xlabel('Alunos', color='#333333')
-            ax.set_ylabel('Média Geral (%)', color='#333333')
-            plt.xticks(rotation=45, ha='right', color='#333333')
-            ax.set_ylim(0, 100)
-            ax.legend()
-            
-            # Adicionar valores sobre as barras
-            for bar in bars:
-                height = bar.get_height()
-                ax.text(bar.get_x() + bar.get_width()/2., height,
-                        f'{height:.1f}%',
-                        ha='center', va='bottom', color='#333333')
-            
-            # Salvar gráfico como base64
-            buffer = io.BytesIO()
-            plt.savefig(buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-            buffer.seek(0)
-            grafico_medias = base64.b64encode(buffer.getvalue()).decode()
-            plt.close()
-            
-        except Exception as e:
-            print(f"Erro ao gerar gráficos: {str(e)}")
-            grafico_distribuicao = ''
-            grafico_medias = ''
-    
+    # Gerar gráficos com Plotly
+    import plotly
+    import plotly.graph_objs as go
+    import json
+
+    # Gráfico 1: Distribuição de notas
+    fig_dist = go.Figure()
+    fig_dist.add_trace(go.Bar(
+        x=['0-20%', '21-40%', '41-60%', '61-80%', '81-100%'],
+        y=[faixas_notas['Precisa Melhorar (<60)'], faixas_notas['Regular (60-69)'], faixas_notas['Bom (70-79)'], faixas_notas['Ótimo (80-89)'], faixas_notas['Excelente (90-100)']],
+        marker_color='rgb(55, 83, 109)',
+        text=[faixas_notas['Precisa Melhorar (<60)'], faixas_notas['Regular (60-69)'], faixas_notas['Bom (70-79)'], faixas_notas['Ótimo (80-89)'], faixas_notas['Excelente (90-100)']],
+        textposition='auto',
+    ))
+    fig_dist.update_layout(
+        title='Distribuição de Notas da Turma',
+        xaxis_title='Faixa de Notas',
+        yaxis_title='Número de Alunos',
+        template='plotly_white',
+        showlegend=False,
+        margin=dict(t=50, l=50, r=50, b=50)
+    )
+    grafico_distribuicao = json.dumps(fig_dist, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Gráfico 2: Desempenho por disciplina
+    fig_disc = go.Figure()
+    fig_disc.add_trace(go.Bar(
+        x=list(disciplinas_dict.keys()),
+        y=[disciplinas_dict[d]['total'] / disciplinas_dict[d]['count'] for d in disciplinas_dict],
+        marker_color='rgb(26, 118, 255)',
+        text=[f'{disciplinas_dict[d]["total"] / disciplinas_dict[d]["count"]:.1f}%' for d in disciplinas_dict],
+        textposition='auto',
+    ))
+    fig_disc.update_layout(
+        title='Média por Disciplina',
+        xaxis_title='Disciplinas',
+        yaxis_title='Média (%)',
+        template='plotly_white',
+        showlegend=False,
+        margin=dict(t=50, l=50, r=50, b=50),
+        yaxis=dict(range=[0, 100])
+    )
+    grafico_disciplinas = json.dumps(fig_disc, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Gráfico 3: Radar chart de competências
+    fig_radar = go.Figure()
+    fig_radar.add_trace(go.Scatterpolar(
+        r=[disciplinas_dict[d]['total'] / disciplinas_dict[d]['count'] for d in disciplinas_dict],
+        theta=list(disciplinas_dict.keys()),
+        fill='toself',
+        name='Média da Turma'
+    ))
+    fig_radar.update_layout(
+        polar=dict(
+            radialaxis=dict(
+                visible=True,
+                range=[0, 100]
+            )),
+        showlegend=False,
+        title='Radar de Competências',
+        template='plotly_white',
+        margin=dict(t=50, l=50, r=50, b=50)
+    )
+    grafico_radar = json.dumps(fig_radar, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Gráfico 4: Gauge chart da média geral
+    fig_gauge = go.Figure(go.Indicator(
+        mode = "gauge+number",
+        value = media_turma,
+        domain = {'x': [0, 1], 'y': [0, 1]},
+        title = {'text': "Média Geral da Turma"},
+        gauge = {
+            'axis': {'range': [0, 100]},
+            'bar': {'color': "rgb(26, 118, 255)"},
+            'steps': [
+                {'range': [0, 60], 'color': "rgb(255, 99, 132)"},
+                {'range': [60, 80], 'color': "rgb(255, 205, 86)"},
+                {'range': [80, 100], 'color': "rgb(75, 192, 192)"}
+            ],
+        }
+    ))
+    fig_gauge.update_layout(
+        template='plotly_white',
+        margin=dict(t=50, l=25, r=25, b=25)
+    )
+    grafico_gauge = json.dumps(fig_gauge, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Calcular estatísticas por disciplina
+    disciplinas = list(disciplinas_dict.keys())
+    medias_disciplinas = []
+    for disciplina in disciplinas:
+        media = disciplinas_dict[disciplina]['total'] / disciplinas_dict[disciplina]['count']
+        medias_disciplinas.append(media)
+
+    # Calcular grupos de desempenho
+    grupos = {
+        'alto_desempenho': len([a for a in desempenhos if a['media_geral'] > 80]),
+        'medio_desempenho': len([a for a in desempenhos if 60 <= a['media_geral'] <= 80]),
+        'baixo_desempenho': len([a for a in desempenhos if a['media_geral'] < 60])
+    }
+
+    # Calcular taxa de participação (alunos que fizeram pelo menos um simulado)
+    alunos_participantes = len([a for a in desempenhos if a['desempenho']])
+    taxa_participacao = (alunos_participantes / total_alunos * 100) if total_alunos > 0 else 0
+
+    # Gerar parecer pedagógico
+    parecer = {
+        'engajamento': gerar_parecer_engajamento(taxa_participacao),
+        'desempenho': gerar_parecer_desempenho(media_turma),
+        'pontos_atencao': gerar_pontos_atencao(grupos),
+        'recomendacoes': gerar_recomendacoes(grupos, media_turma)
+    }
+
+    # Calcular distribuição de notas em 5 faixas
+    distribuicao_notas = [
+        len([a for a in desempenhos if 0 <= a['media_geral'] <= 20]),
+        len([a for a in desempenhos if 20 < a['media_geral'] <= 40]),
+        len([a for a in desempenhos if 40 < a['media_geral'] <= 60]),
+        len([a for a in desempenhos if 60 < a['media_geral'] <= 80]),
+        len([a for a in desempenhos if 80 < a['media_geral'] <= 100])
+    ]
+
     return render_template('professores/relatorio_turma.html',
-                         turma={'id': turma_info[0], 
-                               'nome': turma_info[1],
-                               'serie': turma_info[2],
-                               'escola': turma_info[3]},
+                         turma={
+                             'id': turma_info[0].id,
+                             'turma': turma_info[0].turma,
+                             'Ano_escolar': turma_info[1].nome,
+                             'escola': turma_info[2].nome_da_escola
+                         },
                          alunos=alunos_ordenados,
                          total_alunos=total_alunos,
-                         media_turma=media_turma,
-                         melhores_alunos=melhores_alunos,
-                         alunos_atencao=alunos_atencao,
-                         faixas_notas=faixas_notas,
+                         media_geral=media_turma,
+                         taxa_participacao=taxa_participacao,
+                         disciplinas=disciplinas,
+                         medias_disciplinas=medias_disciplinas,
+                         grupos=grupos,
+                         parecer=parecer,
+                         distribuicao_notas=distribuicao_notas,
                          grafico_distribuicao=grafico_distribuicao,
-                         grafico_medias=grafico_medias,
+                         grafico_disciplinas=grafico_disciplinas,
+                         grafico_radar=grafico_radar,
+                         grafico_gauge=grafico_gauge,
                          now=datetime.now())
+
+def gerar_parecer_engajamento(taxa_participacao):
+    if taxa_participacao >= 90:
+        return "A turma demonstra excelente engajamento, com alta taxa de participação nos simulados."
+    elif taxa_participacao >= 70:
+        return "A turma apresenta bom engajamento, mas há espaço para melhorar a participação."
+    else:
+        return "É necessário trabalhar o engajamento da turma para aumentar a participação nos simulados."
+
+def gerar_parecer_desempenho(media_geral):
+    if media_geral >= 80:
+        return "O desempenho geral da turma é excelente, demonstrando forte domínio do conteúdo."
+    elif media_geral >= 60:
+        return "A turma apresenta desempenho satisfatório, mas há oportunidades de melhoria."
+    else:
+        return "O desempenho geral da turma está abaixo do esperado, necessitando atenção especial."
+
+def gerar_pontos_atencao(grupos):
+    pontos = []
+    if grupos['baixo_desempenho'] > 0:
+        pontos.append(f"{grupos['baixo_desempenho']} alunos com desempenho abaixo de 60%")
+    if grupos['medio_desempenho'] > grupos['alto_desempenho']:
+        pontos.append("Maior concentração de alunos com desempenho médio")
+    if len(pontos) == 0:
+        return "Não há pontos críticos de atenção no momento."
+    return " | ".join(pontos)
+
+def gerar_recomendacoes(grupos, media_geral):
+    recomendacoes = []
+    if grupos['baixo_desempenho'] > 0:
+        recomendacoes.append("Implementar programa de reforço para alunos com baixo desempenho")
+    if media_geral < 70:
+        recomendacoes.append("Revisar metodologia de ensino e identificar pontos de melhoria")
+    if grupos['alto_desempenho'] < grupos['medio_desempenho']:
+        recomendacoes.append("Desenvolver estratégias para elevar o desempenho dos alunos médios")
+    if len(recomendacoes) == 0:
+        return "Manter o trabalho atual e continuar monitorando o progresso da turma."
+    return " | ".join(recomendacoes)
 
 @professores_bp.route('/aluno/<int:aluno_id>/relatorio')
 @login_required
 def relatorio_aluno(aluno_id):
     """Exibe o relatório do aluno."""
     try:
-        if not current_user.is_authenticated or current_user.tipo_usuario_id != TIPO_USUARIO_PROFESSOR:  
+        if not current_user.is_authenticated or current_user.tipo_usuario_id not in [3, 6]:  
             return render_template('error.html', message='Acesso não autorizado'), 403
 
-        db = get_db()
-        cursor = db.cursor()
-
-        # Busca informações do aluno
-        cursor.execute("""
-            SELECT 
-                u.id, u.nome, u.email, u.turma_id, u.serie_id,
-                t.nome as turma_nome,
-                s.nome as serie_nome,
-                e.nome as escola_nome
-            FROM usuarios u
-            LEFT JOIN turmas t ON u.turma_id = t.id
-            LEFT JOIN series s ON u.serie_id = s.id
-            LEFT JOIN escolas e ON u.escola_id = e.id
-            WHERE u.id = ? AND u.tipo_usuario_id = 4
-        """, (aluno_id,))
+        aluno = db.session.query(Usuarios, Turmas, Ano_escolar, Escolas).join(
+            Turmas, Usuarios.turma_id == Turmas.id
+        ).join(
+            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        ).join(
+            Escolas, Turmas.escola_id == Escolas.id
+        ).filter(Usuarios.id == aluno_id, Usuarios.tipo_usuario_id == 4).first()
         
-        aluno = cursor.fetchone()
         if not aluno:
             return render_template('error.html', message='Aluno não encontrado'), 404
 
-        # Busca notas do aluno
-        cursor.execute("""
-            SELECT 
-                d.nome as disciplina,
-                n.nota,
-                n.bimestre
-            FROM notas n
-            JOIN disciplinas d ON n.disciplina_id = d.id
-            WHERE n.aluno_id = ?
-            ORDER BY d.nome, n.bimestre
-        """, (aluno_id,))
-        notas = cursor.fetchall()
-
-        # Busca frequência do aluno
-        cursor.execute("""
-            SELECT 
-                d.nome as disciplina,
-                f.data,
-                f.presente
-            FROM frequencia f
-            JOIN disciplinas d ON f.disciplina_id = d.id
-            WHERE f.aluno_id = ?
-            ORDER BY d.nome, f.data
-        """, (aluno_id,))
-        frequencia = cursor.fetchall()
-
-        # Busca parecer do aluno
-        cursor.execute("""
-            SELECT 
-                p.texto,
-                p.data,
-                d.nome as disciplina
-            FROM pareceres p
-            JOIN disciplinas d ON p.disciplina_id = d.id
-            WHERE p.aluno_id = ?
-            ORDER BY p.data DESC
-        """, (aluno_id,))
-        pareceres = cursor.fetchall()
+        # Busca desempenho nos simulados
+        desempenhos = db.session.query(
+            DesempenhoSimulado, 
+            SimuladosGeradosProfessor,
+            Disciplinas
+        ).join(
+            SimuladosGeradosProfessor, DesempenhoSimulado.simulado_id == SimuladosGeradosProfessor.id
+        ).join(
+            Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
+        ).filter(
+            DesempenhoSimulado.aluno_id == aluno_id
+        ).order_by(
+            Disciplinas.nome, 
+            SimuladosGeradosProfessor.data_criacao.desc()
+        ).all()
 
         return render_template(
             'professores/relatorio_aluno.html',
             aluno=aluno,
-            notas=notas,
-            frequencia=frequencia,
-            pareceres=pareceres
+            desempenhos=desempenhos
         )
     except Exception as e:
         print(f"Erro: {str(e)}")
@@ -406,43 +423,31 @@ def api_alunos_turma(turma_id):
         if not current_user.is_authenticated:
             return jsonify({'error': 'Usuário não autenticado'}), 401
             
-        if current_user.tipo_usuario_id != TIPO_USUARIO_PROFESSOR:
+        if current_user.tipo_usuario_id not in [3, 6]:
             return jsonify({'error': 'Usuário não é professor'}), 403
 
-        db = get_db()
-        cursor = db.cursor()
+        if current_user.tipo_usuario_id == 6:
+            alunos = db.session.query(Usuarios).filter(Usuarios.turma_id == turma_id, Usuarios.tipo_usuario_id == 4).order_by(Usuarios.nome).all()
+        else:
+            turma_prof = db.session.query(Turmas, ProfessorTurmaEscola).join(
+                ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+            ).filter(ProfessorTurmaEscola.professor_id == current_user.id, Turmas.id == turma_id).first()
+            
+            if not turma_prof:
+                return jsonify({'error': 'Acesso não autorizado'}), 403
 
-        cursor.execute("""
-            SELECT t.escola_id, t.tipo_ensino_id, t.serie_id
-            FROM turmas t
-            JOIN professor_turma_escola pte ON t.id = pte.turma_id
-            WHERE pte.professor_id = ? AND t.id = ?
-            LIMIT 1
-        """, (current_user.id, turma_id))
-        turma_prof = cursor.fetchone()
-        
-        if not turma_prof:
-            return jsonify({'error': 'Acesso não autorizado'}), 403
-
-        cursor.execute("""
-            SELECT DISTINCT u.id, u.nome, u.email
-            FROM usuarios u
-            WHERE u.escola_id = ?
-            AND u.tipo_ensino_id = ?
-            AND u.serie_id = ?
-            AND u.turma_id = ?
-            AND u.tipo_usuario_id = ?
-            AND u.nome IS NOT NULL
-            AND u.nome != ''
-            GROUP BY u.nome
-            ORDER BY u.nome
-        """, (turma_prof[0], turma_prof[1], turma_prof[2], turma_id, TIPO_USUARIO_ALUNO))
-        alunos = cursor.fetchall()
+            alunos = db.session.query(Usuarios).filter(Usuarios.escola_id == turma_prof[0].escola_id,
+                                                       Usuarios.tipo_ensino_id == turma_prof[0].tipo_ensino_id,
+                                                       Usuarios.Ano_escolar_id == turma_prof[0].Ano_escolar_id,
+                                                       Usuarios.turma_id == turma_id,
+                                                       Usuarios.tipo_usuario_id == 4,
+                                                       Usuarios.nome.isnot(None),
+                                                       Usuarios.nome != '').group_by(Usuarios.nome).order_by(Usuarios.nome).all()
         
         return jsonify([{
-            'id': aluno[0],
-            'nome': aluno[1],
-            'email': aluno[2]
+            'id': aluno.id,
+            'nome': aluno.nome,
+            'email': aluno.email
         } for aluno in alunos])
     except Exception as e:
         print(f"Erro: {str(e)}")
@@ -451,65 +456,55 @@ def api_alunos_turma(turma_id):
 @professores_bp.route('/relatorio_aluno/<int:aluno_id>')
 @login_required
 def relatorio_aluno_novo(aluno_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # Verifica se é professor
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('home'))
         
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Buscar informações do aluno
-    cursor.execute("""
-        SELECT u.id, u.nome, u.email, t.id as turma_id, 
-               s.nome as serie, t.turma, e.nome_da_escola as escola
-        FROM usuarios u
-        JOIN turmas t ON u.turma_id = t.id
-        JOIN series s ON t.serie_id = s.id
-        JOIN escolas e ON t.escola_id = e.id
-        WHERE u.id = ? AND u.tipo_usuario_id = 4
-    """, (aluno_id,))
-    
-    aluno_info = cursor.fetchone()
+    aluno_info = db.session.query(Usuarios, Turmas, Ano_escolar, Escolas).join(
+        Turmas, Usuarios.turma_id == Turmas.id
+    ).join(
+        Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+    ).join(
+        Escolas, Turmas.escola_id == Escolas.id
+    ).filter(Usuarios.id == aluno_id, Usuarios.tipo_usuario_id == 4).first()
     if not aluno_info:
         flash('Aluno não encontrado.', 'danger')
         return redirect(url_for('professores.listar_turmas'))
         
     # Verificar se o professor tem acesso a esta turma
-    cursor.execute("""
-        SELECT 1 FROM professor_turma_escola 
-        WHERE professor_id = ? AND turma_id = ?
-    """, (current_user.id, aluno_info[3]))
+    if current_user.tipo_usuario_id == 6:
+        turma_prof = db.session.query(Turmas).filter(Turmas.id == aluno_info[1].id).first()
+    else:
+        turma_prof = db.session.query(Turmas, ProfessorTurmaEscola).join(
+            ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+        ).filter(ProfessorTurmaEscola.professor_id == current_user.id, Turmas.id == aluno_info[1].id).first()
     
-    if not cursor.fetchone():
+    if not turma_prof:
         flash('Você não tem acesso a este aluno.', 'danger')
         return redirect(url_for('professores.listar_turmas'))
     
     # Buscar desempenho nos simulados com disciplinas
-    cursor.execute("""
-        SELECT ds.id, ds.simulado_id, ds.desempenho, ds.data_resposta,
-               d.id as disciplina_id, d.nome as disciplina_nome
-        FROM desempenho_simulado ds
-        JOIN simulados_gerados sg ON ds.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        WHERE ds.aluno_id = ?
-        ORDER BY ds.data_resposta DESC
-    """, (aluno_id,))
+    desempenhos = db.session.query(DesempenhoSimulado, SimuladosGerados, Disciplinas).join(
+        SimuladosGerados, DesempenhoSimulado.simulado_id == SimuladosGerados.id
+    ).join(
+        Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id
+    ).filter(DesempenhoSimulado.aluno_id == aluno_id).order_by(DesempenhoSimulado.data_resposta.desc()).all()
     
     # Converter para dicionário para acessar por nome da coluna
-    desempenhos = []
-    for row in cursor.fetchall():
-        desempenhos.append({
-            'id': row[0],
-            'simulado_id': row[1],
-            'desempenho': float(row[2]),  # Converter DECIMAL para float
-            'data_resposta': row[3],
-            'disciplina_id': row[4],
-            'disciplina': row[5]
+    desempenhos_dict = []
+    for row in desempenhos:
+        desempenhos_dict.append({
+            'id': row[0].id,
+            'simulado_id': row[0].simulado_id,
+            'desempenho': float(row[0].desempenho),  # Converter DECIMAL para float
+            'data_resposta': row[0].data_resposta,
+            'disciplina_id': row[2].id,
+            'disciplina': row[2].nome
         })
     
     # Calcular médias por disciplina
     disciplinas_dict = {}
-    for d in desempenhos:
+    for d in desempenhos_dict:
         if d['disciplina'] not in disciplinas_dict:
             disciplinas_dict[d['disciplina']] = {
                 'total': 0,
@@ -539,7 +534,7 @@ def relatorio_aluno_novo(aluno_id):
     # Preparar dados para o gráfico de evolução temporal
     datas_simulados = []
     notas_simulados = []
-    for d in desempenhos:
+    for d in desempenhos_dict:
         data = d['data_resposta'].split(' ')[0] if ' ' in d['data_resposta'] else d['data_resposta']
         datas_simulados.append(data)
         notas_simulados.append(d['desempenho'])
@@ -557,8 +552,8 @@ def relatorio_aluno_novo(aluno_id):
     # Gerar parecer
     parecer = {
         'comportamento': f"""
-            O aluno realizou {len(desempenhos)} simulados até o momento, distribuídos em {len(disciplinas_dict)} disciplinas diferentes.
-            {'Demonstra comprometimento com os estudos.' if len(desempenhos) > 5 else 'Está começando a participar das atividades.'}
+            O aluno realizou {len(desempenhos_dict)} simulados até o momento, distribuídos em {len(disciplinas_dict)} disciplinas diferentes.
+            {'Demonstra comprometimento com os estudos.' if len(desempenhos_dict) > 5 else 'Está começando a participar das atividades.'}
         """,
         'desempenho': f"""
             A média geral do aluno é {media_geral:.1f}%.
@@ -567,15 +562,15 @@ def relatorio_aluno_novo(aluno_id):
              else 'Precisa de atenção em algumas áreas.' if media_geral >= 60 
              else 'Necessita de acompanhamento mais próximo.'}
             
-            {'Observa-se uma evolução positiva no desempenho.' if len(desempenhos) > 1 and notas_simulados[0] > notas_simulados[-1]
-             else 'Mantenha o incentivo para melhorar o desempenho.' if len(desempenhos) > 1
+            {'Observa-se uma evolução positiva no desempenho.' if len(desempenhos_dict) > 1 and notas_simulados[0] > notas_simulados[-1]
+             else 'Mantenha o incentivo para melhorar o desempenho.' if len(desempenhos_dict) > 1
              else 'Continue incentivando a participação nos simulados.'}
         """,
         'destaques': f"""
             {f"Melhor desempenho em: {', '.join(melhores_disciplinas)}" if melhores_disciplinas else ""}
             {f"Disciplinas que precisam de atenção: {', '.join(disciplinas_atencao)}" if disciplinas_atencao else ""}
             
-            {'Sua participação regular permite um acompanhamento mais preciso do progresso.' if len(desempenhos) > 3
+            {'Sua participação regular permite um acompanhamento mais preciso do progresso.' if len(desempenhos_dict) > 3
              else 'Incentive a participação em mais simulados para uma análise mais completa.'}
         """,
         'recomendacoes': f"""
@@ -587,76 +582,54 @@ def relatorio_aluno_novo(aluno_id):
         """
     }
     
-    # Gerar gráficos como imagens
-    import matplotlib.pyplot as plt
-    import io
-    import base64
-    from datetime import datetime
-    
-    # Configuração do estilo dos gráficos
-    plt.style.use('bmh')  # Usando um estilo padrão do matplotlib
-    
-    # Configurações comuns para os gráficos
-    plt.rcParams['figure.facecolor'] = 'white'
-    plt.rcParams['axes.facecolor'] = 'white'
-    plt.rcParams['axes.grid'] = True
-    plt.rcParams['grid.alpha'] = 0.3
-    plt.rcParams['axes.labelcolor'] = '#333333'
-    plt.rcParams['xtick.color'] = '#333333'
-    plt.rcParams['ytick.color'] = '#333333'
-    
-    # Gráfico de Desempenho por Disciplina
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(disciplinas, medias_disciplinas, color='#0d6efd', alpha=0.7)
-    plt.title('Desempenho por Disciplina', pad=20, color='#333333', fontsize=14)
-    plt.xlabel('Disciplinas', color='#333333')
-    plt.ylabel('Média (%)', color='#333333')
-    plt.xticks(rotation=45, ha='right', color='#333333')
-    plt.ylim(0, 100)
-    
-    # Adicionar valores sobre as barras
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2., height,
-                f'{height:.1f}%',
-                ha='center', va='bottom', color='#333333')
-    
-    # Salvar gráfico como base64
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-    buffer.seek(0)
-    grafico_desempenho = base64.b64encode(buffer.getvalue()).decode()
-    plt.close()
-    
-    # Gráfico de Evolução
-    plt.figure(figsize=(10, 6))
-    plt.plot(datas_simulados, notas_simulados, marker='o', color='#0d6efd', linewidth=2, markersize=8)
-    plt.title('Evolução do Desempenho', pad=20, color='#333333', fontsize=14)
-    plt.xlabel('Data do Simulado', color='#333333')
-    plt.ylabel('Desempenho (%)', color='#333333')
-    plt.xticks(rotation=45, ha='right', color='#333333')
-    plt.ylim(0, 100)
-    plt.grid(True, linestyle='--', alpha=0.3)
-    
-    # Adicionar valores sobre os pontos
-    for i, txt in enumerate(notas_simulados):
-        plt.annotate(f'{txt:.1f}%', 
-                    (datas_simulados[i], notas_simulados[i]),
-                    textcoords="offset points",
-                    xytext=(0,10),
-                    ha='center',
-                    color='#333333')
-    
-    # Salvar gráfico como base64
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-    buffer.seek(0)
-    grafico_evolucao = base64.b64encode(buffer.getvalue()).decode()
-    plt.close()
-    
+    # Gerar gráficos com Plotly
+    import plotly
+    import plotly.graph_objs as go
+    import json
+
+    # Gráfico 1: Desempenho por Disciplina
+    fig_disc = go.Figure()
+    fig_disc.add_trace(go.Bar(
+        x=disciplinas,
+        y=medias_disciplinas,
+        marker_color='rgb(26, 118, 255)',
+        text=[f'{m:.1f}%' for m in medias_disciplinas],
+        textposition='auto',
+    ))
+    fig_disc.update_layout(
+        title='Desempenho por Disciplina',
+        xaxis_title='Disciplinas',
+        yaxis_title='Média (%)',
+        template='plotly_white',
+        showlegend=False,
+        margin=dict(t=50, l=50, r=50, b=50),
+        yaxis=dict(range=[0, 100])
+    )
+    grafico_desempenho = json.dumps(fig_disc, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Gráfico 2: Evolução do Desempenho
+    fig_evol = go.Figure()
+    fig_evol.add_trace(go.Scatter(
+        x=datas_simulados,
+        y=notas_simulados,
+        mode='lines+markers',
+        marker=dict(color='rgb(26, 118, 255)'),
+        line=dict(color='rgb(26, 118, 255)'),
+    ))
+    fig_evol.update_layout(
+        title='Evolução do Desempenho',
+        xaxis_title='Data do Simulado',
+        yaxis_title='Desempenho (%)',
+        template='plotly_white',
+        showlegend=False,
+        margin=dict(t=50, l=50, r=50, b=50),
+        yaxis=dict(range=[0, 100])
+    )
+    grafico_evolucao = json.dumps(fig_evol, cls=plotly.utils.PlotlyJSONEncoder)
+
     return render_template('professores/relatorio_aluno.html',
-                         aluno={'id': aluno_info[0], 'nome': aluno_info[1], 'email': aluno_info[2]},
-                         turma={'serie': aluno_info[4], 'turma': aluno_info[5], 'escola': aluno_info[6]},
+                         aluno={'id': aluno_info[0].id, 'nome': aluno_info[0].nome, 'email': aluno_info[0].email},
+                         turma={'Ano_escolar': aluno_info[2].nome, 'turma': aluno_info[1].nome, 'escola': aluno_info[3].nome_da_escola},
                          media_geral=media_geral,
                          disciplinas=disciplinas,
                          medias_disciplinas=medias_disciplinas,
@@ -670,65 +643,55 @@ def relatorio_aluno_novo(aluno_id):
 @professores_bp.route('/relatorio_aluno/<int:aluno_id>/pdf')
 @login_required
 def relatorio_aluno_pdf(aluno_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # Verifica se é professor
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('home'))
         
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Buscar informações do aluno
-    cursor.execute("""
-        SELECT u.id, u.nome, u.email, t.id as turma_id, 
-               s.nome as serie, t.turma, e.nome_da_escola as escola
-        FROM usuarios u
-        JOIN turmas t ON u.turma_id = t.id
-        JOIN series s ON t.serie_id = s.id
-        JOIN escolas e ON t.escola_id = e.id
-        WHERE u.id = ? AND u.tipo_usuario_id = 4
-    """, (aluno_id,))
-    
-    aluno_info = cursor.fetchone()
+    aluno_info = db.session.query(Usuarios, Turmas, Ano_escolar, Escolas).join(
+        Turmas, Usuarios.turma_id == Turmas.id
+    ).join(
+        Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+    ).join(
+        Escolas, Turmas.escola_id == Escolas.id
+    ).filter(Usuarios.id == aluno_id, Usuarios.tipo_usuario_id == 4).first()
     if not aluno_info:
         flash('Aluno não encontrado.', 'danger')
         return redirect(url_for('professores.listar_turmas'))
         
     # Verificar se o professor tem acesso a esta turma
-    cursor.execute("""
-        SELECT 1 FROM professor_turma_escola 
-        WHERE professor_id = ? AND turma_id = ?
-    """, (current_user.id, aluno_info[3]))
+    if current_user.tipo_usuario_id == 6:
+        turma_prof = db.session.query(Turmas).filter(Turmas.id == aluno_info[1].id).first()
+    else:
+        turma_prof = db.session.query(Turmas, ProfessorTurmaEscola).join(
+            ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
+        ).filter(ProfessorTurmaEscola.professor_id == current_user.id, Turmas.id == aluno_info[1].id).first()
     
-    if not cursor.fetchone():
+    if not turma_prof:
         flash('Você não tem acesso a este aluno.', 'danger')
         return redirect(url_for('professores.listar_turmas'))
     
     # Buscar desempenho nos simulados com disciplinas
-    cursor.execute("""
-        SELECT ds.id, ds.simulado_id, ds.desempenho, ds.data_resposta,
-               d.id as disciplina_id, d.nome as disciplina_nome
-        FROM desempenho_simulado ds
-        JOIN simulados_gerados sg ON ds.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        WHERE ds.aluno_id = ?
-        ORDER BY ds.data_resposta DESC
-    """, (aluno_id,))
+    desempenhos = db.session.query(DesempenhoSimulado, SimuladosGerados, Disciplinas).join(
+        SimuladosGerados, DesempenhoSimulado.simulado_id == SimuladosGerados.id
+    ).join(
+        Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id
+    ).filter(DesempenhoSimulado.aluno_id == aluno_id).order_by(DesempenhoSimulado.data_resposta.desc()).all()
     
     # Converter para dicionário para acessar por nome da coluna
-    desempenhos = []
-    for row in cursor.fetchall():
-        desempenhos.append({
-            'id': row[0],
-            'simulado_id': row[1],
-            'desempenho': float(row[2]),  # Converter DECIMAL para float
-            'data_resposta': row[3],
-            'disciplina_id': row[4],
-            'disciplina': row[5]
+    desempenhos_dict = []
+    for row in desempenhos:
+        desempenhos_dict.append({
+            'id': row[0].id,
+            'simulado_id': row[0].simulado_id,
+            'desempenho': float(row[0].desempenho),  # Converter DECIMAL para float
+            'data_resposta': row[0].data_resposta,
+            'disciplina_id': row[2].id,
+            'disciplina': row[2].nome
         })
     
     # Calcular médias por disciplina
     disciplinas_dict = {}
-    for d in desempenhos:
+    for d in desempenhos_dict:
         if d['disciplina'] not in disciplinas_dict:
             disciplinas_dict[d['disciplina']] = {
                 'total': 0,
@@ -758,7 +721,7 @@ def relatorio_aluno_pdf(aluno_id):
     # Preparar dados para o gráfico de evolução temporal
     datas_simulados = []
     notas_simulados = []
-    for d in desempenhos:
+    for d in desempenhos_dict:
         data = d['data_resposta'].split(' ')[0] if ' ' in d['data_resposta'] else d['data_resposta']
         datas_simulados.append(data)
         notas_simulados.append(d['desempenho'])
@@ -776,8 +739,8 @@ def relatorio_aluno_pdf(aluno_id):
     # Gerar parecer
     parecer = {
         'comportamento': f"""
-            O aluno realizou {len(desempenhos)} simulados até o momento, distribuídos em {len(disciplinas_dict)} disciplinas diferentes.
-            {'Demonstra comprometimento com os estudos.' if len(desempenhos) > 5 else 'Está começando a participar das atividades.'}
+            O aluno realizou {len(desempenhos_dict)} simulados até o momento, distribuídos em {len(disciplinas_dict)} disciplinas diferentes.
+            {'Demonstra comprometimento com os estudos.' if len(desempenhos_dict) > 5 else 'Está começando a participar das atividades.'}
         """,
         'desempenho': f"""
             A média geral do aluno é {media_geral:.1f}%.
@@ -786,15 +749,15 @@ def relatorio_aluno_pdf(aluno_id):
              else 'Precisa de atenção em algumas áreas.' if media_geral >= 60 
              else 'Necessita de acompanhamento mais próximo.'}
             
-            {'Observa-se uma evolução positiva no desempenho.' if len(desempenhos) > 1 and notas_simulados[0] > notas_simulados[-1]
-             else 'Mantenha o incentivo para melhorar o desempenho.' if len(desempenhos) > 1
+            {'Observa-se uma evolução positiva no desempenho.' if len(desempenhos_dict) > 1 and notas_simulados[0] > notas_simulados[-1]
+             else 'Mantenha o incentivo para melhorar o desempenho.' if len(desempenhos_dict) > 1
              else 'Continue incentivando a participação nos simulados.'}
         """,
         'destaques': f"""
             {f"Melhor desempenho em: {', '.join(melhores_disciplinas)}" if melhores_disciplinas else ""}
             {f"Disciplinas que precisam de atenção: {', '.join(disciplinas_atencao)}" if disciplinas_atencao else ""}
             
-            {'Sua participação regular permite um acompanhamento mais preciso do progresso.' if len(desempenhos) > 3
+            {'Sua participação regular permite um acompanhamento mais preciso do progresso.' if len(desempenhos_dict) > 3
              else 'Incentive a participação em mais simulados para uma análise mais completa.'}
         """,
         'recomendacoes': f"""
@@ -806,77 +769,55 @@ def relatorio_aluno_pdf(aluno_id):
         """
     }
     
-    # Gerar gráficos como imagens
-    import matplotlib.pyplot as plt
-    import io
-    import base64
-    from datetime import datetime
-    
-    # Configuração do estilo dos gráficos
-    plt.style.use('bmh')  # Usando um estilo padrão do matplotlib
-    
-    # Configurações comuns para os gráficos
-    plt.rcParams['figure.facecolor'] = 'white'
-    plt.rcParams['axes.facecolor'] = 'white'
-    plt.rcParams['axes.grid'] = True
-    plt.rcParams['grid.alpha'] = 0.3
-    plt.rcParams['axes.labelcolor'] = '#333333'
-    plt.rcParams['xtick.color'] = '#333333'
-    plt.rcParams['ytick.color'] = '#333333'
-    
-    # Gráfico de Desempenho por Disciplina
-    plt.figure(figsize=(10, 6))
-    bars = plt.bar(disciplinas, medias_disciplinas, color='#0d6efd', alpha=0.7)
-    plt.title('Desempenho por Disciplina', pad=20, color='#333333', fontsize=14)
-    plt.xlabel('Disciplinas', color='#333333')
-    plt.ylabel('Média (%)', color='#333333')
-    plt.xticks(rotation=45, ha='right', color='#333333')
-    plt.ylim(0, 100)
-    
-    # Adicionar valores sobre as barras
-    for bar in bars:
-        height = bar.get_height()
-        plt.text(bar.get_x() + bar.get_width()/2., height,
-                f'{height:.1f}%',
-                ha='center', va='bottom', color='#333333')
-    
-    # Salvar gráfico como base64
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-    buffer.seek(0)
-    grafico_desempenho = base64.b64encode(buffer.getvalue()).decode()
-    plt.close()
-    
-    # Gráfico de Evolução
-    plt.figure(figsize=(10, 6))
-    plt.plot(datas_simulados, notas_simulados, marker='o', color='#0d6efd', linewidth=2, markersize=8)
-    plt.title('Evolução do Desempenho', pad=20, color='#333333', fontsize=14)
-    plt.xlabel('Data do Simulado', color='#333333')
-    plt.ylabel('Desempenho (%)', color='#333333')
-    plt.xticks(rotation=45, ha='right', color='#333333')
-    plt.ylim(0, 100)
-    plt.grid(True, linestyle='--', alpha=0.3)
-    
-    # Adicionar valores sobre os pontos
-    for i, txt in enumerate(notas_simulados):
-        plt.annotate(f'{txt:.1f}%', 
-                    (datas_simulados[i], notas_simulados[i]),
-                    textcoords="offset points",
-                    xytext=(0,10),
-                    ha='center',
-                    color='#333333')
-    
-    # Salvar gráfico como base64
-    buffer = io.BytesIO()
-    plt.savefig(buffer, format='png', bbox_inches='tight', dpi=300, facecolor='white')
-    buffer.seek(0)
-    grafico_evolucao = base64.b64encode(buffer.getvalue()).decode()
-    plt.close()
-    
+    # Gerar gráficos com Plotly
+    import plotly
+    import plotly.graph_objs as go
+    import json
+
+    # Gráfico 1: Desempenho por Disciplina
+    fig_disc = go.Figure()
+    fig_disc.add_trace(go.Bar(
+        x=disciplinas,
+        y=medias_disciplinas,
+        marker_color='rgb(26, 118, 255)',
+        text=[f'{m:.1f}%' for m in medias_disciplinas],
+        textposition='auto',
+    ))
+    fig_disc.update_layout(
+        title='Desempenho por Disciplina',
+        xaxis_title='Disciplinas',
+        yaxis_title='Média (%)',
+        template='plotly_white',
+        showlegend=False,
+        margin=dict(t=50, l=50, r=50, b=50),
+        yaxis=dict(range=[0, 100])
+    )
+    grafico_desempenho = json.dumps(fig_disc, cls=plotly.utils.PlotlyJSONEncoder)
+
+    # Gráfico 2: Evolução do Desempenho
+    fig_evol = go.Figure()
+    fig_evol.add_trace(go.Scatter(
+        x=datas_simulados,
+        y=notas_simulados,
+        mode='lines+markers',
+        marker=dict(color='rgb(26, 118, 255)'),
+        line=dict(color='rgb(26, 118, 255)'),
+    ))
+    fig_evol.update_layout(
+        title='Evolução do Desempenho',
+        xaxis_title='Data do Simulado',
+        yaxis_title='Desempenho (%)',
+        template='plotly_white',
+        showlegend=False,
+        margin=dict(t=50, l=50, r=50, b=50),
+        yaxis=dict(range=[0, 100])
+    )
+    grafico_evolucao = json.dumps(fig_evol, cls=plotly.utils.PlotlyJSONEncoder)
+
     # Renderizar o template com os dados
     html = render_template('professores/relatorio_aluno_pdf.html',
-                         aluno={'id': aluno_info[0], 'nome': aluno_info[1], 'email': aluno_info[2]},
-                         turma={'serie': aluno_info[4], 'turma': aluno_info[5], 'escola': aluno_info[6]},
+                         aluno={'id': aluno_info[0].id, 'nome': aluno_info[0].nome, 'email': aluno_info[0].email},
+                         turma={'Ano_escolar': aluno_info[2].nome, 'turma': aluno_info[1].turma, 'escola': aluno_info[3].nome_da_escola},
                          media_geral=media_geral,
                          disciplinas=disciplinas,
                          medias_disciplinas=medias_disciplinas,
@@ -893,38 +834,84 @@ def relatorio_aluno_pdf(aluno_id):
     
     response = make_response(pdf)
     response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=relatorio_{aluno_info[1].lower().replace(" ", "_")}.pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=relatorio_{aluno_info[0].nome.lower().replace(" ", "_")}.pdf'
     
     return response
 
 @professores_bp.route('/api/questoes/<int:disciplina_id>')
 @login_required
 def api_questoes_por_disciplina(disciplina_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # Verifica se é professor
         return jsonify({'error': 'Acesso não autorizado'}), 403
         
-    db = get_db()
-    cursor = db.cursor()
-    
-    # Verificar se a disciplina existe
-    cursor.execute("SELECT id FROM disciplinas WHERE id = ?", (disciplina_id,))
-    if not cursor.fetchone():
+    disciplina = db.session.query(Disciplinas).filter(Disciplinas.id == disciplina_id).first()
+    if not disciplina:
         return jsonify({'error': 'Disciplina não encontrada'}), 404
     
-    # Buscar questões da disciplina
-    cursor.execute("""
-        SELECT q.id, q.enunciado, q.nivel
-        FROM banco_questoes q
-        WHERE q.disciplina_id = ?
-        ORDER BY q.id DESC
-    """, (disciplina_id,))
+    questoes = db.session.query(BancoQuestoes).filter(BancoQuestoes.disciplina_id == disciplina_id).order_by(BancoQuestoes.id.desc()).all()
     
-    questoes = []
-    for q in cursor.fetchall():
-        questoes.append({
-            'id': q[0],
-            'enunciado': q[1],
-            'nivel': q[2]
-        })
-    
-    return jsonify({'questoes': questoes})
+    return jsonify({'questoes': [{'id': q.id, 'enunciado': q.enunciado, 'nivel': q.nivel} for q in questoes]})
+
+@professores_bp.route('/simulados')
+@login_required
+def listar_simulados():
+    # Se for super admin ou professor
+    if not current_user.is_authenticated or current_user.tipo_usuario_id not in [3, 6]:
+        return render_template('error.html', message='Acesso não autorizado'), 403
+        
+    # Se for super admin, mostra todos os simulados
+    if current_user.tipo_usuario_id == 6:
+        simulados = db.session.query(
+            SimuladosGeradosProfessor, 
+            Disciplinas,
+            Usuarios
+        ).join(
+            Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
+        ).join(
+            Usuarios, SimuladosGeradosProfessor.professor_id == Usuarios.id
+        ).order_by(SimuladosGeradosProfessor.data_criacao.desc()).all()
+    else:
+        # Se for professor, mostra apenas seus simulados
+        simulados = db.session.query(
+            SimuladosGeradosProfessor, 
+            Disciplinas,
+            Usuarios
+        ).join(
+            Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
+        ).join(
+            Usuarios, SimuladosGeradosProfessor.professor_id == Usuarios.id
+        ).filter(
+            SimuladosGeradosProfessor.professor_id == current_user.id
+        ).order_by(SimuladosGeradosProfessor.data_criacao.desc()).all()
+
+    # Calcula as estatísticas de cada simulado
+    desempenhos = {}
+    for simulado, _, _ in simulados:
+        # Busca as respostas dos alunos para este simulado
+        respostas = db.session.query(DesempenhoSimulado).filter(
+            DesempenhoSimulado.simulado_id == simulado.id
+        ).all()
+        
+        if respostas:
+            notas = [r.desempenho for r in respostas if r.desempenho is not None]
+            if notas:
+                media = float(sum(notas) / len(notas))
+                max_nota = float(max(notas))
+                min_nota = float(min(notas))
+            else:
+                media = max_nota = min_nota = 0
+            total_alunos = len(notas)
+        else:
+            media = max_nota = min_nota = 0
+            total_alunos = 0
+            
+        desempenhos[simulado.id] = {
+            'total_alunos': total_alunos,
+            'media': media,
+            'max_nota': max_nota,
+            'min_nota': min_nota
+        }
+
+    return render_template('professores/simulados.html', 
+                         simulados=simulados,
+                         desempenhos=desempenhos)

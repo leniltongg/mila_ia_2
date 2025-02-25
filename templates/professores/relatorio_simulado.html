@@ -1,0 +1,148 @@
+{% extends "professores/base_professores.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-graph-up me-2"></i>Relatório do Simulado
+                        </h5>
+                        <a href="{{ url_for('simulados.listar_simulados_professor') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left me-2"></i>Voltar
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Informações do Simulado -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <strong>Disciplina:</strong> {{ simulado.disciplina_nome }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Ano Escolar:</strong> {{ simulado.Ano_escolar_nome }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Mês:</strong> {{ simulado.mes_nome }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Data de Criação:</strong> {{ simulado.data_criacao }}
+                        </div>
+                    </div>
+
+                    <!-- Status do Simulado -->
+                    <div class="alert {% if simulado.status == 'enviado' %}alert-success{% else %}alert-warning{% endif %} mb-4">
+                        <strong>Status:</strong> 
+                        {% if simulado.status == 'enviado' %}
+                            Enviado para os alunos
+                        {% else %}
+                            Não enviado
+                        {% endif %}
+                    </div>
+
+                    {% if simulado.status == 'enviado' %}
+                        <!-- Estatísticas Gerais -->
+                        <div class="row mb-4">
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">Total de Alunos</h6>
+                                        <h3 class="mb-0">{{ estatisticas.total_alunos }}</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">Média Geral</h6>
+                                        <h3 class="mb-0">{{ "%.1f"|format(estatisticas.media_geral) }}%</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">Melhor Desempenho</h6>
+                                        <h3 class="mb-0">{{ "%.1f"|format(estatisticas.melhor_desempenho) }}%</h3>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">Pior Desempenho</h6>
+                                        <h3 class="mb-0">{{ "%.1f"|format(estatisticas.pior_desempenho) }}%</h3>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Distribuição de Notas -->
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">Distribuição de Notas</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-2">
+                                        <div class="progress" style="height: 2rem;">
+                                            <div class="progress-bar bg-danger" role="progressbar" 
+                                                 style="width: {{ (estatisticas.distribuicao_notas['0-20'] / estatisticas.total_alunos * 100) if estatisticas.total_alunos > 0 else 0 }}%">
+                                                0-20%
+                                            </div>
+                                        </div>
+                                        <p class="text-center mt-1">{{ estatisticas.distribuicao_notas['0-20'] }} alunos</p>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="progress" style="height: 2rem;">
+                                            <div class="progress-bar bg-warning" role="progressbar" 
+                                                 style="width: {{ (estatisticas.distribuicao_notas['21-40'] / estatisticas.total_alunos * 100) if estatisticas.total_alunos > 0 else 0 }}%">
+                                                21-40%
+                                            </div>
+                                        </div>
+                                        <p class="text-center mt-1">{{ estatisticas.distribuicao_notas['21-40'] }} alunos</p>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="progress" style="height: 2rem;">
+                                            <div class="progress-bar bg-info" role="progressbar" 
+                                                 style="width: {{ (estatisticas.distribuicao_notas['41-60'] / estatisticas.total_alunos * 100) if estatisticas.total_alunos > 0 else 0 }}%">
+                                                41-60%
+                                            </div>
+                                        </div>
+                                        <p class="text-center mt-1">{{ estatisticas.distribuicao_notas['41-60'] }} alunos</p>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="progress" style="height: 2rem;">
+                                            <div class="progress-bar bg-primary" role="progressbar" 
+                                                 style="width: {{ (estatisticas.distribuicao_notas['61-80'] / estatisticas.total_alunos * 100) if estatisticas.total_alunos > 0 else 0 }}%">
+                                                61-80%
+                                            </div>
+                                        </div>
+                                        <p class="text-center mt-1">{{ estatisticas.distribuicao_notas['61-80'] }} alunos</p>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="progress" style="height: 2rem;">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 style="width: {{ (estatisticas.distribuicao_notas['81-100'] / estatisticas.total_alunos * 100) if estatisticas.total_alunos > 0 else 0 }}%">
+                                                81-100%
+                                            </div>
+                                        </div>
+                                        <p class="text-center mt-1">{{ estatisticas.distribuicao_notas['81-100'] }} alunos</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            O relatório detalhado estará disponível após o envio do simulado para os alunos.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -15,16 +15,16 @@
                     <div class="col-md-6">
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
-                                <strong>Ano Escolar:</strong> {{ questao.serie_nome }}
+                                <strong>Ano Escolar:</strong> {{ questao.Ano_escolar_nome }}
                             </div>
-                            <button type="button" class="btn btn-link text-primary" onclick="editarCampo('serie')">
+                            <button type="button" class="btn btn-link text-primary" onclick="editarCampo('Ano_escolar')">
                                 <i class="bi bi-pencil"></i>
                             </button>
                         </div>
-                        <select class="form-select mt-2 d-none" id="serie_id" name="serie_id">
-                            {% for serie in series %}
-                            <option value="{{ serie.id }}" {% if serie.id == questao.serie_id %}selected{% endif %}>
-                                {{ serie.nome }}
+                        <select class="form-select mt-2 d-none" id="Ano_escolar_id" name="Ano_escolar_id">
+                            {% for Ano_escolar in Ano_escolar %}
+                            <option value="{{ Ano_escolar.id }}" {% if Ano_escolar.id == questao.Ano_escolar_id %}selected{% endif %}>
+                                {{ Ano_escolar.nome }}
                             </option>
                             {% endfor %}
                         </select>
@@ -195,7 +195,7 @@ function editarCampo(campo) {
 
     // Mostra/esconde os elementos do campo atual
     const elementos = {
-        'serie': ['serie_id'],
+        'Ano_escolar': ['Ano_escolar_id'],
         'Componente Curricular': ['disciplina_id'],
         'assunto': ['assunto'],
         'questao': ['questao', 'questao_texto'],

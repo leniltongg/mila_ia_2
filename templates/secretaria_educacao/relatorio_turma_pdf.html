@@ -7,6 +7,7 @@
             font-family: Arial, sans-serif;
             margin: 40px;
             color: #333;
+            font-size: 12px;
         }
         .header {
             text-align: center;
@@ -15,60 +16,86 @@
         .header h1 {
             color: #2C3E50;
             margin-bottom: 10px;
+            font-size: 24px;
         }
         .periodo {
             color: #7F8C8D;
-            font-size: 18px;
+            font-size: 16px;
             margin-bottom: 30px;
         }
         .cards {
             display: flex;
             justify-content: space-between;
             margin-bottom: 30px;
+            flex-wrap: wrap;
         }
         .card {
             background: #F8F9FA;
             border: 1px solid #DEE2E6;
             border-radius: 4px;
-            padding: 15px;
+            padding: 10px;
             width: 22%;
             text-align: center;
+            margin-bottom: 10px;
         }
         .card h3 {
             color: #2C3E50;
-            margin: 0 0 10px 0;
-            font-size: 16px;
+            margin: 0 0 5px 0;
+            font-size: 14px;
         }
         .card p {
             color: #2C3E50;
-            font-size: 24px;
+            font-size: 18px;
             margin: 0;
             font-weight: bold;
+        }
+        .section {
+            page-break-before: always;
+            margin-bottom: 20px;
+        }
+        .section:first-of-type {
+            page-break-before: avoid;
+        }
+        .section h2 {
+            color: #2C3E50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #2C3E50;
+            padding-bottom: 5px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 30px;
+            font-size: 11px;
         }
         th, td {
             border: 1px solid #DEE2E6;
-            padding: 12px;
+            padding: 8px;
             text-align: left;
         }
         th {
             background: #F8F9FA;
             color: #2C3E50;
+            font-weight: bold;
         }
-        tr:nth-child(even) {
-            background: #F8F9FA;
+        th.media-geral {
+            background: #2C3E50;
+            color: white;
         }
-        .section {
-            margin-bottom: 30px;
+        td {
+            vertical-align: middle;
         }
-        .section h2 {
+        td.media-geral {
+            background: #EBF5FB;
+            font-weight: bold;
             color: #2C3E50;
-            margin-bottom: 15px;
-            font-size: 20px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        tr:nth-child(even) td:not(.media-geral) {
+            background: #F8F9FA;
         }
     </style>
 </head>
@@ -90,8 +117,8 @@
             <p>{{ total_alunos }}</p>
         </div>
         <div class="card">
-            <h3>Total de Questões</h3>
-            <p>{{ total_questoes }}</p>
+            <h3>Alunos Ativos</h3>
+            <p>{{ alunos_ativos }}</p>
         </div>
         <div class="card">
             <h3>Total de Simulados</h3>
@@ -99,54 +126,38 @@
         </div>
     </div>
 
+    {% for turma in turmas %}
     <div class="section">
-        <h2>Desempenho por Turma</h2>
+        <h2>{{ turma.Ano_escolar }} {{ turma.turma }} - Média: {{ "%.1f"|format(turma.media) }}%</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Turma</th>
-                    <th>Total de Alunos</th>
-                    <th>Total de Questões</th>
-                    <th>Média (%)</th>
+                    <th>Aluno</th>
+                    <th class="text-center">Total Simulados</th>
+                    <th class="text-center">Matemática</th>
+                    <th class="text-center">Português</th>
+                    <th class="text-center">Ciências</th>
+                    <th class="text-center">História</th>
+                    <th class="text-center">Geografia</th>
+                    <th class="text-center media-geral">Média Geral</th>
                 </tr>
             </thead>
             <tbody>
-                {% for turma in turmas %}
+                {% for aluno in alunos if aluno.turma_id == turma.id %}
                 <tr>
-                    <td>{{ turma.turma }}</td>
-                    <td>{{ turma.total_alunos }}</td>
-                    <td>{{ turma.total_questoes }}</td>
-                    <td>{{ "%.1f"|format(turma.media) }}%</td>
+                    <td>{{ aluno.aluno_nome }}</td>
+                    <td class="text-center">{{ aluno.total_simulados }}</td>
+                    <td class="text-center">{{ "%.1f"|format(aluno.media_matematica or 0) }}%</td>
+                    <td class="text-center">{{ "%.1f"|format(aluno.media_portugues or 0) }}%</td>
+                    <td class="text-center">{{ "%.1f"|format(aluno.media_ciencias or 0) }}%</td>
+                    <td class="text-center">{{ "%.1f"|format(aluno.media_historia or 0) }}%</td>
+                    <td class="text-center">{{ "%.1f"|format(aluno.media_geografia or 0) }}%</td>
+                    <td class="text-center media-geral">{{ "%.1f"|format(aluno.media) }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-
-    <div class="section">
-        <h2>Desempenho por Escola e Turma</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Escola</th>
-                    <th>Turma</th>
-                    <th>Total de Alunos</th>
-                    <th>Total de Questões</th>
-                    <th>Média (%)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in escolas_turmas %}
-                <tr>
-                    <td>{{ item.escola }}</td>
-                    <td>{{ item.turma }}</td>
-                    <td>{{ item.total_alunos }}</td>
-                    <td>{{ item.total_questoes }}</td>
-                    <td>{{ "%.1f"|format(item.media) }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+    {% endfor %}
 </body>
 </html>

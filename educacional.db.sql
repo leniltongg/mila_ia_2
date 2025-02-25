@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS "alunos" (
 	"data_nascimento"	DATE NOT NULL,
 	"escola_id"	INTEGER NOT NULL,
 	"tipo_ensino"	TEXT NOT NULL,
-	"serie"	TEXT NOT NULL,
+	"Ano_escolar"	TEXT NOT NULL,
 	"turma"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("escola_id") REFERENCES "escolas"("id")
@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS "professores" (
 	"nome"	TEXT NOT NULL,
 	"email"	TEXT NOT NULL UNIQUE,
 	"escola_id"	INTEGER NOT NULL,
-	"serie"	TEXT NOT NULL,
+	"Ano_escolar"	TEXT NOT NULL,
 	"turma"	TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT),
 	FOREIGN KEY("escola_id") REFERENCES "escolas"("id")

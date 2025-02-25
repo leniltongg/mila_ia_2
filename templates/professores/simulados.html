@@ -1,0 +1,220 @@
+{% extends "professores/base_professores.html" %}
+
+{% block title %}
+Simulados
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">Simulados</h4>
+            <a href="{{ url_for('simulados.criar_simulado') }}" class="btn btn-light">
+                <i class="bi bi-plus-circle"></i> Criar Simulado
+            </a>
+        </div>
+        <div class="card-body">
+            {% if simulados %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Disciplina</th>
+                                <th>Professor</th>
+                                <th>Total de Alunos</th>
+                                <th>Média</th>
+                                <th>Nota Máx/Mín</th>
+                                <th class="text-center">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for simulado, disciplina, professor in simulados %}
+                            <tr>
+                                <td>{{ simulado.data_criacao.strftime('%d/%m/%Y') }}</td>
+                                <td>{{ disciplina.nome }}</td>
+                                <td>{{ professor.nome }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-info">
+                                        {{ desempenhos[simulado.id]['total_alunos'] }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% set media = desempenhos[simulado.id]['media'] %}
+                                    {% if media >= 7.0 %}
+                                        <span class="badge bg-success">{{ "%.1f"|format(media) }}</span>
+                                    {% elif media >= 5.0 %}
+                                        <span class="badge bg-warning">{{ "%.1f"|format(media) }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ "%.1f"|format(media) }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-success">{{ "%.1f"|format(desempenhos[simulado.id]['max_nota']) }}</small> /
+                                    <small class="text-danger">{{ "%.1f"|format(desempenhos[simulado.id]['min_nota']) }}</small>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group">
+                                        <button onclick="visualizarSimulado({{ simulado.id }})" class="btn btn-primary btn-sm" title="Visualizar Simulado">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button onclick="verRelatorio({{ simulado.id }})" class="btn btn-info btn-sm" title="Ver Relatório">
+                                            <i class="bi bi-graph-up"></i>
+                                        </button>
+                                        {% if current_user.id == simulado.professor_id or current_user.tipo_usuario_id == 6 %}
+                                        <button onclick="editarSimulado({{ simulado.id }})" class="btn btn-warning btn-sm" title="Editar Simulado">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button onclick="confirmarExclusao({{ simulado.id }})" class="btn btn-danger btn-sm" title="Excluir Simulado">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr id="detalhes-simulado-{{ simulado.id }}" style="display: none;">
+                                <td colspan="7">
+                                    <div class="card">
+                                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                            <h5 class="mb-0">Detalhes do Simulado</h5>
+                                            <button onclick="fecharDetalhes({{ simulado.id }})" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="loading-{{ simulado.id }}" style="display: none;">
+                                                <div class="text-center">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="visually-hidden">Carregando...</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="detalhes-conteudo-{{ simulado.id }}"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Nenhum simulado encontrado.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="confirmacaoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="card-header bg-danger text-white">
+                <h5 class="modal-title">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p><i class="bi bi-exclamation-triangle-fill text-warning me-2"></i> Tem certeza que deseja excluir este simulado?</p>
+                <p class="text-muted small">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-1"></i> Cancelar
+                </button>
+                <form id="formExclusao" method="POST" style="display: inline;">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="bi bi-trash me-1"></i> Excluir
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function visualizarSimulado(simuladoId) {
+    const row = document.getElementById(`detalhes-simulado-${simuladoId}`);
+    const loading = document.getElementById(`loading-${simuladoId}`);
+    const conteudo = document.getElementById(`detalhes-conteudo-${simuladoId}`);
+    
+    if (row.style.display !== 'none') {
+        row.style.display = 'none';
+        return;
+    }
+    
+    row.style.display = '';
+    loading.style.display = '';
+    conteudo.innerHTML = '';
+    
+    fetch(`/professores/simulado/${simuladoId}/detalhes`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            loading.style.display = 'none';
+            
+            let html = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Informações Gerais</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Título:</strong> ${data.titulo}</li>
+                            <li><strong>Disciplina:</strong> ${data.disciplina}</li>
+                            <li><strong>Data de Criação:</strong> ${data.data_criacao}</li>
+                            <li><strong>Tempo de Prova:</strong> ${data.tempo_prova} minutos</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Estatísticas</h6>
+                        <ul class="list-unstyled">
+                            <li><strong>Total de Questões:</strong> ${data.total_questoes}</li>
+                            <li><strong>Alunos que Realizaram:</strong> ${data.total_alunos}</li>
+                            <li><strong>Média Geral:</strong> ${data.media_geral}</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            conteudo.innerHTML = html;
+        })
+        .catch(error => {
+            loading.style.display = 'none';
+            conteudo.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-circle me-2"></i>
+                    Erro ao carregar detalhes: ${error.message}
+                </div>
+            `;
+        });
+}
+
+function verRelatorio(simuladoId) {
+    window.location.href = `/professores/simulado/${simuladoId}/relatorio`;
+}
+
+function editarSimulado(simuladoId) {
+    window.location.href = `/professores/simulado/${simuladoId}/editar`;
+}
+
+function confirmarExclusao(simuladoId) {
+    const modal = new bootstrap.Modal(document.getElementById('confirmacaoModal'));
+    const form = document.getElementById('formExclusao');
+    form.action = `/professores/simulado/${simuladoId}/excluir`;
+    modal.show();
+}
+
+function fecharDetalhes(simuladoId) {
+    const row = document.getElementById(`detalhes-simulado-${simuladoId}`);
+    row.style.display = 'none';
+}
+</script>
+{% endblock %}

@@ -4,6 +4,16 @@
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h1 class="h3 text-gray-800">Relatório de Desempenho por Turma</h1>
+        <div class="d-flex gap-2">
+            {% if escola_id %}
+            <a href="{{ url_for('secretaria_educacao.export_pdf_turma', escola_id=escola_id, turma_id=turma_id, mes=mes) }}" class="btn btn-danger">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </a>
+            <a href="{{ url_for('secretaria_educacao.export_excel_turma', escola_id=escola_id, turma_id=turma_id, mes=mes) }}" class="btn btn-success">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </a>
+            {% endif %}
+        </div>
     </div>
 
     <!-- Seleção de Escola e Turma -->
@@ -18,8 +28,8 @@
                     <select class="form-select" id="escola" name="escola_id" onchange="this.form.submit()">
                         <option value="">Selecione uma escola</option>
                         {% for escola in escolas %}
-                        <option value="{{ escola.id }}" {% if escola_id == escola.id %}selected{% endif %}>
-                            {{ escola.nome }}
+                        <option value="{{ escola.id }}" {% if escola_id == escola.id %}selected{% endif %} style="color: black;">
+                            {{ escola.nome_da_escola }}
                         </option>
                         {% endfor %}
                     </select>
@@ -30,8 +40,33 @@
                     <select class="form-select" id="turma" name="turma_id" onchange="this.form.submit()">
                         <option value="">Todas as Turmas</option>
                         {% for turma in turmas %}
-                        <option value="{{ turma.id }}" {% if turma_id == turma.id %}selected{% endif %}>
-                            {{ turma.turma }}
+                        <option value="{{ turma.id }}" {% if turma_id == turma.id %}selected{% endif %} style="color: black;">
+                            {{ turma.Ano_escolar }}º ano {{ turma.turma }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="mes" class="form-label">Mês</label>
+                    <select class="form-select" id="mes" name="mes" onchange="this.form.submit()">
+                        <option value="">Todos os meses</option>
+                        {% set meses = {
+                            1: 'Janeiro',
+                            2: 'Fevereiro',
+                            3: 'Março',
+                            4: 'Abril',
+                            5: 'Maio',
+                            6: 'Junho',
+                            7: 'Julho',
+                            8: 'Agosto',
+                            9: 'Setembro',
+                            10: 'Outubro',
+                            11: 'Novembro',
+                            12: 'Dezembro'
+                        } %}
+                        {% for m in range(1, 13) %}
+                        <option value="{{ m }}" {% if mes == m %}selected{% endif %}>
+                            {{ meses[m] }}
                         </option>
                         {% endfor %}
                     </select>
@@ -109,7 +144,7 @@
                 <div class="accordion-item">
                     <h2 class="accordion-header" id="heading{{ turma.id }}">
                         <button class="accordion-button {% if not turma_id or turma_id != turma.id %}collapsed{% endif %}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ turma.id }}" aria-expanded="{% if turma_id == turma.id %}true{% else %}false{% endif %}" aria-controls="collapse{{ turma.id }}">
-                            {{ turma.turma }} - Média: {{ "%.1f"|format(turma.media) }}%
+                            {{ turma.Ano_escolar }} {{ turma.turma }} - Média: {{ "%.1f"|format(turma.media) }}%
                         </button>
                     </h2>
                     <div id="collapse{{ turma.id }}" class="accordion-collapse collapse {% if not turma_id or turma_id == turma.id %}show{% endif %}" aria-labelledby="heading{{ turma.id }}" data-bs-parent="#accordionTurmas">
@@ -125,7 +160,7 @@
                                             <th class="text-center">Ciências</th>
                                             <th class="text-center">História</th>
                                             <th class="text-center">Geografia</th>
-                                            <th class="text-center">Média Geral</th>
+                                            <th class="text-center media-geral">Média Geral</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -138,7 +173,7 @@
                                             <td class="text-center">{{ "%.1f"|format(aluno.media_ciencias or 0) }}%</td>
                                             <td class="text-center">{{ "%.1f"|format(aluno.media_historia or 0) }}%</td>
                                             <td class="text-center">{{ "%.1f"|format(aluno.media_geografia or 0) }}%</td>
-                                            <td class="text-center">{{ "%.1f"|format(aluno.media) }}%</td>
+                                            <td class="text-center media-geral">{{ "%.1f"|format(aluno.media) }}%</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>
@@ -153,4 +188,23 @@
     </div>
     {% endif %}
 </div>
+
+<style>
+    th.media-geral {
+        background-color: #2C3E50 !important;
+        color: white !important;
+    }
+    td.media-geral {
+        background-color: #EBF5FB !important;
+        font-weight: bold !important;
+        color: #2C3E50 !important;
+    }
+    tr:nth-child(even) td:not(.media-geral) {
+        background-color: #F8F9FA;
+    }
+    .gap-3 {
+        gap: 1rem !important;
+    }
+</style>
+
 {% endblock %}

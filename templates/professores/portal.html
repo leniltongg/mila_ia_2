@@ -14,10 +14,10 @@
                 <div class="card-body">
                     {% if turmas %}
                         <ul class="list-group">
-                            {% for turma in turmas %}
+                            {% for turma, ano_escolar, escola in turmas %}
                             <li class="list-group-item">
                                 <h6>{{ turma.turma }}</h6>
-                                <p class="mb-0">{{ turma.serie_nome }} - {{ turma.escola_nome }}</p>
+                                <p class="mb-0">{{ ano_escolar.nome }} - {{ escola.nome_da_escola }}</p>
                             </li>
                             {% endfor %}
                         </ul>
@@ -89,7 +89,7 @@
                 </div>
                 <div class="card-body">
                     <div class="d-grid gap-2">
-                        <a href="{{ url_for('relatorios') }}" class="btn btn-outline-primary">
+                        <a href="{{ url_for('simulados.listar_simulados_professor') }}" class="btn btn-outline-primary">
                             <i class="bi bi-graph-up"></i> Ver Relatórios
                         </a>
                     </div>

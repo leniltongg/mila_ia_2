@@ -109,15 +109,15 @@
                 </tr>
             </thead>
             <tbody>
-                {% for serie in series %}
+                {% for Ano_escolar in Ano_escolar %}
                 <tr>
-                    <td>{{ serie.nome }}</td>
-                    <td>{{ serie.total_alunos }}</td>
+                    <td>{{ Ano_escolar.nome }}</td>
+                    <td>{{ Ano_escolar.total_alunos }}</td>
                     <td>
-                        {{ serie.alunos_ativos }}
-                        ({{ "%.1f"|format(serie.alunos_ativos / serie.total_alunos * 100 if serie.total_alunos > 0 else 0) }}%)
+                        {{ Ano_escolar.alunos_ativos }}
+                        ({{ "%.1f"|format(Ano_escolar.alunos_ativos / Ano_escolar.total_alunos * 100 if Ano_escolar.total_alunos > 0 else 0) }}%)
                     </td>
-                    <td>{{ "%.1f"|format(serie.media) }}%</td>
+                    <td>{{ "%.1f"|format(Ano_escolar.media) }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>

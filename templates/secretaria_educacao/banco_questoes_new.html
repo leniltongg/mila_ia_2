@@ -10,12 +10,12 @@
             <form id="filtroForm" method="GET">
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <label for="serie_id" class="form-label">Ano Escolar</label>
-                        <select class="form-select" id="serie_id" name="serie_id">
+                        <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
+                        <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id">
                             <option value="">Todos</option>
-                            {% for serie in series %}
-                            <option value="{{ serie.id }}" {% if serie.id == request.args.get('serie_id', '')|int %}selected{% endif %}>
-                                {{ serie.nome }}
+                            {% for Ano_escolar in Ano_escolar %}
+                            <option value="{{ Ano_escolar.id }}" {% if Ano_escolar.id == request.args.get('Ano_escolar_id', '')|int %}selected{% endif %}>
+                                {{ Ano_escolar.nome }}
                             </option>
                             {% endfor %}
                         </select>
@@ -110,11 +110,11 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="serie_id" class="form-label">Ano Escolar</label>
-                                <select class="form-select" id="serie_id" name="serie_id" required>
+                                <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
+                                <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id" required>
                                     <option value="">Selecione...</option>
-                                    {% for serie in series %}
-                                    <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                    {% for Ano_escolar in Ano_escolar %}
+                                    <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -175,7 +175,7 @@
                         {% for questao in questoes %}
                         <tr>
                             <td>{{ questao.questao[:100] }}...</td>
-                            <td>{{ questao.serie_nome }}</td>
+                            <td>{{ questao.Ano_escolar_nome }}</td>
                             <td>{{ questao.disciplina_nome }}</td>
                             <td>{{ questao.assunto }}</td>
                             <td>

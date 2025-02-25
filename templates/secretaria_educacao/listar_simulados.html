@@ -14,11 +14,11 @@
                 <div class="card-body">
                     <form id="filtro-form">
                         <div class="mb-3">
-                            <label for="filtro-serie" class="form-label">Série</label>
-                            <select class="form-select" id="filtro-serie">
+                            <label for="filtro-Ano_escolar" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="filtro-Ano_escolar">
                                 <option value="">Todas</option>
-                                {% for serie in series %}
-                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% for Ano_escolar in Ano_escolar %}
+                                <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -66,7 +66,7 @@
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
-                                        <th>Série</th>
+                                        <th>Ano Escolar</th>
                                         <th>Componente Curricular</th>
                                         <th>Mês</th>
                                         <th>Data Envio</th>
@@ -77,7 +77,7 @@
                                 <tbody>
                                     {% for simulado in simulados %}
                                     <tr>
-                                        <td>{{ simulado.serie_nome }}</td>
+                                        <td>{{ simulado.Ano_escolar_nome }}</td>
                                         <td>{{ simulado.disciplina_nome }}</td>
                                         <td>{{ simulado.mes_nome }}</td>
                                         <td>{{ simulado.data_envio }}</td>
@@ -122,12 +122,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 async function buscarSimulados() {
-    const serie = document.getElementById('filtro-serie').value;
+    const Ano_escolar = document.getElementById('filtro-Ano_escolar').value;
     const Componente Curricular = document.getElementById('filtro-Componente Curricular').value;
     const mes = document.getElementById('filtro-mes').value;
     
     try {
-        const response = await fetch(`/secretaria_educacao/filtrar-simulados?serie_id=${serie}&disciplina_id=${Componente Curricular}&mes_id=${mes}`);
+        const response = await fetch(`/secretaria_educacao/filtrar-simulados?Ano_escolar_id=${Ano_escolar}&disciplina_id=${Componente Curricular}&mes_id=${mes}`);
         const data = await response.json();
         
         window.location.reload();

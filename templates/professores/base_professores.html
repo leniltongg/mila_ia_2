@@ -7,6 +7,7 @@
 {% endblock %}
 
 {% block sidebar_title %}Portal dos Professores{% endblock %}
+{% block mobile_title %}Portal dos Professores{% endblock %}
 
 {% block sidebar_content %}
     <div class="nav flex-column">
@@ -34,33 +35,15 @@
                 </a>
             </div>
         </div>
-
+        
         <!-- Simulados -->
         <a class="nav-link d-flex justify-content-between align-items-center" 
-            data-bs-toggle="collapse" 
-            href="#simuladosMenu" 
-            role="button" 
-            aria-expanded="false" 
-            aria-controls="simuladosMenu">
+            href="{{ url_for('professores.listar_simulados') }}"
+            role="button">
             <span>
                 <i class="bi bi-clipboard-check"></i> Simulados
             </span>
-            <i class="bi bi-chevron-down"></i>
         </a>
-        
-        <div class="collapse" id="simuladosMenu">
-            <div class="nav flex-column ms-3">
-                <a class="nav-link" href="{{ url_for('simulados.criar_simulado') }}">
-                    <i class="bi bi-plus-circle"></i> Criar Simulado
-                </a>
-                <a class="nav-link" href="{{ url_for('simulados.listar_simulados_professor') }}">
-                    <i class="bi bi-list-check"></i> Meus Simulados
-                </a>
-                <a class="nav-link" href="{{ url_for('simulados.banco_questoes') }}">
-                    <i class="bi bi-journal-text"></i> Banco de Questões
-                </a>
-            </div>
-        </div>
 
         <!-- Ferramentas MILA -->
         <a class="nav-link d-flex justify-content-between align-items-center" 
@@ -93,7 +76,8 @@
         </div>
 
         <!-- Relatórios -->
-        <a class="nav-link {% if request.endpoint == 'relatorios' %}active{% endif %}" href="{{ url_for('relatorios') }}">
+        <a class="nav-link {% if request.endpoint == 'simulados.listar_simulados_professor' %}active{% endif %}" 
+           href="{{ url_for('simulados.listar_simulados_professor') }}">
             <i class="bi bi-graph-up"></i> Relatórios
         </a>
 
@@ -118,3 +102,7 @@
         </a>
     </div>
 {% endblock %}
+
+{% block content %}{% endblock %}
+
+{% block scripts %}{% endblock %}

@@ -31,7 +31,7 @@ def login():
         
         try:
             cursor.execute("""
-                SELECT id, nome, tipo_usuario_id, escola_id, serie_id, turma_id, email, 
+                SELECT id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, 
                        codigo_ibge, senha_hash
                 FROM usuarios 
                 WHERE email = ?
@@ -45,7 +45,7 @@ def login():
                     nome=user_data['nome'],
                     tipo_usuario_id=user_data['tipo_usuario_id'],
                     escola_id=user_data['escola_id'],
-                    serie_id=user_data['serie_id'],
+                    Ano_escolar_id=user_data['Ano_escolar_id'],
                     turma_id=user_data['turma_id'],
                     email=user_data['email'],
                     codigo_ibge=user_data['codigo_ibge']

@@ -11,9 +11,8 @@ import tempfile
 import json
 import graphviz
 import re
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from database import get_db
+from app import db
+from models import Disciplinas, Ano_escolar, SimuladosGeradosProfessor
 
 # Criar o blueprint
 conteudo_bp = Blueprint('conteudo', __name__)
@@ -82,49 +81,51 @@ def gerar_mapa_mental(tema, conteudo):
 @login_required
 def criar_plano_aula():
     # Verificar se é professor
-    if current_user.tipo_usuario_id != 3:  # 3 = Professor
+    if current_user.tipo_usuario_id not in [3, 6]:  # 3 = Professor
         return jsonify({'error': 'Acesso não autorizado'}), 403
 
-    db = get_db()
-
     # Buscar disciplinas e séries que o professor tem acesso
-    disciplinas_series = db.execute('''
-        SELECT DISTINCT 
-            d.id as disciplina_id,
-            d.nome as disciplina_nome,
-            s.id as serie_id,
-            s.nome as serie_nome
-        FROM simulados_gerados_professor sgp
-        JOIN disciplinas d ON sgp.disciplina_id = d.id
-        JOIN series s ON sgp.serie_id = s.id
-        WHERE sgp.professor_id = ?
-        ORDER BY d.nome, s.nome
-    ''', [current_user.id]).fetchall()
+    disciplinas_series = (
+        db.session.query(
+            Disciplinas.id.label('disciplina_id'),
+            Disciplinas.nome.label('disciplina_nome'),
+            Ano_escolar.id.label('Ano_escolar_id'),
+            Ano_escolar.nome.label('Ano_escolar_nome')
+        )
+        .join(SimuladosGeradosProfessor, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id)
+        .join(Ano_escolar, SimuladosGeradosProfessor.Ano_escolar_id == Ano_escolar.id)
+        .filter(SimuladosGeradosProfessor.professor_id == current_user.id)
+        .distinct()
+        .order_by(Disciplinas.nome, Ano_escolar.nome)
+        .all()
+    )
 
     if request.method == 'GET':
         # Organizar dados para o template
         disciplinas = {}
-        series = set()
+        anos_escolares = set()
         
         for item in disciplinas_series:
-            disciplinas[item['disciplina_nome']] = item['disciplina_nome']
-            series.add((item['serie_id'], item['serie_nome']))
+            disciplinas[item.disciplina_id] = item.disciplina_nome  # Usar ID como chave
+            anos_escolares.add((item.Ano_escolar_id, item.Ano_escolar_nome))
         
         return render_template('conteudo/plano_aula.html', 
-                             disciplinas=sorted(disciplinas.keys()),
-                             series=sorted(series, key=lambda x: x[1]))
+                             disciplinas=[(id, nome) for id, nome in disciplinas.items()],  # Enviar tuplas (id, nome)
+                             Ano_escolar=sorted(anos_escolares, key=lambda x: x[1]))
 
     elif request.method == 'POST':
-        disciplina = request.form.get('disciplina')
-        serie = request.form.get('serie')
+        disciplina_id = request.form.get('disciplina')
+        ano_escolar_id = request.form.get('Ano_escolar')
         tema = request.form.get('tema')
         duracao = request.form.get('duracao')
         
         # Verificar se o professor tem acesso à disciplina e série selecionadas
         tem_acesso = False
+        disciplina_nome = None
         for item in disciplinas_series:
-            if item['disciplina_nome'].lower() == disciplina.lower() and str(item['serie_id']) == serie:
+            if str(item.disciplina_id) == disciplina_id and str(item.Ano_escolar_id) == ano_escolar_id:
                 tem_acesso = True
+                disciplina_nome = item.disciplina_nome
                 break
         
         if not tem_acesso:
@@ -134,8 +135,8 @@ def criar_plano_aula():
             }), 403
         
         prompt = f"""Crie um plano de aula detalhado para:
-        Disciplina: {disciplina}
-        Série: {serie}º ano
+        Disciplina: {disciplina_nome}
+        Ano Escolar: {ano_escolar_id}º ano
         Tema: {tema}
         Duração: {duracao} minutos
 
@@ -169,7 +170,7 @@ def criar_plano_aula():
 def criar_resumo():
     if request.method == 'POST':
         disciplina = request.form.get('disciplina')
-        serie = request.form.get('serie')
+        Ano_escolar = request.form.get('Ano_escolar')
         tema = request.form.get('tema')
         tipo_resumo = request.form.get('tipo_resumo')
         nivel_detalhe = request.form.get('nivel_detalhe')
@@ -178,7 +179,7 @@ def criar_resumo():
         
         prompt = f"""Crie um resumo educacional para:
         Disciplina: {disciplina}
-        Série: {serie}
+        Ano Escolar: {Ano_escolar}
         Tema: {tema}
         Tipo de Resumo: {tipo_resumo}
         Nível de Detalhamento: {nivel_detalhe}"""
@@ -231,7 +232,7 @@ def criar_resumo():
 def criar_exercicios():
     if request.method == 'POST':
         disciplina = request.form.get('disciplina')
-        serie = request.form.get('serie')
+        Ano_escolar = request.form.get('Ano_escolar')
         tema = request.form.get('tema')
         num_questoes = request.form.get('num_questoes')
         nivel = request.form.get('nivel')
@@ -239,7 +240,7 @@ def criar_exercicios():
         
         prompt = f"""Crie uma lista de exercícios para:
         Disciplina: {disciplina}
-        Série: {serie}
+        Ano Escolar: {Ano_escolar}
         Tema: {tema}
         Número de Questões: {num_questoes}
         Nível: {nivel}
@@ -285,14 +286,14 @@ def criar_exercicios():
 def criar_material_complementar():
     if request.method == 'POST':
         disciplina = request.form.get('disciplina')
-        serie = request.form.get('serie')
+        Ano_escolar = request.form.get('Ano_escolar')
         tema = request.form.get('tema')
         tipo_material = request.form.get('tipo_material')
         nivel_detalhe = request.form.get('nivel_detalhe')
         
         prompt = f"""Crie um material complementar para:
         Disciplina: {disciplina}
-        Série: {serie}
+        Ano Escolar: {Ano_escolar}
         Tema: {tema}
         Tipo de Material: {tipo_material}
         Nível de Detalhamento: {nivel_detalhe}

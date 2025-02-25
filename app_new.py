@@ -1,10 +1,11 @@
 from flask import Flask, render_template, redirect, url_for, request, flash
 from flask_login import LoginManager, login_user, current_user
-from werkzeug.urls import url_parse
+from werkzeug.urls import url_parse as werkzeug_url_parse
 from werkzeug.middleware.proxy_fix import ProxyFix
 from config import Config
 from auth import auth
-from database import get_db, close_db, init_db
+from database import get_db, close_db, init_db, db
+from flask_migrate import Migrate
 import logging
 from logging.handlers import RotatingFileHandler
 import os
@@ -19,6 +20,12 @@ from models import User
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+
+    # Inicializa o Flask-SQLAlchemy
+    db.init_app(app)
+
+    # Inicializa o Flask-Migrate
+    migrate = Migrate(app, db)
 
     # Configuração do proxy
     app.wsgi_app = ProxyFix(
@@ -70,7 +77,7 @@ def create_app(config_class=Config):
             db = get_db()
             cursor = db.cursor()
             cursor.execute("""
-                SELECT id, nome, tipo_usuario_id, escola_id, serie_id, turma_id, email, codigo_ibge
+                SELECT id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, codigo_ibge
                 FROM usuarios
                 WHERE id = ?
             """, (user_id,))
@@ -82,7 +89,7 @@ def create_app(config_class=Config):
                     nome=user_data['nome'],
                     tipo_usuario_id=user_data['tipo_usuario_id'],
                     escola_id=user_data['escola_id'],
-                    serie_id=user_data['serie_id'],
+                    Ano_escolar_id=user_data['Ano_escolar_id'],
                     turma_id=user_data['turma_id'],
                     email=user_data['email'],
                     codigo_ibge=user_data['codigo_ibge']

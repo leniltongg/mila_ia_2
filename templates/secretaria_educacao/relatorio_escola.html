@@ -116,32 +116,91 @@
             </div>
         </div>
 
-        <!-- Desempenho por Série -->
+        <!-- Gráficos -->
+        <div class="row mb-4">
+            <!-- Gráfico de Anos Escolares -->
+            <div class="col-xl-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 300px;">
+                            <canvas id="anosChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Disciplinas -->
+            <div class="col-xl-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Desempenho por Disciplina</h6>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 300px;">
+                            <canvas id="disciplinasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Turmas -->
+            <div class="col-xl-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Desempenho por Turma</h6>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 300px;">
+                            <canvas id="turmasChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Taxa de Participação -->
+            <div class="col-xl-6 mb-4">
+                <div class="card shadow">
+                    <div class="card-header py-3">
+                        <h6 class="m-0 font-weight-bold text-primary">Taxa de Participação</h6>
+                    </div>
+                    <div class="card-body">
+                        <div style="height: 300px;">
+                            <canvas id="participacaoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Desempenho por Ano Escolar -->
         <div class="card shadow mb-4">
             <div class="card-header py-3">
-                <h6 class="m-0 font-weight-bold text-primary">Desempenho por Série</h6>
+                <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
             </div>
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover">
                         <thead>
                             <tr>
-                                <th>Série</th>
+                                <th>Ano Escolar</th>
                                 <th>Total Alunos</th>
                                 <th>Alunos Ativos</th>
                                 <th>Média</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for serie in series %}
+                            {% for ano in Ano_escolar %}
                             <tr>
-                                <td>{{ serie.nome }}</td>
-                                <td>{{ serie.total_alunos }}</td>
+                                <td>{{ ano["Ano_escolar_nome"] }}</td>
+                                <td>{{ ano.total_alunos }}</td>
                                 <td>
-                                    {{ serie.alunos_ativos }}
-                                    <small class="text-muted">({{ "%.1f"|format(serie.alunos_ativos / serie.total_alunos * 100 if serie.total_alunos > 0 else 0) }}%)</small>
+                                    {{ ano.alunos_ativos }}
+                                    <small class="text-muted">({{ "%.1f"|format(ano.alunos_ativos / ano.total_alunos * 100 if ano.total_alunos > 0 else 0) }}%)</small>
                                 </td>
-                                <td>{{ "%.1f"|format(serie.media) }}%</td>
+                                <td>{{ "%.1f"|format(ano.media) }}%</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -201,31 +260,21 @@
                         <div id="collapse{{ turma.id }}" class="accordion-collapse collapse" aria-labelledby="heading{{ turma.id }}" data-bs-parent="#accordionTurmas">
                             <div class="accordion-body">
                                 <div class="table-responsive">
-                                    <table class="table table-bordered">
+                                    <table class="table table-sm">
                                         <thead>
                                             <tr>
                                                 <th>Aluno</th>
-                                                <th class="text-center">Total Simulados</th>
-                                                <th class="text-center">Matemática</th>
-                                                <th class="text-center">Português</th>
-                                                <th class="text-center">Ciências</th>
-                                                <th class="text-center">História</th>
-                                                <th class="text-center">Geografia</th>
-                                                <th class="text-center">Média Geral</th>
+                                                <th>Total de Simulados</th>
+                                                <th>Média</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for aluno in alunos if aluno.turma_id == turma.id %}
-                                                <tr>
-                                                    <td>{{ aluno.aluno_nome }}</td>
-                                                    <td class="text-center">{{ aluno.total_simulados }}</td>
-                                                    <td class="text-center">{{ "%.1f"|format(aluno.media_matematica or 0) }}%</td>
-                                                    <td class="text-center">{{ "%.1f"|format(aluno.media_portugues or 0) }}%</td>
-                                                    <td class="text-center">{{ "%.1f"|format(aluno.media_ciencias or 0) }}%</td>
-                                                    <td class="text-center">{{ "%.1f"|format(aluno.media_historia or 0) }}%</td>
-                                                    <td class="text-center">{{ "%.1f"|format(aluno.media_geografia or 0) }}%</td>
-                                                    <td class="text-center">{{ "%.1f"|format(aluno.media) }}%</td>
-                                                </tr>
+                                            <tr>
+                                                <td>{{ aluno.aluno_nome }}</td>
+                                                <td>{{ aluno.total_simulados }}</td>
+                                                <td>{{ "%.1f"|format(aluno.media) }}%</td>
+                                            </tr>
                                             {% endfor %}
                                         </tbody>
                                     </table>
@@ -237,46 +286,241 @@
                 </div>
             </div>
         </div>
-
-        
     {% else %}
         <div class="alert alert-info">
             Selecione uma escola para visualizar seu desempenho.
         </div>
     {% endif %}
 </div>
-
-<!-- Modal de Detalhes dos Alunos -->
-<div class="modal fade" id="modalDetalhesAlunos" tabindex="-1" aria-labelledby="modalDetalhesAlunosLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalDetalhesAlunosLabel">Detalhes da Turma</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div id="listaAlunos">
-                    <div class="text-center">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Carregando...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-{% block extra_js %}
-<script>
-function verDetalhesAlunos(turmaId) {
-    // Abrir o modal
-    const modal = new bootstrap.Modal(document.getElementById('modalDetalhesAlunos'));
-    modal.show();
-    
-    // TODO: Implementar a busca dos alunos da turma
-    // Será implementado na próxima etapa
-}
-</script>
 {% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Cores para os gráficos
+        const colors = {
+            blue: {
+                primary: '#4e73df',
+                light: '#4e73df80'
+            },
+            green: {
+                primary: '#1cc88a',
+                light: '#1cc88a80'
+            },
+            red: {
+                primary: '#e74a3b',
+                light: '#e74a3b80'
+            },
+            yellow: {
+                primary: '#f6c23e',
+                light: '#f6c23e80'
+            }
+        };
+
+        // Dados para os gráficos
+        const anosData = {
+            labels: {{ Ano_escolar|map(attribute='Ano_escolar_nome')|list|tojson }},
+            data: {{ Ano_escolar|map(attribute='media')|list|tojson }}
+        };
+
+        const disciplinasData = {
+            labels: {{ disciplinas|map(attribute='disciplina')|list|tojson }},
+            data: {{ disciplinas|map(attribute='media_acertos')|list|tojson }}
+        };
+
+        const turmasData = {
+            labels: {{ turmas|map(attribute='turma')|list|tojson }},
+            data: {{ turmas|map(attribute='media')|list|tojson }}
+        };
+
+        const participacaoData = {
+            labels: {{ turmas|map(attribute='turma')|list|tojson }},
+            data: {{ turmas|map(attribute='alunos_ativos')|list|tojson }}
+        };
+
+        console.log('Dados dos gráficos:', {
+            anos: anosData,
+            disciplinas: disciplinasData,
+            turmas: turmasData,
+            participacao: participacaoData
+        });
+
+        // Gráfico de Anos Escolares
+        new Chart(
+            document.getElementById('anosChart'),
+            {
+                type: 'bar',
+                data: {
+                    labels: anosData.labels,
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: anosData.data,
+                        backgroundColor: colors.blue.light,
+                        borderColor: colors.blue.primary,
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#eee'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Disciplinas
+        new Chart(
+            document.getElementById('disciplinasChart'),
+            {
+                type: 'radar',
+                data: {
+                    labels: disciplinasData.labels,
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: disciplinasData.data,
+                        backgroundColor: colors.red.light,
+                        borderColor: colors.red.primary,
+                        borderWidth: 2,
+                        pointBackgroundColor: colors.red.primary,
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: colors.red.primary,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            ticks: {
+                                stepSize: 20
+                            },
+                            grid: {
+                                color: '#eee'
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Turmas
+        new Chart(
+            document.getElementById('turmasChart'),
+            {
+                type: 'line',
+                data: {
+                    labels: turmasData.labels,
+                    datasets: [{
+                        label: 'Média (%)',
+                        data: turmasData.data,
+                        borderColor: colors.green.primary,
+                        backgroundColor: colors.green.light,
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: '#eee'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            }
+        );
+
+        // Gráfico de Taxa de Participação
+        new Chart(
+            document.getElementById('participacaoChart'),
+            {
+                type: 'doughnut',
+                data: {
+                    labels: participacaoData.labels,
+                    datasets: [{
+                        data: participacaoData.data,
+                        backgroundColor: [
+                            colors.blue.primary,
+                            colors.green.primary,
+                            colors.red.primary,
+                            colors.yellow.primary,
+                            '#36b9cc',
+                            '#2ecc71',
+                            '#9b59b6',
+                            '#34495e'
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                padding: 20
+                            }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            }
+        );
+
+        console.log('Gráficos carregados com sucesso');
+    } catch (error) {
+        console.error('Erro ao carregar gráfico:', error);
+    }
+});
+</script>
 {% endblock %}

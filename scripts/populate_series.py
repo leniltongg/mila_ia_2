@@ -1,8 +1,8 @@
-from models import db, Serie
+from models import db, Ano_escolar
 
-def populate_series():
+def populate_Ano_escolar():
     """Popula a tabela de séries com os dados iniciais."""
-    series_data = [
+    Ano_escolar_data = [
         # Ensino Fundamental 1
         {'nome': '1º Ano', 'nivel_ensino': 'fundamental_1', 'ordem': 1},
         {'nome': '2º Ano', 'nivel_ensino': 'fundamental_1', 'ordem': 2},
@@ -28,16 +28,16 @@ def populate_series():
         {'nome': 'EJA - Fase 4', 'nivel_ensino': 'eja', 'ordem': 16},
     ]
     
-    for serie_info in series_data:
-        serie = Serie(**serie_info)
-        db.session.add(serie)
+    for Ano_escolar_info in Ano_escolar_data:
+        Ano_escolar = Ano_escolar(**Ano_escolar_info)
+        db.session.add(Ano_escolar)
     
     try:
         db.session.commit()
-        print("Séries populadas com sucesso!")
+        print("Ano Escolars populadas com sucesso!")
     except Exception as e:
         db.session.rollback()
         print(f"Erro ao popular séries: {str(e)}")
 
 if __name__ == '__main__':
-    populate_series()
+    populate_Ano_escolar()

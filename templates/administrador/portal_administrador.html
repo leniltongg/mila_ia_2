@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Portal do Administrador{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Portal do Administrador</h1>
+
+    <!-- Seletor de Cidade -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Selecionar Cidade</h5>
+            <form action="{{ url_for('administrador.selecionar_cidade2') }}" method="POST" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="codigo_ibge" class="form-label">Cidade</label>
+                    <select name="codigo_ibge" id="codigo_ibge" class="form-select">
+                        <option value="">Todas as cidades</option>
+                        {% for cidade in cidades %}
+                        <option value="{{ cidade.codigo_ibge }}" {% if cidade_selecionada and cidade.codigo_ibge == cidade_selecionada.codigo_ibge %}selected{% endif %}>
+                            {{ cidade.nome }} - {{ cidade.estado }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resumo -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Usuários por Tipo</h5>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Quantidade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tipo, total in usuarios_por_tipo %}
+                                <tr>
+                                    <td>{{ tipo }}</td>
+                                    <td>{{ total }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">Informações Gerais</h5>
+                    <p>Total de Escolas: {{ total_escolas }}</p>
+                    {% if cidade_selecionada %}
+                    <div class="alert alert-info">
+                        Mostrando dados para: {{ cidade_selecionada.nome }} - {{ cidade_selecionada.estado }}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portais -->
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Acessar Portais</h5>
+            <div class="row g-4">
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Portal da Secretaria de Educação</h5>
+                            <p class="card-text">Acesse relatórios e informações gerenciais da rede municipal.</p>
+                            <a href="{{ url_for('secretaria_educacao.portal_secretaria_educacao') }}" class="btn btn-primary">Acessar</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Portal do Professor</h5>
+                            <p class="card-text">Acesse simulados e resultados dos alunos.</p>
+                            <a href="{{ url_for('professores.portal_professores') }}" class="btn btn-primary">Acessar</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Portal do Aluno</h5>
+                            <p class="card-text">Acesse área do aluno e simulados.</p>
+                            <a href="{{ url_for('alunos_bp.portal_alunos') }}" class="btn btn-primary">Acessar</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Adicione aqui qualquer JavaScript necessário
+});
+</script>
+{% endblock %}

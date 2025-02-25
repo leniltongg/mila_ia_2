@@ -1,10 +1,9 @@
 # Importar os blueprints
 from .conteudo import conteudo_bp
-from .professores import professores_bp
+from .professores.routes import professores_bp
 from .alunos_bp import alunos_bp
 from .simulados import simulados_bp
 from .secretaria_educacao import secretaria_educacao_bp
-from .admin_v2 import admin_v2
 
 # Exportar os blueprints
 __all__ = [
@@ -12,6 +11,5 @@ __all__ = [
     'professores_bp',
     'alunos_bp',
     'simulados_bp',
-    'secretaria_educacao_bp',
-    'admin_v2'
+    'secretaria_educacao_bp'
 ]

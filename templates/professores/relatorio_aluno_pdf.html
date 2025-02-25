@@ -125,6 +125,7 @@
         <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Logo" class="logo">
         <div class="school-info">{{ turma.escola }}</div>
         <div class="report-title">Relatório de Desempenho do Aluno</div>
+        <div class="report-date">Gerado em {{ data_atual }}</div>
     </div>
 
     <div class="student-info">
@@ -134,8 +135,8 @@
                 <td>{{ aluno.nome }}</td>
             </tr>
             <tr>
-                <th>Série</th>
-                <td>{{ turma.serie }}</td>
+                <th>Ano Escolar</th>
+                <td>{{ turma.Ano_escolar }}</td>
             </tr>
             <tr>
                 <th>Turma</th>
@@ -143,7 +144,7 @@
             </tr>
             <tr>
                 <th>Data do Relatório</th>
-                <td>{{ now.strftime('%d/%m/%Y') }}</td>
+                <td>{{ data_atual }}</td>
             </tr>
         </table>
     </div>
@@ -202,8 +203,12 @@
     </div>
 
     <div class="footer">
-        <p>Este relatório foi gerado automaticamente pelo sistema em {{ now.strftime('%d/%m/%Y às %H:%M') }}</p>
+        <p>Este relatório foi gerado automaticamente pelo sistema em {{ data_hora_atual }}</p>
         <p>{{ turma.escola }} - Sistema de Acompanhamento Pedagógico</p>
+    </div>
+</body>
+</html>
+        <p>{{ turma.nome_escola }} - Sistema de Acompanhamento Pedagógico</p>
     </div>
 </body>
 </html>

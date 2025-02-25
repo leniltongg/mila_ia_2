@@ -37,11 +37,11 @@
         </div>
     </div>
 
-    <!-- Desempenho por Série -->
-    {% for serie in series %}
+    <!-- Desempenho por Ano Escolar -->
+    {% for Ano_escolar in Ano_escolar %}
     <div class="card mb-4">
         <div class="card-header">
-            <h4 class="mb-0">{{ serie.nome }}</h4>
+            <h4 class="mb-0">{{ Ano_escolar.nome }}</h4>
         </div>
         <div class="card-body">
             <div class="table-responsive">
@@ -55,7 +55,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for escola in serie.escolas %}
+                        {% for escola in Ano_escolar.escolas %}
                         <tr>
                             <td>{{ loop.index }}º</td>
                             <td>{{ escola.nome }}</td>

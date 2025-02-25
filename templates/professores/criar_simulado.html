@@ -20,12 +20,12 @@
                 <div class="card-body">
                     <form id="simulado-form">
                         <div class="mb-3">
-                            <label for="serie_id" class="form-label">Série</label>
-                            <select class="form-select" id="serie_id" required>
+                            <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="Ano_escolar_id" required>
                                 <option value="">Selecione...</option>
-                                {% for serie in series %}
-                                <option value="{{ serie.id }}" {% if simulado and simulado.serie_id == serie.id %}selected{% endif %}>
-                                    {{ serie.nome }}
+                                {% for Ano_escolar in Ano_escolar %}
+                                <option value="{{ Ano_escolar.id }}" {% if simulado and simulado.Ano_escolar_id == Ano_escolar.id %}selected{% endif %}>
+                                    {{ Ano_escolar.nome }}
                                 </option>
                                 {% endfor %}
                             </select>
@@ -74,9 +74,9 @@
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-                        <dt class="col-sm-4">Série:</dt>
-                        <dd class="col-sm-8" id="resumo-serie">
-                            {% if simulado %}{{ simulado.serie_nome }}{% else %}-{% endif %}
+                        <dt class="col-sm-4">Ano Escolar:</dt>
+                        <dd class="col-sm-8" id="resumo-Ano_escolar">
+                            {% if simulado %}{{ simulado.Ano_escolar_nome }}{% else %}-{% endif %}
                         </dd>
                         
                         <dt class="col-sm-4">Disciplina:</dt>
@@ -108,11 +108,11 @@
                     <!-- Filtros -->
                     <div class="row mb-3">
                         <div class="col-md-4">
-                            <label for="filtro-serie" class="form-label">Série</label>
-                            <select class="form-select" id="filtro-serie">
-                                <option value="">Todas</option>
-                                {% for serie in series %}
-                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                            <label for="filtro-Ano_escolar" class="form-label">Anos Escolares</label>
+                            <select class="form-select" id="filtro-Ano_escolar">
+                                <option value="">Todos</option>
+                                {% for Ano_escolar in Ano_escolar %}
+                                <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -204,22 +204,37 @@ const questoesSelecionadas = new Set();
 document.addEventListener('DOMContentLoaded', function() {
     setupDragAndDrop();
     
-    document.getElementById('filtro-serie').addEventListener('change', buscarQuestoes);
+    document.getElementById('filtro-Ano_escolar').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-disciplina').addEventListener('change', buscarQuestoes);
-    document.getElementById('filtro-assunto').addEventListener('change', buscarQuestoes);
+    document.getElementById('filtro-assunto').addEventListener('input', debounce(buscarQuestoes, 500));
     
-    document.getElementById('serie_id').addEventListener('change', atualizarResumo);
+    document.getElementById('Ano_escolar_id').addEventListener('change', atualizarResumo);
     document.getElementById('disciplina_id').addEventListener('change', atualizarResumo);
     document.getElementById('mes_id').addEventListener('change', atualizarResumo);
     
     {% if simulado %}
-        document.getElementById('serie_id').value = '{{ simulado.serie_id }}';
+        document.getElementById('Ano_escolar_id').value = '{{ simulado.Ano_escolar_id }}';
         document.getElementById('disciplina_id').value = '{{ simulado.disciplina_id }}';
         document.getElementById('mes_id').value = '{{ simulado.mes_id }}';
         
         atualizarResumo();
     {% endif %}
     
+    // Sincronizar campos de disciplina
+    const disciplinaField = document.getElementById('disciplina_id');
+    const filtroDisciplina = document.getElementById('filtro-disciplina');
+    
+    disciplinaField.addEventListener('change', function() {
+        filtroDisciplina.value = this.value;
+        buscarQuestoes();
+    });
+    
+    filtroDisciplina.addEventListener('change', function() {
+        disciplinaField.value = this.value;
+        buscarQuestoes();
+    });
+    
+    // Buscar questões ao carregar a página
     buscarQuestoes();
 });
 
@@ -265,12 +280,12 @@ function criarElementoQuestao(questao) {
 }
 
 function atualizarResumo() {
-    const serie = document.getElementById('serie_id');
+    const Ano_escolar = document.getElementById('Ano_escolar_id');
     const disciplina = document.getElementById('disciplina_id');
     const mes = document.getElementById('mes_id');
     
-    document.getElementById('resumo-serie').textContent = 
-        serie.options[serie.selectedIndex]?.text || '-';
+    document.getElementById('resumo-Ano_escolar').textContent = 
+        Ano_escolar.options[Ano_escolar.selectedIndex]?.text || '-';
     document.getElementById('resumo-disciplina').textContent = 
         disciplina.options[disciplina.selectedIndex]?.text || '-';
     document.getElementById('resumo-mes').textContent = 
@@ -280,27 +295,31 @@ function atualizarResumo() {
 }
 
 async function buscarQuestoes() {
-    const serie = document.getElementById('filtro-serie').value;
+    const Ano_escolar = document.getElementById('filtro-Ano_escolar').value;
     const disciplina = document.getElementById('filtro-disciplina').value;
     const assunto = document.getElementById('filtro-assunto').value;
     
     try {
-        const response = await fetch(`/professores/buscar-questoes?serie_id=${serie}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        const response = await fetch(`/simulados/buscar-questoes?Ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&assunto=${assunto}`);
         if (!response.ok) {
             throw new Error('Erro ao buscar questões');
         }
-        const questoes = await response.json();
+        const data = await response.json();
+        
+        if (!data.success) {
+            throw new Error(data.error || 'Erro ao buscar questões');
+        }
         
         const questoesDisponiveis = document.getElementById('questoes-disponiveis');
-        questoesDisponiveis.innerHTML = questoes.map(questao => {
+        questoesDisponiveis.innerHTML = data.questoes.map(questao => {
             const questaoJSON = JSON.stringify(questao).replace(/"/g, '&quot;');
             return `
                 <div class="questao-row" draggable="true" data-questao='${questaoJSON}'>
                     <h6>Questão ${questao.id}</h6>
-                    <p class="mb-2">${questao.pergunta.substring(0, 100)}...</p>
+                    <p class="mb-2">${questao.enunciado.substring(0, 100)}...</p>
                     <div class="questao-info text-muted small mb-2">
                         <span>Disciplina: ${questao.disciplina_nome}</span> | 
-                        <span>Série: ${questao.serie_nome}</span> | 
+                        <span>Ano Escolar: ${questao.Ano_escolar_nome}</span> | 
                         <span>Assunto: ${questao.assunto}</span>
                     </div>
                     <div class="text-end">
@@ -329,7 +348,7 @@ function visualizarQuestao(questao) {
     
     modalBody.innerHTML = `
         <div class="questao-preview">
-            <div class="questao-texto mb-3">${questao.pergunta}</div>
+            <div class="questao-texto mb-3">${questao.enunciado}</div>
             <div class="alternativas">
                 ${alternativas.map((alt, index) => `
                     <div class="alternativa ${questao.resposta_correta === index ? 'text-success' : ''}">
@@ -362,10 +381,10 @@ function adicionarQuestao(questao) {
     questaoDiv.className = 'questao-row';
     questaoDiv.innerHTML = `
         <h6>Questão ${questao.id}</h6>
-        <p class="mb-2">${questao.pergunta.substring(0, 100)}...</p>
+        <p class="mb-2">${questao.enunciado.substring(0, 100)}...</p>
         <div class="questao-info text-muted small mb-2">
             <span>Disciplina: ${questao.disciplina_nome}</span> | 
-            <span>Série: ${questao.serie_nome}</span> | 
+            <span>Ano Escolar: ${questao.Ano_escolar_nome}</span> | 
             <span>Assunto: ${questao.assunto}</span>
         </div>
         <div class="text-end">
@@ -440,11 +459,11 @@ function setupDragAndDrop() {
 async function salvarSimulado(event) {
     event.preventDefault();
     
-    const serie_id = document.getElementById('serie_id').value;
+    const Ano_escolar_id = document.getElementById('Ano_escolar_id').value;
     const disciplina_id = document.getElementById('disciplina_id').value;
     const mes_id = document.getElementById('mes_id').value;
     
-    if (!serie_id || !disciplina_id || !mes_id) {
+    if (!Ano_escolar_id || !disciplina_id || !mes_id) {
         mostrarFeedback('Preencha todos os campos obrigatórios', 'warning');
         return;
     }
@@ -467,7 +486,7 @@ async function salvarSimulado(event) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                serie_id: parseInt(serie_id),
+                Ano_escolar_id: parseInt(Ano_escolar_id),
                 disciplina_id: parseInt(disciplina_id),
                 mes_id: parseInt(mes_id),
                 questoes: Array.from(questoesSelecionadas)
@@ -497,6 +516,19 @@ document.addEventListener('DOMContentLoaded', function() {
         form.addEventListener('submit', salvarSimulado);
     }
 });
+
+// Função para debounce
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 function mostrarFeedback(mensagem, tipo) {
     const div = document.createElement('div');

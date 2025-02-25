@@ -11,12 +11,12 @@ INSERT OR IGNORE INTO escolas (
 );
 
 -- Inserir série se não existir
-INSERT OR IGNORE INTO series (id, nome) VALUES (1, '6º Ano');
+INSERT OR IGNORE INTO Ano_escolar (id, nome) VALUES (1, '6º Ano');
 
 -- Inserir turma se não existir
 INSERT OR IGNORE INTO turmas (
     id, tipo_de_registro, codigo_inep, escola_id, 
-    tipo_ensino_id, serie_id, turma
+    tipo_ensino_id, Ano_escolar_id, turma
 ) VALUES (
     1, '20', '123456', 1, 
     1, 1, '6º Ano A'
@@ -24,5 +24,5 @@ INSERT OR IGNORE INTO turmas (
 
 -- Inserir relacionamento professor-turma usando ID existente (Maria)
 INSERT OR IGNORE INTO professor_turma_escola (
-    professor_id, turma_id, serie_id, escola_id, tipo_ensino_id
+    professor_id, turma_id, Ano_escolar_id, escola_id, tipo_ensino_id
 ) VALUES (18, 1, 1, 1, 1);

@@ -1,36 +1,35 @@
 import sqlite3
 from flask import g
-from contextlib import contextmanager
+from flask_sqlalchemy import SQLAlchemy
 import logging
 import click
+from contextlib import contextmanager
 
 # Caminho do banco de dados que você quer usar
-DB_PATH = 'educacional.db'  # 🔹 Altere para o nome correto do seu banco
+DB_PATH = 'educacional.db'  # Altere para o nome correto do seu banco
+
+db = SQLAlchemy()
 
 def get_db():
-    """Obtém a conexão com o banco de dados"""
     if 'db' not in g:
-        g.db = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
-        g.db.row_factory = sqlite3.Row  # Retorna os resultados como dicionários
-    
+        g.db = db
     return g.db
 
 def close_db(e=None):
-    """Fecha a conexão com o banco de dados"""
     db = g.pop('db', None)
     if db is not None:
-        db.close()
+        db.session.close()
 
 @contextmanager
 def get_db_cursor():
     """Contexto seguro para operações com o banco de dados"""
     db = get_db()
-    cursor = db.cursor()
+    cursor = db.session
     try:
         yield cursor
-        db.commit()
+        cursor.commit()
     except Exception as e:
-        db.rollback()
+        cursor.rollback()
         logging.error(f"Erro na operação do banco de dados: {str(e)}")
         raise
     finally:
@@ -39,58 +38,35 @@ def get_db_cursor():
 def init_db():
     """Inicializa o banco de dados com as tabelas necessárias"""
     db = get_db()
-    cursor = db.cursor()
+    db.create_all()
 
     # Tabela de usuários
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            senha_hash TEXT NOT NULL,
-            tipo_usuario_id TEXT NOT NULL,
-            escola_id INTEGER,
-            serie_id INTEGER,
-            turma_id INTEGER,
-            codigo_ibge TEXT,
-            data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            data_atualizacao_senha TIMESTAMP,
-            ultimo_login TIMESTAMP,
-            tentativas_login INTEGER DEFAULT 0,
-            bloqueado INTEGER DEFAULT 0,
-            FOREIGN KEY (escola_id) REFERENCES escolas (id),
-            FOREIGN KEY (serie_id) REFERENCES series (id),
-            FOREIGN KEY (turma_id) REFERENCES turmas (id)
-        )
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)
     """)
-
-    # Índices para performance
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_tipo ON usuarios(tipo_usuario_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_escola ON usuarios(escola_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_usuarios_codigo_ibge ON usuarios(codigo_ibge)")
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_usuarios_tipo ON usuarios(tipo_usuario_id)
+    """)
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_usuarios_escola ON usuarios(escola_id)
+    """)
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_usuarios_codigo_ibge ON usuarios(codigo_ibge)
+    """)
 
     # Tabela de log de atividades
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS activity_log (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            activity_type TEXT,
-            details TEXT,
-            ip_address TEXT,
-            user_agent TEXT,
-            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES usuarios (id)
-        )
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)
+    """)
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(activity_type)
+    """)
+    db.session.execute("""
+        CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp)
     """)
 
-    # Índices para o log
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_user ON activity_log(user_id)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_type ON activity_log(activity_type)")
-    cursor.execute("CREATE INDEX IF NOT EXISTS idx_activity_timestamp ON activity_log(timestamp)")
-
     # Commit das alterações
-    db.commit()
+    db.session.commit()
 
 @click.command('init-db')
 def init_db_command():

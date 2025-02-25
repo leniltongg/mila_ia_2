@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+</head>
+<body>
+    <table>
+        <thead>
+            <tr>
+                <th colspan="8">Relatório de Desempenho por Turma - {% if mes %}{{ mes }} de {% endif %}{{ ano }}</th>
+            </tr>
+            <tr>
+                <th colspan="8"></th>
+            </tr>
+            <tr>
+                <th colspan="2">Média Geral</th>
+                <th colspan="2">Total de Alunos</th>
+                <th colspan="2">Alunos Ativos</th>
+                <th colspan="2">Total de Simulados</th>
+            </tr>
+            <tr>
+                <td colspan="2">{{ "%.1f"|format(media_geral) }}%</td>
+                <td colspan="2">{{ total_alunos }}</td>
+                <td colspan="2">{{ alunos_ativos }}</td>
+                <td colspan="2">{{ total_simulados }}</td>
+            </tr>
+            <tr>
+                <th colspan="8"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for turma in turmas %}
+            <tr>
+                <th colspan="8">{{ turma.Ano_escolar }} {{ turma.turma }} - Média: {{ "%.1f"|format(turma.media) }}%</th>
+            </tr>
+            <tr>
+                <th>Aluno</th>
+                <th>Total Simulados</th>
+                <th>Matemática</th>
+                <th>Português</th>
+                <th>Ciências</th>
+                <th>História</th>
+                <th>Geografia</th>
+                <th>Média Geral</th>
+            </tr>
+            {% for aluno in alunos if aluno.turma_id == turma.id %}
+            <tr>
+                <td>{{ aluno.aluno_nome }}</td>
+                <td>{{ aluno.total_simulados }}</td>
+                <td>{{ "%.1f"|format(aluno.media_matematica or 0) }}%</td>
+                <td>{{ "%.1f"|format(aluno.media_portugues or 0) }}%</td>
+                <td>{{ "%.1f"|format(aluno.media_ciencias or 0) }}%</td>
+                <td>{{ "%.1f"|format(aluno.media_historia or 0) }}%</td>
+                <td>{{ "%.1f"|format(aluno.media_geografia or 0) }}%</td>
+                <td>{{ "%.1f"|format(aluno.media) }}%</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <th colspan="8"></th>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

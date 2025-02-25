@@ -13,7 +13,7 @@
                     {% if current_user.tipo_usuario_id == 1 %}
                         <a href="{{ url_for('portal_administrador') }}" class="btn btn-primary">Portal do Administrador</a>
                     {% elif current_user.tipo_usuario_id == 2 %}
-                        <a href="{{ url_for('portal_professores') }}" class="btn btn-primary">Portal do Professor</a>
+                        <a href="{{ url_for('professores.portal_professores') }}" class="btn btn-primary">Portal do Professor</a>
                     {% elif current_user.tipo_usuario_id == 4 %}
                         <a href="{{ url_for('alunos_bp.portal_alunos') }}" class="btn btn-primary">Portal do Aluno</a>
                     {% elif current_user.tipo_usuario_id == 5 %}

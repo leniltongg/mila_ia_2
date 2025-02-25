@@ -7,7 +7,7 @@
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Série</th>
+                <th>Ano Escolar</th>
                 <th>Turma</th>
                 <th>Total de Alunos</th>
                 <th>Média de Desempenho (%)</th>
@@ -16,7 +16,7 @@
         <tbody>
             {% for row in relatorio_por_escola %}
                 <tr>
-                    <td>{{ row['serie'] }}</td>
+                    <td>{{ row['Ano_escolar'] }}</td>
                     <td>{{ row['turma'] }}</td>
                     <td>{{ row['total_alunos'] }}</td>
                     <td>{{ row['media_desempenho'] | round(2) }}</td>

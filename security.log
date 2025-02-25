@@ -10109,3 +10109,498 @@ sqlite3.OperationalError: no such column: sg.professor_id
 2025-02-13 16:52:55,330 - INFO - 127.0.0.1 - - [13/Feb/2025 16:52:55] "GET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=suxt4b3huhjRQ568RxE8 HTTP/1.1" 200 -
 2025-02-13 16:52:55,483 - INFO - 127.0.0.1 - - [13/Feb/2025 16:52:55] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
 2025-02-13 16:57:12,189 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-13 16:57:12,780 - INFO -  * Restarting with stat
+2025-02-13 16:57:29,081 - WARNING -  * Debugger is active!
+2025-02-13 16:57:29,093 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 16:57:29,420 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 16:57:29,451 - INFO - 127.0.0.1 - - [13/Feb/2025 16:57:29] "[35m[1mGET /secretaria_educacao/relatorio_turma HTTP/1.1[0m" 500 -
+2025-02-13 16:57:29,503 - INFO - 127.0.0.1 - - [13/Feb/2025 16:57:29] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 16:57:29,505 - INFO - 127.0.0.1 - - [13/Feb/2025 16:57:29] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 16:57:29,587 - INFO - 127.0.0.1 - - [13/Feb/2025 16:57:29] "GET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=PBR2cavWAj20QUwGVyKi HTTP/1.1" 200 -
+2025-02-13 16:57:29,735 - INFO - 127.0.0.1 - - [13/Feb/2025 16:57:29] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-13 17:01:20,859 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-13 17:01:30,595 - INFO -  * Restarting with stat
+2025-02-13 17:02:15,454 - WARNING -  * Debugger is active!
+2025-02-13 17:02:15,465 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 17:02:15,826 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 17:02:15,849 - INFO - 127.0.0.1 - - [13/Feb/2025 17:02:15] "[35m[1mGET /secretaria_educacao/relatorio_turma HTTP/1.1[0m" 500 -
+2025-02-13 17:02:15,945 - INFO - 127.0.0.1 - - [13/Feb/2025 17:02:15] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 17:02:15,952 - INFO - 127.0.0.1 - - [13/Feb/2025 17:02:15] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 17:02:16,117 - INFO - 127.0.0.1 - - [13/Feb/2025 17:02:16] "GET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=yHKAJGnD2tI79jE9tdz6 HTTP/1.1" 200 -
+2025-02-13 17:02:16,293 - INFO - 127.0.0.1 - - [13/Feb/2025 17:02:16] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-13 19:36:21,785 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-13 19:36:23,025 - INFO -  * Restarting with stat
+2025-02-13 19:36:36,555 - WARNING -  * Debugger is active!
+2025-02-13 19:36:36,566 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 19:36:37,023 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:36:37,233 - INFO - 127.0.0.1 - - [13/Feb/2025 19:36:37] "GET /secretaria_educacao/relatorio_turma HTTP/1.1" 200 -
+2025-02-13 19:36:44,668 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:36:44,743 - INFO - 127.0.0.1 - - [13/Feb/2025 19:36:44] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 19:41:36,721 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-13 19:41:37,502 - INFO -  * Restarting with stat
+2025-02-13 19:42:03,187 - WARNING -  * Debugger is active!
+2025-02-13 19:42:03,209 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 19:43:54,283 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:43:54,309 - INFO - 127.0.0.1 - - [13/Feb/2025 19:43:54] "[35m[1mGET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1[0m" 500 -
+2025-02-13 19:43:54,356 - INFO - 127.0.0.1 - - [13/Feb/2025 19:43:54] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 19:43:54,365 - INFO - 127.0.0.1 - - [13/Feb/2025 19:43:54] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 19:43:54,406 - INFO - 127.0.0.1 - - [13/Feb/2025 19:43:54] "GET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=O2JSxksnzqpTTPlQ3HuZ HTTP/1.1" 200 -
+2025-02-13 19:43:54,593 - INFO - 127.0.0.1 - - [13/Feb/2025 19:43:54] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-13 19:47:03,816 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-13 19:47:05,148 - INFO -  * Restarting with stat
+2025-02-13 19:47:19,402 - WARNING -  * Debugger is active!
+2025-02-13 19:47:19,411 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 19:47:51,571 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:47:51,671 - INFO - 127.0.0.1 - - [13/Feb/2025 19:47:51] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 19:47:57,553 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:47:57,600 - INFO - 127.0.0.1 - - [13/Feb/2025 19:47:57] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 19:49:16,143 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:49:16,247 - INFO - 127.0.0.1 - - [13/Feb/2025 19:49:16] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 19:52:17,128 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:52:17,164 - INFO - 127.0.0.1 - - [13/Feb/2025 19:52:17] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 19:55:59,391 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:55:59,629 - INFO - 127.0.0.1 - - [13/Feb/2025 19:55:59] "[35m[1mGET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1[0m" 500 -
+2025-02-13 19:55:59,675 - INFO - 127.0.0.1 - - [13/Feb/2025 19:55:59] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 19:55:59,722 - INFO - 127.0.0.1 - - [13/Feb/2025 19:55:59] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 19:55:59,813 - INFO - 127.0.0.1 - - [13/Feb/2025 19:55:59] "GET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=Q6BHU6aKqluPKIKXYSSC HTTP/1.1" 200 -
+2025-02-13 19:56:00,090 - INFO - 127.0.0.1 - - [13/Feb/2025 19:56:00] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-13 19:58:28,529 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-13 19:58:29,984 - INFO -  * Restarting with stat
+2025-02-13 19:58:45,059 - WARNING -  * Debugger is active!
+2025-02-13 19:58:45,068 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 19:58:45,378 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:58:45,474 - INFO - 127.0.0.1 - - [13/Feb/2025 19:58:45] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 19:58:57,169 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 19:59:05,382 - INFO - 127.0.0.1 - - [13/Feb/2025 19:59:05] "GET /secretaria_educacao/relatorio_turma/pdf?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:01:10,118 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:01:17,299 - INFO - 127.0.0.1 - - [13/Feb/2025 20:01:17] "GET /secretaria_educacao/relatorio_turma/pdf?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:02:56,412 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:03:06,348 - INFO - 127.0.0.1 - - [13/Feb/2025 20:03:06] "GET /secretaria_educacao/relatorio_turma/pdf?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:05:02,034 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:05:07,122 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:05:07,330 - INFO - 127.0.0.1 - - [13/Feb/2025 20:05:07] "[35m[1mGET /secretaria_educacao/relatorio_turma/excel?escola_id=13 HTTP/1.1[0m" 500 -
+2025-02-13 20:05:07,408 - INFO - 127.0.0.1 - - [13/Feb/2025 20:05:07] "GET /secretaria_educacao/relatorio_turma/excel?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2025-02-13 20:05:07,418 - INFO - 127.0.0.1 - - [13/Feb/2025 20:05:07] "GET /secretaria_educacao/relatorio_turma/excel?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2025-02-13 20:05:07,546 - INFO - 127.0.0.1 - - [13/Feb/2025 20:05:07] "GET /secretaria_educacao/relatorio_turma/excel?__debugger__=yes&cmd=resource&f=console.png&s=LwK9sfqH0lNjeBhU8c4Z HTTP/1.1" 200 -
+2025-02-13 20:05:07,715 - INFO - 127.0.0.1 - - [13/Feb/2025 20:05:07] "GET /secretaria_educacao/relatorio_turma/excel?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2025-02-13 20:05:12,245 - INFO - 127.0.0.1 - - [13/Feb/2025 20:05:12] "GET /secretaria_educacao/relatorio_turma/pdf?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:07:01,296 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:07:07,215 - INFO - 127.0.0.1 - - [13/Feb/2025 20:07:07] "GET /secretaria_educacao/relatorio_turma/pdf?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:08:32,637 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:08:32,771 - INFO - 127.0.0.1 - - [13/Feb/2025 20:08:32] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:09:11,270 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:09:11,439 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:11] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=1 HTTP/1.1" 200 -
+2025-02-13 20:09:18,402 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:09:18,428 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:18] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=1 HTTP/1.1" 200 -
+2025-02-13 20:09:30,241 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:09:30,283 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:30] "[35m[1mGET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=1&mes=2 HTTP/1.1[0m" 500 -
+2025-02-13 20:09:30,341 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:30] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 20:09:30,386 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:30] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 20:09:30,511 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:30] "GET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=LwK9sfqH0lNjeBhU8c4Z HTTP/1.1" 200 -
+2025-02-13 20:09:30,676 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:30] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-13 20:09:55,576 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:09:55,637 - INFO - 127.0.0.1 - - [13/Feb/2025 20:09:55] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:10:02,758 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:10:02,800 - INFO - 127.0.0.1 - - [13/Feb/2025 20:10:02] "GET /secretaria_educacao/relatorios_gerenciais HTTP/1.1" 200 -
+2025-02-13 20:10:04,034 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:10:04,040 - INFO - 127.0.0.1 - - [13/Feb/2025 20:10:04] "GET /secretaria_educacao/relatorio_turma HTTP/1.1" 200 -
+2025-02-13 20:11:19,130 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:11:19,202 - INFO - 127.0.0.1 - - [13/Feb/2025 20:11:19] "GET /secretaria_educacao/relatorio_turma HTTP/1.1" 200 -
+2025-02-13 20:11:22,002 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:11:22,135 - INFO - 127.0.0.1 - - [13/Feb/2025 20:11:22] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:11:25,133 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:11:25,160 - INFO - 127.0.0.1 - - [13/Feb/2025 20:11:25] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=1 HTTP/1.1" 200 -
+2025-02-13 20:12:19,699 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:12:19,735 - INFO - 127.0.0.1 - - [13/Feb/2025 20:12:19] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=1 HTTP/1.1" 200 -
+2025-02-13 20:12:39,548 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:12:39,584 - INFO - 127.0.0.1 - - [13/Feb/2025 20:12:39] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=2 HTTP/1.1" 200 -
+2025-02-13 20:13:05,301 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:13:05,361 - INFO - 127.0.0.1 - - [13/Feb/2025 20:13:05] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=2 HTTP/1.1" 200 -
+2025-02-13 20:14:59,992 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:15:00,007 - INFO - 127.0.0.1 - - [13/Feb/2025 20:15:00] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=2 HTTP/1.1" 200 -
+2025-02-13 20:15:09,009 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:15:09,061 - INFO - 127.0.0.1 - - [13/Feb/2025 20:15:09] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id= HTTP/1.1" 200 -
+2025-02-13 20:16:54,324 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:16:54,389 - INFO - 127.0.0.1 - - [13/Feb/2025 20:16:54] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id= HTTP/1.1" 200 -
+2025-02-13 20:16:58,497 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:16:58,521 - INFO - 127.0.0.1 - - [13/Feb/2025 20:16:58] "[35m[1mGET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=&mes=1 HTTP/1.1[0m" 500 -
+2025-02-13 20:16:58,561 - INFO - 127.0.0.1 - - [13/Feb/2025 20:16:58] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 20:16:58,583 - INFO - 127.0.0.1 - - [13/Feb/2025 20:16:58] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 20:16:58,641 - INFO - 127.0.0.1 - - [13/Feb/2025 20:16:58] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=LwK9sfqH0lNjeBhU8c4Z HTTP/1.1[0m" 304 -
+2025-02-13 20:19:47,716 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:19:47,737 - INFO - 127.0.0.1 - - [13/Feb/2025 20:19:47] "[35m[1mGET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=&mes=1 HTTP/1.1[0m" 500 -
+2025-02-13 20:19:47,781 - INFO - 127.0.0.1 - - [13/Feb/2025 20:19:47] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-13 20:19:47,783 - INFO - 127.0.0.1 - - [13/Feb/2025 20:19:47] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-13 20:19:47,813 - INFO - 127.0.0.1 - - [13/Feb/2025 20:19:47] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png&s=LwK9sfqH0lNjeBhU8c4Z HTTP/1.1[0m" 304 -
+2025-02-13 20:19:47,905 - INFO - 127.0.0.1 - - [13/Feb/2025 20:19:47] "[36mGET /secretaria_educacao/relatorio_turma?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-13 20:19:53,506 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:19:53,977 - INFO - 127.0.0.1 - - [13/Feb/2025 20:19:53] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-13 20:23:43,902 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:23:43,905 - INFO - 127.0.0.1 - - [13/Feb/2025 20:23:43] "[32mGET /logout HTTP/1.1[0m" 302 -
+2025-02-13 20:23:44,130 - INFO - 127.0.0.1 - - [13/Feb/2025 20:23:44] "GET /login HTTP/1.1" 200 -
+2025-02-13 20:23:49,272 - INFO - 127.0.0.1 - - [13/Feb/2025 20:23:49] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 20:23:49,296 - INFO - Usuário carregado: (20, 'Ana', 4, 129, 2, 1, 'ana@email.com', '2910800')
+2025-02-13 20:23:49,365 - INFO - 127.0.0.1 - - [13/Feb/2025 20:23:49] "GET /alunos/portal HTTP/1.1" 200 -
+2025-02-13 20:23:57,895 - INFO - Usuário carregado: (20, 'Ana', 4, 129, 2, 1, 'ana@email.com', '2910800')
+2025-02-13 20:23:57,965 - INFO - 127.0.0.1 - - [13/Feb/2025 20:23:57] "GET /alunos/simulados HTTP/1.1" 200 -
+2025-02-13 20:24:47,151 - INFO - 127.0.0.1 - - [13/Feb/2025 20:24:47] "[32mGET / HTTP/1.1[0m" 302 -
+2025-02-13 20:24:47,381 - INFO - 127.0.0.1 - - [13/Feb/2025 20:24:47] "GET /login HTTP/1.1" 200 -
+2025-02-13 20:25:14,726 - INFO - Usuário carregado: (20, 'Ana', 4, 129, 2, 1, 'ana@email.com', '2910800')
+2025-02-13 20:25:14,729 - INFO - 127.0.0.1 - - [13/Feb/2025 20:25:14] "[32mGET /logout HTTP/1.1[0m" 302 -
+2025-02-13 20:25:14,773 - INFO - 127.0.0.1 - - [13/Feb/2025 20:25:14] "GET /login HTTP/1.1" 200 -
+2025-02-13 20:25:35,689 - INFO - 127.0.0.1 - - [13/Feb/2025 20:25:35] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 20:25:35,914 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:25:35,931 - INFO - 127.0.0.1 - - [13/Feb/2025 20:25:35] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-13 20:26:46,959 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:26:47,507 - INFO - 127.0.0.1 - - [13/Feb/2025 20:26:47] "GET /secretaria_educacao/banco_questoes HTTP/1.1" 200 -
+2025-02-13 20:27:35,472 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:27:35,482 - INFO - 127.0.0.1 - - [13/Feb/2025 20:27:35] "GET /secretaria_educacao/buscar_questao/65 HTTP/1.1" 200 -
+2025-02-13 20:29:37,541 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:29:37,869 - INFO - 127.0.0.1 - - [13/Feb/2025 20:29:37] "GET /secretaria_educacao/criar_simulado HTTP/1.1" 200 -
+2025-02-13 20:29:38,414 - INFO - 127.0.0.1 - - [13/Feb/2025 20:29:38] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 20:29:46,251 - INFO - 127.0.0.1 - - [13/Feb/2025 20:29:46] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 20:29:50,111 - INFO - 127.0.0.1 - - [13/Feb/2025 20:29:50] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 20:29:53,983 - INFO - 127.0.0.1 - - [13/Feb/2025 20:29:53] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=2&assunto= HTTP/1.1" 200 -
+2025-02-13 20:30:22,850 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:30:22,866 - INFO - 127.0.0.1 - - [13/Feb/2025 20:30:22] "POST /secretaria_educacao/gerar_simulado_automatico HTTP/1.1" 200 -
+2025-02-13 20:30:22,902 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:30:22,915 - INFO - 127.0.0.1 - - [13/Feb/2025 20:30:22] "GET /secretaria_educacao/buscar_questao/42 HTTP/1.1" 200 -
+2025-02-13 20:30:22,961 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:30:22,971 - INFO - 127.0.0.1 - - [13/Feb/2025 20:30:22] "GET /secretaria_educacao/buscar_questao/35 HTTP/1.1" 200 -
+2025-02-13 20:30:42,298 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:30:42,496 - INFO - 127.0.0.1 - - [13/Feb/2025 20:30:42] "GET /secretaria_educacao/meus_simulados HTTP/1.1" 200 -
+2025-02-13 20:31:09,979 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:31:10,160 - INFO - 127.0.0.1 - - [13/Feb/2025 20:31:10] "GET /secretaria_educacao/relatorios_dashboard HTTP/1.1" 200 -
+2025-02-13 20:31:17,045 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:31:17,051 - INFO - 127.0.0.1 - - [13/Feb/2025 20:31:17] "GET /secretaria_educacao/relatorios_gerenciais HTTP/1.1" 200 -
+2025-02-13 20:32:03,820 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:32:04,025 - INFO - 127.0.0.1 - - [13/Feb/2025 20:32:04] "GET /secretaria_educacao/relatorio_rede_municipal HTTP/1.1" 200 -
+2025-02-13 20:32:09,956 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:32:09,979 - INFO - 127.0.0.1 - - [13/Feb/2025 20:32:09] "GET /secretaria_educacao/relatorio_rede_municipal?mes=1 HTTP/1.1" 200 -
+2025-02-13 20:32:31,309 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:32:31,327 - INFO - 127.0.0.1 - - [13/Feb/2025 20:32:31] "GET /secretaria_educacao/relatorio_rede_municipal?mes= HTTP/1.1" 200 -
+2025-02-13 20:32:43,286 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:32:48,077 - INFO - 127.0.0.1 - - [13/Feb/2025 20:32:48] "GET /secretaria_educacao/relatorio_rede_municipal/export_pdf HTTP/1.1" 200 -
+2025-02-13 20:34:14,939 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:34:14,949 - INFO - 127.0.0.1 - - [13/Feb/2025 20:34:14] "GET /secretaria_educacao/relatorios_gerenciais HTTP/1.1" 200 -
+2025-02-13 20:36:51,046 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:36:51,335 - INFO - 127.0.0.1 - - [13/Feb/2025 20:36:51] "GET /secretaria_educacao/relatorio_escola HTTP/1.1" 200 -
+2025-02-13 20:36:55,145 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:36:55,648 - INFO - 127.0.0.1 - - [13/Feb/2025 20:36:55] "GET /secretaria_educacao/relatorio_escola?escola_id=13&mes= HTTP/1.1" 200 -
+2025-02-13 20:41:48,797 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:41:48,818 - INFO - 127.0.0.1 - - [13/Feb/2025 20:41:48] "GET /secretaria_educacao/relatorio_escola HTTP/1.1" 200 -
+2025-02-13 20:41:51,561 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:41:51,961 - INFO - 127.0.0.1 - - [13/Feb/2025 20:41:51] "GET /secretaria_educacao/relatorio_escola?escola_id=13&mes= HTTP/1.1" 200 -
+2025-02-13 20:43:07,817 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:43:08,385 - INFO - 127.0.0.1 - - [13/Feb/2025 20:43:08] "GET /secretaria_educacao/relatorio_disciplina HTTP/1.1" 200 -
+2025-02-13 20:43:15,365 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:43:15,384 - INFO - 127.0.0.1 - - [13/Feb/2025 20:43:15] "GET /secretaria_educacao/relatorio_disciplina?disciplina_id=2&mes= HTTP/1.1" 200 -
+2025-02-13 20:45:39,812 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:45:40,209 - INFO - 127.0.0.1 - - [13/Feb/2025 20:45:40] "GET /secretaria_educacao/relatorio_turma HTTP/1.1" 200 -
+2025-02-13 20:45:43,701 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:45:44,291 - INFO - 127.0.0.1 - - [13/Feb/2025 20:45:44] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 20:53:41,535 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:53:41,553 - INFO - 127.0.0.1 - - [13/Feb/2025 20:53:41] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-13 20:53:43,161 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 20:53:43,165 - INFO - 127.0.0.1 - - [13/Feb/2025 20:53:43] "[32mGET /logout HTTP/1.1[0m" 302 -
+2025-02-13 20:53:43,266 - INFO - 127.0.0.1 - - [13/Feb/2025 20:53:43] "GET /login HTTP/1.1" 200 -
+2025-02-13 20:53:55,403 - INFO - 127.0.0.1 - - [13/Feb/2025 20:53:55] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 20:53:55,437 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 20:53:57,357 - INFO - 127.0.0.1 - - [13/Feb/2025 20:53:57] "GET /portal_professores HTTP/1.1" 200 -
+2025-02-13 20:54:06,162 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 20:54:06,538 - INFO - 127.0.0.1 - - [13/Feb/2025 20:54:06] "GET /portal_professores/listar_turmas HTTP/1.1" 200 -
+2025-02-13 20:54:12,733 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 20:54:12,772 - INFO - 127.0.0.1 - - [13/Feb/2025 20:54:12] "GET /portal_professores/api/turma/1/alunos HTTP/1.1" 200 -
+2025-02-13 20:54:16,278 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 20:54:27,950 - INFO - 127.0.0.1 - - [13/Feb/2025 20:54:27] "GET /portal_professores/relatorio_aluno/135 HTTP/1.1" 200 -
+2025-02-13 20:55:00,576 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 20:55:13,140 - INFO - 127.0.0.1 - - [13/Feb/2025 20:55:13] "GET /portal_professores/turma/1/relatorio HTTP/1.1" 200 -
+2025-02-13 20:59:03,723 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 20:59:03,724 - INFO - 127.0.0.1 - - [13/Feb/2025 20:59:03] "[32mGET /logout HTTP/1.1[0m" 302 -
+2025-02-13 20:59:03,733 - INFO - 127.0.0.1 - - [13/Feb/2025 20:59:03] "GET /login HTTP/1.1" 200 -
+2025-02-13 21:01:09,414 - INFO - 127.0.0.1 - - [13/Feb/2025 21:01:09] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 21:01:09,424 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:01:09,431 - INFO - 127.0.0.1 - - [13/Feb/2025 21:01:09] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-13 21:05:23,066 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:05:23,074 - INFO - 127.0.0.1 - - [13/Feb/2025 21:05:23] "GET /secretaria_educacao/criar_simulado HTTP/1.1" 200 -
+2025-02-13 21:05:23,160 - INFO - 127.0.0.1 - - [13/Feb/2025 21:05:23] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 21:05:28,574 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:05:28,591 - INFO - 127.0.0.1 - - [13/Feb/2025 21:05:28] "GET /secretaria_educacao/banco_questoes HTTP/1.1" 200 -
+2025-02-13 21:05:39,094 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:05:39,097 - INFO - 127.0.0.1 - - [13/Feb/2025 21:05:39] "GET /secretaria_educacao/buscar_questao/65 HTTP/1.1" 200 -
+2025-02-13 21:05:42,010 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:05:42,015 - INFO - 127.0.0.1 - - [13/Feb/2025 21:05:42] "GET /secretaria_educacao/criar_simulado HTTP/1.1" 200 -
+2025-02-13 21:05:42,106 - INFO - 127.0.0.1 - - [13/Feb/2025 21:05:42] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 21:06:03,817 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:03] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 21:06:07,697 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:07] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=&assunto= HTTP/1.1" 200 -
+2025-02-13 21:06:10,017 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:10] "GET /secretaria_educacao/buscar_questoes?serie_id=&disciplina_id=2&assunto= HTTP/1.1" 200 -
+2025-02-13 21:06:21,985 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:21,988 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:21] "POST /secretaria_educacao/gerar_simulado_automatico HTTP/1.1" 200 -
+2025-02-13 21:06:21,999 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:22,002 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:22] "GET /secretaria_educacao/buscar_questao/33 HTTP/1.1" 200 -
+2025-02-13 21:06:22,013 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:22,019 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:22] "GET /secretaria_educacao/buscar_questao/35 HTTP/1.1" 200 -
+2025-02-13 21:06:33,101 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:33,105 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:33] "GET /secretaria_educacao/relatorios_gerenciais HTTP/1.1" 200 -
+2025-02-13 21:06:44,995 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:45,000 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:45] "GET /secretaria_educacao/relatorio_turma HTTP/1.1" 200 -
+2025-02-13 21:06:47,090 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:47,132 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:47] "GET /secretaria_educacao/relatorio_turma?escola_id=13 HTTP/1.1" 200 -
+2025-02-13 21:06:49,412 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:49,427 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:49] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=1&mes= HTTP/1.1" 200 -
+2025-02-13 21:06:52,492 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:06:52,533 - INFO - 127.0.0.1 - - [13/Feb/2025 21:06:52] "GET /secretaria_educacao/relatorio_turma?escola_id=13&turma_id=&mes= HTTP/1.1" 200 -
+2025-02-13 21:07:20,540 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:07:20,546 - INFO - 127.0.0.1 - - [13/Feb/2025 21:07:20] "GET /secretaria_educacao/relatorio_escola HTTP/1.1" 200 -
+2025-02-13 21:07:22,287 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:07:22,329 - INFO - 127.0.0.1 - - [13/Feb/2025 21:07:22] "GET /secretaria_educacao/relatorio_escola?escola_id=13&mes= HTTP/1.1" 200 -
+2025-02-13 21:08:05,365 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:08:05,369 - INFO - 127.0.0.1 - - [13/Feb/2025 21:08:05] "GET /secretaria_educacao/relatorios_gerenciais HTTP/1.1" 200 -
+2025-02-13 21:08:22,813 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:08:22,827 - INFO - 127.0.0.1 - - [13/Feb/2025 21:08:22] "GET /secretaria_educacao/relatorio_rede_municipal HTTP/1.1" 200 -
+2025-02-13 21:08:45,642 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:08:45,647 - INFO - 127.0.0.1 - - [13/Feb/2025 21:08:45] "GET /secretaria_educacao/relatorio_escola HTTP/1.1" 200 -
+2025-02-13 21:08:47,530 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:08:47,587 - INFO - 127.0.0.1 - - [13/Feb/2025 21:08:47] "GET /secretaria_educacao/relatorio_escola?escola_id=13&mes= HTTP/1.1" 200 -
+2025-02-13 21:11:53,482 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:11:53,483 - INFO - 127.0.0.1 - - [13/Feb/2025 21:11:53] "[32mGET /logout HTTP/1.1[0m" 302 -
+2025-02-13 21:11:53,493 - INFO - 127.0.0.1 - - [13/Feb/2025 21:11:53] "GET /login HTTP/1.1" 200 -
+2025-02-13 21:12:01,156 - INFO - 127.0.0.1 - - [13/Feb/2025 21:12:01] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 21:12:01,165 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 21:12:01,189 - INFO - 127.0.0.1 - - [13/Feb/2025 21:12:01] "GET /portal_professores HTTP/1.1" 200 -
+2025-02-13 21:12:06,450 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 21:12:06,455 - INFO - 127.0.0.1 - - [13/Feb/2025 21:12:06] "GET /portal_professores/listar_turmas HTTP/1.1" 200 -
+2025-02-13 21:12:21,731 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 21:12:21,737 - INFO - 127.0.0.1 - - [13/Feb/2025 21:12:21] "GET /portal_professores/api/turma/1/alunos HTTP/1.1" 200 -
+2025-02-13 21:12:24,453 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 21:12:26,022 - INFO - 127.0.0.1 - - [13/Feb/2025 21:12:26] "GET /portal_professores/turma/1/relatorio HTTP/1.1" 200 -
+2025-02-13 21:18:39,070 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\config.py', reloading
+2025-02-13 21:18:41,045 - INFO -  * Restarting with stat
+2025-02-13 21:19:00,035 - WARNING -  * Debugger is active!
+2025-02-13 21:19:00,052 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 21:29:33,588 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 21:29:38,919 - INFO - 127.0.0.1 - - [13/Feb/2025 21:29:38] "GET /portal_professores/turma/1/relatorio HTTP/1.1" 200 -
+2025-02-13 21:36:32,179 - INFO - Usuário carregado: (19, 'Pedro', 3, None, None, None, 'pedro@email.com', '2910800')
+2025-02-13 21:36:32,182 - INFO - 127.0.0.1 - - [13/Feb/2025 21:36:32] "[32mGET /logout HTTP/1.1[0m" 302 -
+2025-02-13 21:36:32,243 - INFO - 127.0.0.1 - - [13/Feb/2025 21:36:32] "GET /login HTTP/1.1" 200 -
+2025-02-13 21:37:09,197 - INFO - 127.0.0.1 - - [13/Feb/2025 21:37:09] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 21:37:09,221 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-13 21:37:09,328 - INFO - 127.0.0.1 - - [13/Feb/2025 21:37:09] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-13 21:46:49,689 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\config.py', reloading
+2025-02-13 21:46:51,744 - INFO -  * Restarting with stat
+2025-02-13 21:47:21,637 - WARNING -  * Debugger is active!
+2025-02-13 21:47:21,654 - INFO -  * Debugger PIN: 117-337-562
+2025-02-13 22:08:26,615 - INFO - 127.0.0.1 - - [13/Feb/2025 22:08:26] "GET /login HTTP/1.1" 200 -
+2025-02-13 22:08:34,017 - INFO - 127.0.0.1 - - [13/Feb/2025 22:08:34] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-13 22:08:34,121 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-13 22:08:34,344 - INFO - 127.0.0.1 - - [13/Feb/2025 22:08:34] "GET /portal_administrador HTTP/1.1" 200 -
+2025-02-15 11:51:27,361 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 11:51:33,855 - INFO -  * Restarting with stat
+2025-02-15 11:52:35,949 - WARNING -  * Debugger is active!
+2025-02-15 11:52:35,972 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 11:52:40,828 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 11:52:42,266 - INFO -  * Restarting with stat
+2025-02-15 11:53:07,159 - WARNING -  * Debugger is active!
+2025-02-15 11:53:07,173 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 11:53:32,168 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 11:53:35,145 - INFO -  * Restarting with stat
+2025-02-15 11:54:18,940 - WARNING -  * Debugger is active!
+2025-02-15 11:54:18,963 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 11:54:47,462 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 11:54:49,201 - INFO -  * Restarting with stat
+2025-02-15 11:55:30,458 - WARNING -  * Debugger is active!
+2025-02-15 11:55:30,486 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 11:56:07,026 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 11:56:10,123 - INFO -  * Restarting with stat
+2025-02-15 11:56:56,384 - WARNING -  * Debugger is active!
+2025-02-15 11:56:56,406 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:01:09,410 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:01:10,934 - INFO -  * Restarting with stat
+2025-02-15 12:01:38,001 - WARNING -  * Debugger is active!
+2025-02-15 12:01:38,024 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:04:31,815 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:04:34,002 - INFO -  * Restarting with stat
+2025-02-15 12:05:34,274 - WARNING -  * Debugger is active!
+2025-02-15 12:05:34,331 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:06:09,784 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:06:12,961 - INFO -  * Restarting with stat
+2025-02-15 12:06:57,520 - WARNING -  * Debugger is active!
+2025-02-15 12:06:57,534 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:07:20,610 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:07:22,597 - INFO -  * Restarting with stat
+2025-02-15 12:08:14,348 - WARNING -  * Debugger is active!
+2025-02-15 12:08:14,369 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:10:54,170 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:10:56,092 - INFO -  * Restarting with stat
+2025-02-15 12:12:00,502 - WARNING -  * Debugger is active!
+2025-02-15 12:12:00,530 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:14:18,562 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 12:14:18,571 - INFO - 127.0.0.1 - - [15/Feb/2025 12:14:18] "GET /login HTTP/1.1" 200 -
+2025-02-15 12:14:28,603 - INFO - 127.0.0.1 - - [15/Feb/2025 12:14:28] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-15 12:14:28,673 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 12:14:28,874 - INFO - 127.0.0.1 - - [15/Feb/2025 12:14:28] "GET /portal_administrador HTTP/1.1" 200 -
+2025-02-15 12:14:32,479 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:14:34,547 - INFO -  * Restarting with stat
+2025-02-15 12:15:24,902 - WARNING -  * Debugger is active!
+2025-02-15 12:15:24,930 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:15:26,955 - INFO - 127.0.0.1 - - [15/Feb/2025 12:15:26] "[32mGET / HTTP/1.1[0m" 302 -
+2025-02-15 12:15:27,071 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 12:15:27,076 - INFO - 127.0.0.1 - - [15/Feb/2025 12:15:27] "GET /login HTTP/1.1" 200 -
+2025-02-15 12:17:47,631 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:17:49,910 - INFO -  * Restarting with stat
+2025-02-15 12:18:18,150 - WARNING -  * Debugger is active!
+2025-02-15 12:18:18,170 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:28:50,769 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:28:52,277 - INFO -  * Restarting with stat
+2025-02-15 12:29:24,485 - WARNING -  * Debugger is active!
+2025-02-15 12:29:24,510 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:35:38,947 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:35:40,895 - INFO -  * Restarting with stat
+2025-02-15 12:36:30,032 - WARNING -  * Debugger is active!
+2025-02-15 12:36:30,059 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:43:23,897 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 12:43:23,903 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:23] "GET /login HTTP/1.1" 200 -
+2025-02-15 12:43:34,129 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:34] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-15 12:43:34,225 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 12:43:34,397 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:34] "GET /portal_administrador HTTP/1.1" 200 -
+2025-02-15 12:43:37,825 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 12:43:38,608 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:38] "[35m[1mGET /cadastrar_usuario HTTP/1.1[0m" 500 -
+2025-02-15 12:43:39,350 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:39] "GET /cadastrar_usuario?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2025-02-15 12:43:39,996 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:39] "GET /cadastrar_usuario?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2025-02-15 12:43:41,066 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:41] "GET /cadastrar_usuario?__debugger__=yes&cmd=resource&f=console.png&s=DYDMRsgIGBHWpaHcqp1k HTTP/1.1" 200 -
+2025-02-15 12:43:41,194 - INFO - 127.0.0.1 - - [15/Feb/2025 12:43:41] "GET /cadastrar_usuario?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2025-02-15 12:45:00,315 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 12:45:01,734 - INFO -  * Restarting with stat
+2025-02-15 12:45:47,426 - WARNING -  * Debugger is active!
+2025-02-15 12:45:47,454 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:46:12,566 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 12:46:15,275 - INFO -  * Restarting with stat
+2025-02-15 12:47:04,824 - WARNING -  * Debugger is active!
+2025-02-15 12:47:04,860 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:47:56,795 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:47:58,659 - INFO -  * Restarting with stat
+2025-02-15 12:49:49,418 - WARNING -  * Debugger is active!
+2025-02-15 12:49:49,446 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 12:55:16,132 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 12:55:18,482 - INFO -  * Restarting with stat
+2025-02-15 12:55:59,504 - WARNING -  * Debugger is active!
+2025-02-15 12:55:59,532 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:00:04,283 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 13:00:05,845 - INFO -  * Restarting with stat
+2025-02-15 13:00:44,467 - WARNING -  * Debugger is active!
+2025-02-15 13:00:44,516 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:02:33,607 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 13:02:35,596 - INFO -  * Restarting with stat
+2025-02-15 13:03:00,368 - WARNING -  * Debugger is active!
+2025-02-15 13:03:00,379 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:04:05,614 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 13:04:07,515 - INFO -  * Restarting with stat
+2025-02-15 13:05:29,543 - WARNING -  * Debugger is active!
+2025-02-15 13:05:29,568 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:06:04,383 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 13:06:06,850 - INFO -  * Restarting with stat
+2025-02-15 13:06:36,541 - WARNING -  * Debugger is active!
+2025-02-15 13:06:36,550 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:10:53,129 - INFO - Usuário carregado: (1, 'Administrador', 1, None, None, None, 'leniltongg@gmail.com', None)
+2025-02-15 13:10:53,132 - INFO - 127.0.0.1 - - [15/Feb/2025 13:10:53] "GET /login HTTP/1.1" 200 -
+2025-02-15 13:11:01,412 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:01] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-15 13:11:01,420 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:11:01,789 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:01] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-15 13:11:05,113 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:11:05,207 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:05] "[35m[1mGET /secretaria_educacao/meus_simulados HTTP/1.1[0m" 500 -
+2025-02-15 13:11:05,278 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:05] "GET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1" 200 -
+2025-02-15 13:11:05,280 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:05] "GET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1" 200 -
+2025-02-15 13:11:05,322 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:05] "GET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=console.png&s=QMU8d6H3nmYpdsXseiFI HTTP/1.1" 200 -
+2025-02-15 13:11:05,346 - INFO - 127.0.0.1 - - [15/Feb/2025 13:11:05] "GET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1" 200 -
+2025-02-15 13:12:41,829 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-15 13:12:48,298 - INFO -  * Restarting with stat
+2025-02-15 13:17:42,106 - WARNING -  * Debugger is active!
+2025-02-15 13:17:42,134 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:17:44,785 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:17:44,922 - INFO - 127.0.0.1 - - [15/Feb/2025 13:17:44] "[35m[1mGET /secretaria_educacao/meus_simulados HTTP/1.1[0m" 500 -
+2025-02-15 13:17:45,004 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:17:45,301 - INFO - 127.0.0.1 - - [15/Feb/2025 13:17:45] "[35m[1mGET /secretaria_educacao/meus_simulados HTTP/1.1[0m" 500 -
+2025-02-15 13:17:45,628 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:17:46,561 - INFO - 127.0.0.1 - - [15/Feb/2025 13:17:46] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-15 13:17:46,966 - INFO - 127.0.0.1 - - [15/Feb/2025 13:17:46] "[32mGET / HTTP/1.1[0m" 302 -
+2025-02-15 13:17:47,043 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:17:47,047 - INFO - 127.0.0.1 - - [15/Feb/2025 13:17:47] "GET /login HTTP/1.1" 200 -
+2025-02-15 13:17:47,145 - INFO - 127.0.0.1 - - [15/Feb/2025 13:17:47] "[32mGET / HTTP/1.1[0m" 302 -
+2025-02-15 13:19:08,429 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:08] "[32mPOST /login HTTP/1.1[0m" 302 -
+2025-02-15 13:19:09,140 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:19:09,155 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:09] "GET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1" 200 -
+2025-02-15 13:19:19,649 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:19:19,816 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:19] "[35m[1mGET /secretaria_educacao/meus_simulados HTTP/1.1[0m" 500 -
+2025-02-15 13:19:20,059 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:20] "[36mGET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-15 13:19:20,173 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:20] "[36mGET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-15 13:19:20,846 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:20] "GET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=console.png&s=BiKQCxXW8fbzZkHJhOFH HTTP/1.1" 200 -
+2025-02-15 13:19:21,012 - INFO - 127.0.0.1 - - [15/Feb/2025 13:19:21] "[36mGET /secretaria_educacao/meus_simulados?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-15 13:20:28,596 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 13:20:35,742 - INFO -  * Restarting with stat
+2025-02-15 13:25:08,340 - WARNING -  * Debugger is active!
+2025-02-15 13:25:08,463 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:30:05,010 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\routes\\secretaria_educacao.py', reloading
+2025-02-15 13:30:07,527 - INFO -  * Restarting with stat
+2025-02-15 13:31:23,136 - WARNING -  * Debugger is active!
+2025-02-15 13:31:23,166 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:31:26,659 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:31:27,365 - INFO - 127.0.0.1 - - [15/Feb/2025 13:31:27] "GET /secretaria_educacao/meus_simulados HTTP/1.1" 200 -
+2025-02-15 13:31:44,380 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:31:44,392 - INFO - 127.0.0.1 - - [15/Feb/2025 13:31:44] "[32mGET /secretaria_educacao/visualizar_simulado/13 HTTP/1.1[0m" 302 -
+2025-02-15 13:31:44,414 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:31:44,434 - INFO - 127.0.0.1 - - [15/Feb/2025 13:31:44] "GET /secretaria_educacao/meus_simulados HTTP/1.1" 200 -
+2025-02-15 13:31:51,422 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:31:51,441 - INFO - 127.0.0.1 - - [15/Feb/2025 13:31:51] "POST /secretaria_educacao/cancelar_envio_simulado/13 HTTP/1.1" 200 -
+2025-02-15 13:31:54,095 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:31:54,105 - INFO - 127.0.0.1 - - [15/Feb/2025 13:31:54] "GET /secretaria_educacao/meus_simulados HTTP/1.1" 200 -
+2025-02-15 13:32:29,465 - INFO - Usuário carregado: (16, 'seduc', 5, None, None, None, 'seduc@email.com', '2910800')
+2025-02-15 13:32:29,710 - INFO - 127.0.0.1 - - [15/Feb/2025 13:32:29] "GET /secretaria_educacao/visualizar_simulado/14 HTTP/1.1" 200 -
+2025-02-15 13:36:11,802 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 13:36:13,226 - INFO -  * Restarting with stat
+2025-02-15 13:36:48,394 - WARNING -  * Debugger is active!
+2025-02-15 13:36:48,418 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:37:20,173 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\migrate_data.py', reloading
+2025-02-15 13:37:21,566 - INFO -  * Restarting with stat
+2025-02-15 13:37:46,212 - WARNING -  * Debugger is active!
+2025-02-15 13:37:46,240 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 13:45:18,385 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app.py', reloading
+2025-02-15 13:45:23,363 - INFO -  * Restarting with stat
+2025-02-15 13:48:01,421 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-15 13:48:01,422 - INFO - [33mPress CTRL+C to quit[0m
+2025-02-15 13:48:01,703 - INFO - 127.0.0.1 - - [15/Feb/2025 13:48:01] "[33mGET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1[0m" 404 -
+2025-02-15 13:48:53,212 - INFO - 127.0.0.1 - - [15/Feb/2025 13:48:53] "[33mGET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1[0m" 404 -
+2025-02-15 13:48:54,170 - INFO - 127.0.0.1 - - [15/Feb/2025 13:48:54] "[33mGET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1[0m" 404 -
+2025-02-15 13:49:03,336 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-15 13:49:03,336 - INFO - [33mPress CTRL+C to quit[0m
+2025-02-15 13:49:03,344 - INFO -  * Restarting with stat
+2025-02-15 13:49:11,291 - INFO - 127.0.0.1 - - [15/Feb/2025 13:49:11] "[33mGET /secretaria_educacao/portal_secretaria_educacao HTTP/1.1[0m" 404 -
+2025-02-15 13:49:17,236 - INFO - 127.0.0.1 - - [15/Feb/2025 13:49:17] "[33mGET / HTTP/1.1[0m" 404 -
+2025-02-15 13:49:42,665 - WARNING -  * Debugger is active!
+2025-02-15 13:49:42,699 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 14:07:11,637 - INFO - 127.0.0.1 - - [15/Feb/2025 14:07:11] "[33mGET / HTTP/1.1[0m" 404 -
+2025-02-15 14:07:45,985 - INFO - 127.0.0.1 - - [15/Feb/2025 14:07:45] "[33mGET / HTTP/1.1[0m" 404 -
+2025-02-15 14:07:46,248 - INFO - 127.0.0.1 - - [15/Feb/2025 14:07:46] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+2025-02-15 14:12:11,511 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\app_db.py', reloading
+2025-02-15 14:12:14,749 - INFO -  * Restarting with stat
+2025-02-15 14:12:44,024 - WARNING -  * Debugger is active!
+2025-02-15 14:12:44,035 - INFO -  * Debugger PIN: 117-337-562
+2025-02-15 14:14:14,441 - INFO - 127.0.0.1 - - [15/Feb/2025 14:14:14] "[33mGET / HTTP/1.1[0m" 404 -
+2025-02-15 14:14:18,348 - INFO - 127.0.0.1 - - [15/Feb/2025 14:14:18] "[33mGET / HTTP/1.1[0m" 404 -
+2025-02-15 14:15:19,563 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+2025-02-15 14:15:19,563 - INFO - [33mPress CTRL+C to quit[0m
+2025-02-15 14:15:28,903 - INFO - 127.0.0.1 - - [15/Feb/2025 14:15:28] "[32mGET / HTTP/1.1[0m" 302 -
+2025-02-15 14:15:29,078 - INFO - 127.0.0.1 - - [15/Feb/2025 14:15:29] "[35m[1mGET /login HTTP/1.1[0m" 500 -
+2025-02-15 14:15:29,151 - INFO - 127.0.0.1 - - [15/Feb/2025 14:15:29] "[36mGET /login?__debugger__=yes&cmd=resource&f=style.css HTTP/1.1[0m" 304 -
+2025-02-15 14:15:29,211 - INFO - 127.0.0.1 - - [15/Feb/2025 14:15:29] "[36mGET /login?__debugger__=yes&cmd=resource&f=debugger.js HTTP/1.1[0m" 304 -
+2025-02-15 14:15:29,338 - INFO - 127.0.0.1 - - [15/Feb/2025 14:15:29] "GET /login?__debugger__=yes&cmd=resource&f=console.png&s=Kd0mZgraxQRUHv3qgjci HTTP/1.1" 200 -
+2025-02-15 14:15:29,429 - INFO - 127.0.0.1 - - [15/Feb/2025 14:15:29] "[36mGET /login?__debugger__=yes&cmd=resource&f=console.png HTTP/1.1[0m" 304 -
+2025-02-15 14:16:21,294 - INFO -  * Detected change in 'C:\\Users\\lenil\\CascadeProjects\\mila_ia_2\\database.py', reloading
+2025-02-15 14:16:25,075 - INFO -  * Restarting with stat
+2025-02-15 20:19:03,931 - INFO - Mila startup
+2025-02-15 20:22:36,430 - INFO - Mila startup
+2025-02-15 20:25:52,811 - INFO - Mila startup
+2025-02-15 20:28:05,148 - INFO - Mila startup
+2025-02-15 20:28:30,442 - INFO - Mila startup

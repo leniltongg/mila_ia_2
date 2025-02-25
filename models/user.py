@@ -9,12 +9,12 @@ def get_db():
     return g.db
 
 class User(UserMixin):
-    def __init__(self, id, nome=None, tipo_usuario_id=None, escola_id=None, serie_id=None, turma_id=None, email=None, codigo_ibge=None):
+    def __init__(self, id, nome=None, tipo_usuario_id=None, escola_id=None, Ano_escolar_id=None, turma_id=None, email=None, codigo_ibge=None):
         self.id = id
         self.nome = nome
         self.tipo_usuario_id = tipo_usuario_id
         self.escola_id = escola_id
-        self.serie_id = serie_id
+        self.Ano_escolar_id = Ano_escolar_id
         self.turma_id = turma_id
         self.email = email
         self.codigo_ibge = codigo_ibge
@@ -30,7 +30,7 @@ class User(UserMixin):
         db = get_db()
         cursor = db.cursor()
         cursor.execute('''
-            SELECT id, nome, tipo_usuario_id, escola_id, serie_id, turma_id, email, codigo_ibge 
+            SELECT id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, codigo_ibge 
             FROM usuarios 
             WHERE id = ?
         ''', (user_id,))
@@ -41,7 +41,7 @@ class User(UserMixin):
                 nome=user_data[1],
                 tipo_usuario_id=user_data[2],
                 escola_id=user_data[3],
-                serie_id=user_data[4],
+                Ano_escolar_id=user_data[4],
                 turma_id=user_data[5],
                 email=user_data[6],
                 codigo_ibge=user_data[7]

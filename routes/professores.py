@@ -3,8 +3,18 @@ from flask_login import login_required, current_user
 import sqlite3
 import json
 from datetime import datetime
+from functools import wraps
 
 professores_bp = Blueprint('professores', __name__, url_prefix='/professores')
+
+def professor_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if current_user.tipo_usuario_id not in [2, 6]:  # 2=Professor, 6=Admin
+            flash("Acesso não autorizado.", "danger")
+            return redirect(url_for("index"))
+        return f(*args, **kwargs)
+    return decorated_function
 
 def get_db():
     if 'db' not in g:
@@ -14,30 +24,43 @@ def get_db():
 
 @professores_bp.route('/')
 @login_required
+@professor_required
 def index():
     return redirect(url_for('professores.portal'))
 
 @professores_bp.route('/portal')
 @login_required
+@professor_required
 def portal():
     db = get_db()
     cursor = db.cursor()
     
-    # Buscar turmas do professor
-    cursor.execute("""
-        SELECT t.id, t.nome, d.nome as disciplina, s.nome as serie
-        FROM turmas t
-        JOIN disciplinas d ON t.disciplina_id = d.id
-        JOIN series s ON t.serie_id = s.id
-        WHERE t.professor_id = ?
-        ORDER BY t.nome
-    """, (current_user.id,))
-    turmas = cursor.fetchall()
+    # Se for admin, busca todas as turmas
+    if current_user.tipo_usuario_id == 6:
+        cursor.execute("""
+            SELECT t.id, t.nome, d.nome as disciplina, s.nome Ano_escolar
+            FROM turmas t
+            JOIN disciplinas d ON t.disciplina_id = d.id
+            JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+            ORDER BY t.nome
+        """)
+    else:
+        # Buscar turmas do professor
+        cursor.execute("""
+            SELECT t.id, t.nome, d.nome as disciplina, s.nome Ano_escolar
+            FROM turmas t
+            JOIN disciplinas d ON t.disciplina_id = d.id
+            JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+            WHERE t.professor_id = ?
+            ORDER BY t.nome
+        """, (current_user.id,))
     
+    turmas = cursor.fetchall()
     return render_template('portal_professores.html', turmas=turmas)
 
 @professores_bp.route('/ver_alunos/<int:turma_id>')
 @login_required
+@professor_required
 def ver_alunos(turma_id):
     db = get_db()
     cursor = db.cursor()
@@ -68,35 +91,41 @@ def ver_alunos(turma_id):
 
 @professores_bp.route('/listar_turmas')
 @login_required
+@professor_required
 def listar_turmas():
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor (tipo 3)
-        flash('Acesso não autorizado.', 'danger')
-        return redirect(url_for('home'))
-        
     db = get_db()
     cursor = db.cursor()
 
-    # Recuperar as turmas vinculadas ao professor
-    cursor.execute("""
-        SELECT DISTINCT t.id, se.nome AS serie, t.turma, e.nome_da_escola AS escola
-        FROM professor_turma_escola pte
-        JOIN turmas t ON pte.turma_id = t.id
-        JOIN series se ON t.serie_id = se.id
-        JOIN escolas e ON t.escola_id = e.id
-        WHERE pte.professor_id = ?
-        ORDER BY se.nome, t.turma
-    """, (current_user.id,))
+    # Se for admin, busca todas as turmas
+    if current_user.tipo_usuario_id == 6:
+        cursor.execute("""
+            SELECT DISTINCT t.id, se.nome Ano_escolar, t.turma, e.nome_da_escola AS escola
+            FROM professor_turma_escola pte
+            JOIN turmas t ON pte.turma_id = t.id
+            JOIN Ano_escolar se ON t.Ano_escolar_id = se.id
+            JOIN escolas e ON t.escola_id = e.id
+            ORDER BY se.nome, t.turma
+        """)
+    else:
+        # Recuperar as turmas vinculadas ao professor
+        cursor.execute("""
+            SELECT DISTINCT t.id, se.nome Ano_escolar, t.turma, e.nome_da_escola AS escola
+            FROM professor_turma_escola pte
+            JOIN turmas t ON pte.turma_id = t.id
+            JOIN Ano_escolar se ON t.Ano_escolar_id = se.id
+            JOIN escolas e ON t.escola_id = e.id
+            WHERE pte.professor_id = ?
+            ORDER BY se.nome, t.turma
+        """, (current_user.id,))
     turmas = cursor.fetchall()
 
     return render_template('professores/listar_turmas.html', turmas=turmas)
 
 @professores_bp.route('/get_alunos_turma/<int:turma_id>')
 @login_required
+@professor_required
 def get_alunos_turma(turma_id):
     print(f"Buscando alunos para turma {turma_id}")
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
-        print(f"Usuário não autorizado: tipo {current_user.tipo_usuario_id}")
-        return jsonify({'error': 'Não autorizado'}), 403
         
     db = get_db()
     cursor = db.cursor()
@@ -129,21 +158,18 @@ def get_alunos_turma(turma_id):
 
 @professores_bp.route('/relatorio_aluno/<int:aluno_id>')
 @login_required
+@professor_required
 def relatorio_aluno(aluno_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
-        flash('Acesso não autorizado.', 'danger')
-        return redirect(url_for('home'))
-        
     db = get_db()
     cursor = db.cursor()
     
     # Buscar informações do aluno
     cursor.execute("""
         SELECT u.id, u.nome, u.email, t.id as turma_id, 
-               s.nome as serie, t.turma, e.nome_da_escola as escola
+               s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM usuarios u
         JOIN turmas t ON u.turma_id = t.id
-        JOIN series s ON t.serie_id = s.id
+        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE u.id = ? AND u.tipo_usuario_id = 4
     """, (aluno_id,))
@@ -268,7 +294,7 @@ def relatorio_aluno(aluno_id):
     
     return render_template('professores/relatorio_aluno.html',
                          aluno={'id': aluno_info[0], 'nome': aluno_info[1], 'email': aluno_info[2]},
-                         turma={'serie': aluno_info[4], 'turma': aluno_info[5], 'escola': aluno_info[6]},
+                         turma={'Ano_escolar': aluno_info[4], 'turma': aluno_info[5], 'escola': aluno_info[6]},
                          media_geral=media_geral,
                          disciplinas=disciplinas,
                          medias_disciplinas=medias_disciplinas,
@@ -278,21 +304,18 @@ def relatorio_aluno(aluno_id):
 
 @professores_bp.route('/relatorio_aluno_pdf/<int:aluno_id>')
 @login_required
+@professor_required
 def relatorio_aluno_pdf(aluno_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
-        flash('Acesso não autorizado.', 'danger')
-        return redirect(url_for('home'))
-        
     db = get_db()
     cursor = db.cursor()
     
     # Buscar informações do aluno
     cursor.execute("""
         SELECT u.id, u.nome, u.email, t.id as turma_id, 
-               s.nome as serie, t.turma, e.nome_da_escola as escola
+               s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM usuarios u
         JOIN turmas t ON u.turma_id = t.id
-        JOIN series s ON t.serie_id = s.id
+        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE u.id = ? AND u.tipo_usuario_id = 4
     """, (aluno_id,))
@@ -418,7 +441,7 @@ def relatorio_aluno_pdf(aluno_id):
     # Renderizar o HTML
     html = render_template('professores/relatorio_aluno_pdf.html',
                          aluno={'id': aluno_info[0], 'nome': aluno_info[1], 'email': aluno_info[2]},
-                         turma={'serie': aluno_info[4], 'turma': aluno_info[5], 'escola': aluno_info[6]},
+                         turma={'Ano_escolar': aluno_info[4], 'turma': aluno_info[5], 'escola': aluno_info[6]},
                          media_geral=media_geral,
                          disciplinas=disciplinas,
                          medias_disciplinas=medias_disciplinas,
@@ -445,11 +468,8 @@ def relatorio_aluno_pdf(aluno_id):
 
 @professores_bp.route('/relatorio_turma/<int:turma_id>')
 @login_required
+@professor_required
 def relatorio_turma(turma_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
-        flash('Acesso não autorizado.', 'danger')
-        return redirect(url_for('home'))
-        
     db = get_db()
     cursor = db.cursor()
     
@@ -465,14 +485,31 @@ def relatorio_turma(turma_id):
     
     # Buscar informações da turma
     cursor.execute("""
-        SELECT t.id, s.nome as serie, t.turma, e.nome_da_escola as escola
+        SELECT t.id, s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM turmas t
-        JOIN series s ON t.serie_id = s.id
+        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE t.id = ?
     """, (turma_id,))
     
     turma_info = cursor.fetchone()
+    if not turma_info:
+        flash('Turma não encontrada.', 'danger')
+        return redirect(url_for('professores.listar_turmas'))
+        
+    # Inicializar variáveis com valores padrão
+    total_alunos = 0
+    media_geral = 0
+    taxa_participacao = 0
+    disciplinas = []
+    medias_disciplinas = []
+    distribuicao_notas = [0] * 5  # 0-20, 21-40, 41-60, 61-80, 81-100
+    grupos = {
+        'alto_desempenho': 0,
+        'medio_desempenho': 0,
+        'baixo_desempenho': 0
+    }
+    disciplinas_criticas = []
     
     # Buscar todos os alunos da turma
     cursor.execute("""
@@ -483,95 +520,94 @@ def relatorio_turma(turma_id):
     alunos = cursor.fetchall()
     total_alunos = len(alunos)
     
-    # Buscar desempenho de todos os alunos nos simulados
-    cursor.execute("""
-        SELECT ds.aluno_id, ds.desempenho, ds.data_resposta,
-               sg.disciplina_id, d.nome as disciplina
-        FROM desempenho_simulado ds
-        JOIN simulados_gerados sg ON ds.simulado_id = sg.id
-        JOIN disciplinas d ON sg.disciplina_id = d.id
-        WHERE ds.aluno_id IN (
-            SELECT id FROM usuarios 
-            WHERE turma_id = ? AND tipo_usuario_id = 4
-        )
-        ORDER BY ds.data_resposta DESC
-    """, (turma_id,))
-    
-    desempenhos = cursor.fetchall()
-    
-    # Calcular médias por disciplina
-    disciplinas_dict = {}
-    alunos_notas = {}  # Para calcular média por aluno
-    
-    for d in desempenhos:
-        aluno_id = d[0]
-        desempenho = float(d[1])
-        disciplina = d[4]
+    if total_alunos > 0:
+        # Buscar desempenho de todos os alunos nos simulados
+        cursor.execute("""
+            SELECT ds.aluno_id, ds.desempenho, ds.data_resposta,
+                   sg.disciplina_id, d.nome as disciplina
+            FROM desempenho_simulado ds
+            JOIN simulados_gerados sg ON ds.simulado_id = sg.id
+            JOIN disciplinas d ON sg.disciplina_id = d.id
+            WHERE ds.aluno_id IN (
+                SELECT id FROM usuarios 
+                WHERE turma_id = ? AND tipo_usuario_id = 4
+            )
+            ORDER BY ds.data_resposta DESC
+        """, (turma_id,))
         
-        # Médias por disciplina
-        if disciplina not in disciplinas_dict:
-            disciplinas_dict[disciplina] = {'total': 0, 'count': 0}
-        disciplinas_dict[disciplina]['total'] += desempenho
-        disciplinas_dict[disciplina]['count'] += 1
+        desempenhos = cursor.fetchall()
         
-        # Médias por aluno
-        if aluno_id not in alunos_notas:
-            alunos_notas[aluno_id] = {'total': 0, 'count': 0}
-        alunos_notas[aluno_id]['total'] += desempenho
-        alunos_notas[aluno_id]['count'] += 1
-    
-    # Preparar dados para os gráficos
-    disciplinas = []
-    medias_disciplinas = []
-    for disciplina, dados in disciplinas_dict.items():
-        disciplinas.append(disciplina)
-        medias_disciplinas.append(dados['total'] / dados['count'])
-    
-    # Calcular média geral e distribuição de notas
-    medias_alunos = []
-    for aluno_id, dados in alunos_notas.items():
-        if dados['count'] > 0:
-            media = dados['total'] / dados['count']
-            medias_alunos.append(media)
-    
-    media_geral = sum(medias_alunos) / len(medias_alunos) if medias_alunos else 0
-    
-    # Calcular distribuição de notas
-    distribuicao_notas = [0] * 5  # 0-20, 21-40, 41-60, 61-80, 81-100
-    for media in medias_alunos:
-        if media <= 20:
-            distribuicao_notas[0] += 1
-        elif media <= 40:
-            distribuicao_notas[1] += 1
-        elif media <= 60:
-            distribuicao_notas[2] += 1
-        elif media <= 80:
-            distribuicao_notas[3] += 1
-        else:
-            distribuicao_notas[4] += 1
-    
-    # Calcular grupos de desempenho
-    grupos = {
-        'alto_desempenho': len([m for m in medias_alunos if m > 80]),
-        'medio_desempenho': len([m for m in medias_alunos if 60 <= m <= 80]),
-        'baixo_desempenho': len([m for m in medias_alunos if m < 60])
-    }
-    
-    # Calcular taxa de participação
-    alunos_participantes = len(alunos_notas)
-    taxa_participacao = (alunos_participantes / total_alunos * 100) if total_alunos > 0 else 0
-    
-    # Identificar disciplinas com desempenho crítico
-    disciplinas_criticas = []
-    for disciplina, dados in disciplinas_dict.items():
-        media = dados['total'] / dados['count']
-        if media < 60:
-            disciplinas_criticas.append(disciplina)
+        if desempenhos:
+            # Calcular médias por disciplina
+            disciplinas_dict = {}
+            alunos_notas = {}  # Para calcular média por aluno
+            
+            for d in desempenhos:
+                aluno_id = d[0]
+                desempenho = float(d[1])
+                disciplina = d[4]
+                
+                # Médias por disciplina
+                if disciplina not in disciplinas_dict:
+                    disciplinas_dict[disciplina] = {'total': 0, 'count': 0}
+                disciplinas_dict[disciplina]['total'] += desempenho
+                disciplinas_dict[disciplina]['count'] += 1
+                
+                # Médias por aluno
+                if aluno_id not in alunos_notas:
+                    alunos_notas[aluno_id] = {'total': 0, 'count': 0}
+                alunos_notas[aluno_id]['total'] += desempenho
+                alunos_notas[aluno_id]['count'] += 1
+            
+            # Preparar dados para os gráficos
+            for disciplina, dados in disciplinas_dict.items():
+                disciplinas.append(disciplina)
+                medias_disciplinas.append(dados['total'] / dados['count'])
+            
+            # Calcular média geral e distribuição de notas
+            medias_alunos = []
+            for aluno_id, dados in alunos_notas.items():
+                if dados['count'] > 0:
+                    media = dados['total'] / dados['count']
+                    medias_alunos.append(media)
+            
+            if medias_alunos:
+                media_geral = sum(medias_alunos) / len(medias_alunos)
+                
+                # Calcular distribuição de notas
+                for media in medias_alunos:
+                    if media <= 20:
+                        distribuicao_notas[0] += 1
+                    elif media <= 40:
+                        distribuicao_notas[1] += 1
+                    elif media <= 60:
+                        distribuicao_notas[2] += 1
+                    elif media <= 80:
+                        distribuicao_notas[3] += 1
+                    else:
+                        distribuicao_notas[4] += 1
+                
+                # Calcular grupos de desempenho
+                grupos = {
+                    'alto_desempenho': len([m for m in medias_alunos if m > 80]),
+                    'medio_desempenho': len([m for m in medias_alunos if 60 <= m <= 80]),
+                    'baixo_desempenho': len([m for m in medias_alunos if m < 60])
+                }
+            
+            # Calcular taxa de participação
+            alunos_participantes = len(alunos_notas)
+            taxa_participacao = (alunos_participantes / total_alunos * 100) if total_alunos > 0 else 0
+            
+            # Identificar disciplinas com desempenho crítico
+            for disciplina, dados in disciplinas_dict.items():
+                media = dados['total'] / dados['count']
+                if media < 60:
+                    disciplinas_criticas.append(disciplina)
     
     # Gerar parecer pedagógico
     parecer = {
         'engajamento': f"""
-            A turma possui {total_alunos} alunos, dos quais {alunos_participantes} ({taxa_participacao:.1f}%) 
+            A turma possui {total_alunos} alunos, dos quais {len(alunos_notas) if 'alunos_notas' in locals() else 0} ({taxa_participacao:.1f}%) 
             participaram dos simulados até o momento.
             {'A participação está excelente!' if taxa_participacao >= 90
              else 'A participação está boa, mas pode melhorar.' if taxa_participacao >= 70
@@ -584,7 +620,7 @@ def relatorio_turma(turma_id):
              else 'O desempenho precisa de atenção.' if media_geral >= 60
              else 'O desempenho está crítico e requer intervenção imediata.'}
             
-            {f"As disciplinas que se destacam positivamente são: {', '.join([d for d, dados in disciplinas_dict.items() if dados['total']/dados['count'] >= 80])}" if any(dados['total']/dados['count'] >= 80 for dados in disciplinas_dict.values()) else ''}
+            {f"As disciplinas que se destacam positivamente são: {', '.join([d for d, dados in disciplinas_dict.items() if dados['total']/dados['count'] >= 80])}" if 'disciplinas_dict' in locals() and any(dados['total']/dados['count'] >= 80 for dados in disciplinas_dict.values()) else ''}
         """,
         'pontos_atencao': f"""
             {'Não foram identificadas disciplinas com desempenho crítico.' if not disciplinas_criticas else
@@ -615,7 +651,7 @@ def relatorio_turma(turma_id):
     }
     
     return render_template('professores/relatorio_turma.html',
-                         turma={'id': turma_info[0], 'serie': turma_info[1], 
+                         turma={'id': turma_info[0], 'Ano_escolar': turma_info[1], 
                                'turma': turma_info[2], 'escola': turma_info[3]},
                          total_alunos=total_alunos,
                          media_geral=media_geral,
@@ -624,16 +660,14 @@ def relatorio_turma(turma_id):
                          medias_disciplinas=medias_disciplinas,
                          distribuicao_notas=distribuicao_notas,
                          grupos=grupos,
-                         parecer=parecer)
-
+                         parecer=parecer,
+                         now=datetime.now(),
+                         zip=zip)
 
 @professores_bp.route('/relatorio_turma_pdf/<int:turma_id>')
 @login_required
+@professor_required
 def relatorio_turma_pdf(turma_id):
-    if current_user.tipo_usuario_id != 3:  # Verifica se é professor
-        flash('Acesso não autorizado.', 'danger')
-        return redirect(url_for('home'))
-        
     db = get_db()
     cursor = db.cursor()
     
@@ -649,9 +683,9 @@ def relatorio_turma_pdf(turma_id):
     
     # Buscar informações da turma
     cursor.execute("""
-        SELECT t.id, s.nome as serie, t.turma, e.nome_da_escola as escola
+        SELECT t.id, s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM turmas t
-        JOIN series s ON t.serie_id = s.id
+        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE t.id = ?
     """, (turma_id,))
@@ -800,7 +834,7 @@ def relatorio_turma_pdf(turma_id):
     
     # Renderizar o HTML
     html = render_template('professores/relatorio_turma_pdf.html',
-                         turma={'id': turma_info[0], 'serie': turma_info[1], 
+                         turma={'id': turma_info[0], 'Ano_escolar': turma_info[1], 
                                'turma': turma_info[2], 'escola': turma_info[3]},
                          total_alunos=total_alunos,
                          media_geral=media_geral,
@@ -935,3 +969,146 @@ def gerar_recomendacoes(notas_disciplinas, evolucao):
         return "Recomendações para melhorar o desempenho:\n- " + "\n- ".join(recomendacoes)
     else:
         return "O aluno está no caminho certo. Recomenda-se manter a dedicação atual aos estudos."
+
+def analisar_desempenho(notas_disciplinas, evolucao):
+    if not notas_disciplinas:
+        return "Ainda não há dados suficientes para análise de desempenho."
+    
+    # Análise das médias por disciplina
+    medias = [(nota[1], nota[2]) for nota in notas_disciplinas]
+    melhor_disciplina = max(medias, key=lambda x: x[1])
+    pior_disciplina = min(medias, key=lambda x: x[1])
+    
+    # Análise da evolução
+    if evolucao and len(evolucao) > 1:
+        primeira_nota = evolucao[0][1]
+        ultima_nota = evolucao[-1][1]
+        tendencia = "crescente" if ultima_nota > primeira_nota else "decrescente" if ultima_nota < primeira_nota else "estável"
+    else:
+        tendencia = "ainda não estabelecida"
+    
+    analise = f"""
+    O aluno apresenta melhor desempenho em {melhor_disciplina[0]} (média {melhor_disciplina[1]:.1f}%) 
+    e maior dificuldade em {pior_disciplina[0]} (média {pior_disciplina[1]:.1f}%). 
+    A tendência de desempenho é {tendencia}.
+    """
+    
+    return analise
+
+def identificar_destaques(notas_disciplinas):
+    if not notas_disciplinas:
+        return "Ainda não há dados suficientes para identificar áreas de destaque."
+    
+    destaques = []
+    for disciplina, media in [(nota[1], nota[2]) for nota in notas_disciplinas]:
+        if media >= 80:
+            destaques.append(f"{disciplina} ({media:.1f}%)")
+    
+    if destaques:
+        return f"""
+        O aluno demonstra excelência nas seguintes disciplinas: {', '.join(destaques)}. 
+        Estas áreas representam pontos fortes que podem ser aproveitados para potencializar o aprendizado em outras disciplinas.
+        """
+    else:
+        return "O aluno ainda não atingiu níveis de excelência (acima de 80%) em nenhuma disciplina, mas mostra potencial para desenvolvimento."
+
+def gerar_recomendacoes(notas_disciplinas, evolucao):
+    if not notas_disciplinas:
+        return "Recomenda-se começar a realizar os simulados disponíveis para obter uma avaliação mais precisa."
+    
+    recomendacoes = []
+    
+    # Identificar disciplinas que precisam de atenção
+    for disciplina, media in [(nota[1], nota[2]) for nota in notas_disciplinas]:
+        if media < 60:
+            recomendacoes.append(f"Dedicar mais tempo aos estudos de {disciplina}")
+    
+    # Analisar regularidade
+    if evolucao:
+        datas = [ev[0] for ev in evolucao]
+        if len(datas) < 5:
+            recomendacoes.append("Aumentar a frequência de realização dos simulados para um acompanhamento mais efetivo")
+    
+    if recomendacoes:
+        return "Recomendações para melhorar o desempenho:\n- " + "\n- ".join(recomendacoes)
+    else:
+        return "O aluno está no caminho certo. Recomenda-se manter a dedicação atual aos estudos."
+    .first())
+    
+    media_geral = media_result[0] if media_result and media_result[0] else 0
+    
+    analise = f"""
+    O aluno demonstra um nível de engajamento {'alto' if total_simulados > 10 else 'moderado' if total_simulados > 5 else 'inicial'} 
+    com o portal, tendo completado {total_simulados} simulados em {dias_ativos} dias diferentes. 
+    {'Isso demonstra consistência nos estudos.' if dias_ativos > 5 else 'Há espaço para maior regularidade nos estudos.'}
+    
+    A média geral atual é de {media_geral:.1f}%, o que indica um desempenho {'excelente' if media_geral >= 90 
+        else 'muito bom' if media_geral >= 80 
+        else 'bom' if media_geral >= 70 
+        else 'regular' if media_geral >= 60 
+        else 'que precisa de atenção'}.
+    """
+    
+    return analise
+
+def analisar_desempenho(notas_disciplinas, evolucao):
+    if not notas_disciplinas:
+        return "Ainda não há dados suficientes para análise de desempenho."
+    
+    # Análise das médias por disciplina
+    medias = [(nota[1], nota[2]) for nota in notas_disciplinas]
+    melhor_disciplina = max(medias, key=lambda x: x[1])
+    pior_disciplina = min(medias, key=lambda x: x[1])
+    
+    # Análise da evolução
+    if evolucao and len(evolucao) > 1:
+        primeira_nota = evolucao[0][1]
+        ultima_nota = evolucao[-1][1]
+        tendencia = "crescente" if ultima_nota > primeira_nota else "decrescente" if ultima_nota < primeira_nota else "estável"
+    else:
+        tendencia = "ainda não estabelecida"
+    
+    analise = f"""
+    O aluno apresenta melhor desempenho em {melhor_disciplina[0]} (média {melhor_disciplina[1]:.1f}%) 
+    e maior dificuldade em {pior_disciplina[0]} (média {pior_disciplina[1]:.1f}%). 
+    A tendência de desempenho é {tendencia}.
+    """
+    
+    return analise
+
+def gerar_parecer_engajamento(taxa_participacao):
+    if taxa_participacao >= 90:
+        return "A turma demonstra excelente nível de engajamento, com participação muito acima da média."
+    elif taxa_participacao >= 70:
+        return "O engajamento da turma é satisfatório, com boa participação nas atividades."
+    else:
+        return "Há necessidade de maior engajamento da turma. A participação está abaixo do esperado."
+
+def gerar_parecer_desempenho(media_geral, grupos):
+    if media_geral >= 80:
+        return "O desempenho geral da turma é excelente, demonstrando domínio dos conteúdos."
+    elif media_geral >= 60:
+        return "A turma apresenta desempenho satisfatório, mas há espaço para melhorias."
+    else:
+        return "O desempenho geral da turma está abaixo do esperado, necessitando atenção especial."
+
+def gerar_pontos_atencao(grupos, taxa_participacao):
+    pontos = []
+    if grupos['baixo_desempenho'] > 0:
+        pontos.append(f"Há {grupos['baixo_desempenho']} alunos com desempenho abaixo de 60%.")
+    if taxa_participacao < 70:
+        pontos.append("A taxa de participação está abaixo do ideal.")
+    
+    return " ".join(pontos) if pontos else "Não há pontos críticos de atenção no momento."
+
+def gerar_recomendacoes(grupos, taxa_participacao, media_geral):
+    recomendacoes = []
+    
+    if grupos['baixo_desempenho'] > 0:
+        recomendacoes.append("Implementar programa de reforço para alunos com baixo desempenho.")
+    if taxa_participacao < 70:
+        recomendacoes.append("Desenvolver estratégias para aumentar o engajamento dos alunos.")
+    if media_geral < 60:
+        recomendacoes.append("Revisar metodologias de ensino e avaliar necessidade de adaptações.")
+    
+    return " ".join(recomendacoes) if recomendacoes else "Manter as estratégias atuais e continuar monitorando o progresso."

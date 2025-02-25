@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "professores/base_professores.html" %}
 
 {% block title %}Criar Plano de Aula{% endblock %}
 
@@ -16,17 +16,17 @@
                             <label for="disciplina" class="form-label">Disciplina</label>
                             <select class="form-select" id="disciplina" name="disciplina" required>
                                 <option value="">Selecione a disciplina</option>
-                                {% for disciplina in disciplinas %}
-                                <option value="{{ disciplina|lower }}">{{ disciplina }}</option>
+                                {% for id, nome in disciplinas %}
+                                <option value="{{ id }}">{{ nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="serie" class="form-label">Série</label>
-                            <select class="form-select" id="serie" name="serie" required>
+                            <label for="Ano_escolar" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="Ano_escolar" name="Ano_escolar" required>
                                 <option value="">Selecione a série</option>
-                                {% for serie_id, serie_nome in series %}
-                                <option value="{{ serie_id }}">{{ serie_nome }}</option>
+                                {% for Ano_escolar_id, Ano_escolar_nome in Ano_escolar %}
+                                <option value="{{ Ano_escolar_id }}">{{ Ano_escolar_nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>

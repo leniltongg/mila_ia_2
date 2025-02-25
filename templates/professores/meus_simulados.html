@@ -22,10 +22,10 @@
                                 <thead>
                                     <tr>
                                         <th>Disciplina</th>
-                                        <th>Série</th>
+                                        <th>Ano Escolar</th>
                                         <th>Mês</th>
                                         <th>Data de Criação</th>
-                                        <th>Alunos Responderam</th>
+                                        <th>Status</th>
                                         <th>Ações</th>
                                     </tr>
                                 </thead>
@@ -33,15 +33,34 @@
                                     {% for simulado in simulados %}
                                         <tr>
                                             <td>{{ simulado.disciplina_nome }}</td>
-                                            <td>{{ simulado.serie_nome }}</td>
+                                            <td>{{ simulado.Ano_escolar_nome }}</td>
                                             <td>{{ simulado.mes_nome }}</td>
                                             <td>{{ simulado.data_criacao }}</td>
-                                            <td>{{ simulado.total_alunos_responderam }}</td>
                                             <td>
-                                                <a href="{{ url_for('simulados.visualizar_simulado', simulado_id=simulado.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Visualizar">
+                                                {% if simulado.status == 'enviado' %}
+                                                    <span class="badge bg-success">Enviado</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">Gerado</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('simulados.visualizar_simulado_professor', simulado_id=simulado.id) }}" class="btn btn-sm btn-outline-primary me-1" title="Visualizar">
                                                     <i class="bi bi-eye"></i>
                                                 </a>
-                                                <a href="{{ url_for('simulados.relatorio_simulado', simulado_id=simulado.id) }}" class="btn btn-sm btn-outline-success" title="Relatório">
+                                                {% if simulado.status == 'gerado' %}
+                                                    <a href="{{ url_for('simulados.criar_simulado', id=simulado.id) }}" class="btn btn-sm btn-outline-secondary me-1" title="Editar">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </a>
+                                                    <a href="{{ url_for('simulados.pagina_enviar_simulado', simulado_id=simulado.id) }}" class="btn btn-sm btn-outline-success me-1" title="Enviar Simulado">
+                                                        <i class="bi bi-send"></i>
+                                                    </a>
+                                                {% endif %}
+                                                {% if simulado.status == 'enviado' %}
+                                                    <button onclick="cancelarEnvio({{ simulado.id }})" class="btn btn-sm btn-outline-danger me-1" title="Cancelar Envio">
+                                                        <i class="bi bi-x-circle"></i>
+                                                    </button>
+                                                {% endif %}
+                                                <a href="{{ url_for('simulados.relatorio_simulado', simulado_id=simulado.id) }}" class="btn btn-sm btn-outline-info" title="Relatório">
                                                     <i class="bi bi-graph-up"></i>
                                                 </a>
                                             </td>
@@ -64,4 +83,32 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function cancelarEnvio(simuladoId) {
+    if (confirm('Tem certeza que deseja cancelar o envio deste simulado? Os alunos não poderão mais respondê-lo.')) {
+        fetch(`/professores/cancelar-envio-simulado/${simuladoId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Envio cancelado com sucesso!');
+                window.location.reload();
+            } else {
+                alert(data.error || 'Erro ao cancelar envio');
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao cancelar envio');
+        });
+    }
+}
+</script>
 {% endblock %}

@@ -59,11 +59,11 @@
                 <div class="card-body">
                     <form id="filtroForm" class="row g-3">
                         <div class="col-md-4">
-                            <label for="filtro-serie" class="form-label">Série</label>
-                            <select class="form-select" id="filtro-serie">
+                            <label for="filtro-Ano_escolar" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="filtro-Ano_escolar">
                                 <option value="">Todas</option>
-                                {% for serie in series %}
-                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% for Ano_escolar in Ano_escolar %}
+                                <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -105,14 +105,14 @@
             </div>
             <div class="modal-body">
                 <form id="questaoForm">
-                    <!-- Série e Disciplina -->
+                    <!-- Ano Escolar e Disciplina -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="serie_id" class="form-label">Série</label>
-                            <select class="form-select" id="serie_id" name="serie_id" required>
+                            <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id" required>
                                 <option value="">Selecione...</option>
-                                {% for serie in series %}
-                                <option value="{{ serie.id }}">{{ serie.nome }}</option>
+                                {% for Ano_escolar in Ano_escolar %}
+                                <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -207,18 +207,18 @@ document.addEventListener('DOMContentLoaded', function() {
     buscarQuestoes();
     
     // Event listeners para filtros
-    document.getElementById('filtro-serie').addEventListener('change', buscarQuestoes);
+    document.getElementById('filtro-Ano_escolar').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-disciplina').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-assunto').addEventListener('change', buscarQuestoes);
 });
 
 async function buscarQuestoes() {
-    const serie = document.getElementById('filtro-serie').value;
+    const Ano_escolar = document.getElementById('filtro-Ano_escolar').value;
     const disciplina = document.getElementById('filtro-disciplina').value;
     const assunto = document.getElementById('filtro-assunto').value;
     
     try {
-        const response = await fetch(`/professores/buscar-questoes?serie_id=${serie}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        const response = await fetch(`/professores/buscar-questoes?Ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&assunto=${assunto}`);
         const questoes = await response.json();
         
         const questoesLista = document.getElementById('questoes-lista');
@@ -230,7 +230,7 @@ async function buscarQuestoes() {
                         <div>
                             <div class="questao-texto">${questao.questao.substring(0, 100)}...</div>
                             <small class="text-muted">
-                                ${questao.disciplina_nome} | ${questao.serie_nome} | ${questao.assunto}
+                                ${questao.disciplina_nome} | ${questao.Ano_escolar_nome} | ${questao.assunto}
                             </small>
                         </div>
                         <div>
@@ -249,7 +249,7 @@ async function buscarQuestoes() {
 
 async function salvarQuestao() {
     const formData = {
-        serie_id: parseInt(document.getElementById('serie_id').value),
+        Ano_escolar_id: parseInt(document.getElementById('Ano_escolar_id').value),
         disciplina_id: parseInt(document.getElementById('disciplina_id').value),
         assunto: document.getElementById('assunto').value,
         questao: document.getElementById('questao').value,
@@ -292,7 +292,7 @@ function visualizarQuestao(questao) {
         <div class="questao-header mb-3">
             <div class="questao-info">
                 <strong>Disciplina:</strong> ${questao.disciplina_nome} |
-                <strong>Série:</strong> ${questao.serie_nome} |
+                <strong>Ano Escolar:</strong> ${questao.Ano_escolar_nome} |
                 <strong>Assunto:</strong> ${questao.assunto}
             </div>
         </div>

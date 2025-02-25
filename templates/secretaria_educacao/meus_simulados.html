@@ -24,7 +24,7 @@
                             <thead>
                                 <tr>
                                     <th>ID</th>
-                                    <th>Série</th>
+                                    <th>Ano Escolar</th>
                                     <th>Componente Curricular</th>
                                     <th>Mês</th>
                                     <th>Status</th>
@@ -36,7 +36,7 @@
                                 {% for simulado in simulados %}
                                 <tr>
                                     <td>{{ simulado.id }}</td>
-                                    <td>{{ simulado.serie_nome }}</td>
+                                    <td>{{ simulado.Ano_escolar_nome }}</td>
                                     <td>{{ simulado.disciplina_nome }}</td>
                                     <td>{{ simulado.mes_nome }}</td>
                                     <td>

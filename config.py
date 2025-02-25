@@ -9,8 +9,14 @@ class Config:
     UPLOAD_FOLDER = 'uploads'  # pasta onde os PDFs serão temporariamente salvos
     DATABASE = 'educacional.db'
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-    DATABASE_PATH = os.getenv('DATABASE_PATH', 'mila.db')
-    SQLALCHEMY_DATABASE_URI = f'sqlite:///{DATABASE_PATH}'
+    # Configuração do MySQL
+    DB_USER = os.getenv('DB_USER', 'mila_user')
+    DB_PASSWORD = os.getenv('DB_PASSWORD', '31952814Gg@')
+    DB_HOST = os.getenv('DB_HOST', '127.0.0.1')
+    DB_PORT = os.getenv('DB_PORT', '3306')
+    DB_NAME = os.getenv('DB_NAME', 'mila_educacional')
+    
+    SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SESSION_COOKIE_SECURE = True
     SESSION_COOKIE_HTTPONLY = True

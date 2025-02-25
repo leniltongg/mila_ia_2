@@ -3,6 +3,7 @@ from flask_login import LoginManager
 from models import db, User
 from routes.admin_v2.routes import admin_v2
 from routes.auth import auth_bp
+from routes.administrador import administrador_bp
 from routes import conteudo_bp, professores_bp, alunos_bp, simulados_bp
 
 def create_app():
@@ -32,5 +33,6 @@ def create_app():
     app.register_blueprint(simulados_bp)
     app.register_blueprint(admin_v2)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(administrador_bp)
     
     return app

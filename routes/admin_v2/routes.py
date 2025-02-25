@@ -291,10 +291,10 @@ def turma_create():
     if request.method == 'POST':
         nome = request.form.get('nome')
         escola_id = request.form.get('escola_id', type=int)
-        serie = request.form.get('serie')
+        Ano_escolar = request.form.get('Ano_escolar')
         turno = request.form.get('turno')
         
-        if not all([nome, escola_id, serie, turno]):
+        if not all([nome, escola_id, Ano_escolar, turno]):
             flash('Todos os campos são obrigatórios.', 'error')
             return redirect(url_for('admin_v2.turma_create'))
         
@@ -302,7 +302,7 @@ def turma_create():
             turma = Turma(
                 nome=nome,
                 escola_id=escola_id,
-                serie=serie,
+                Ano_escolar=Ano_escolar,
                 turno=turno
             )
             db.session.add(turma)
@@ -338,9 +338,9 @@ def cadastro_massa_turmas():
                 df = pd.read_csv(file)
                 
                 # Validar colunas necessárias
-                required_columns = ['nome', 'escola_id', 'serie', 'turno']
+                required_columns = ['nome', 'escola_id', 'Ano_escolar', 'turno']
                 if not all(col in df.columns for col in required_columns):
-                    flash('Arquivo CSV deve conter as colunas: nome, escola_id, serie, turno', 'error')
+                    flash('Arquivo CSV deve conter as colunas: nome, escola_id, Ano_escolar, turno', 'error')
                     return redirect(url_for('admin_v2.cadastro_massa_turmas'))
                 
                 # Processar dados
@@ -348,7 +348,7 @@ def cadastro_massa_turmas():
                     turma = Turma(
                         nome=row['nome'],
                         escola_id=int(row['escola_id']),
-                        serie=row['serie'],
+                        Ano_escolar=row['Ano_escolar'],
                         turno=row['turno']
                     )
                     db.session.add(turma)

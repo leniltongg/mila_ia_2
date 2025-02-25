@@ -76,7 +76,7 @@ Relatório do Aluno - {{ aluno.nome }}
                         <div>
                             <h4 class="mb-1">{{ aluno.nome }}</h4>
                             <p class="text-muted mb-0">
-                                {{ turma.serie }} - Turma {{ turma.turma }} | {{ turma.escola }}
+                                {{ turma.Ano_escolar }} - Turma {{ turma.turma }} | {{ turma.escola }}
                             </p>
                         </div>
                         <div>
@@ -236,7 +236,7 @@ new Chart(document.getElementById('graficoDesempenho'), {
 new Chart(document.getElementById('graficoEvolucao'), {
     type: 'line',
     data: {
-        labels: {{ datas_simulados|tojson }},
+        labels: {{ datas_formatadas|tojson }},
         datasets: [{
             label: 'Desempenho nos Simulados (%)',
             data: {{ notas_simulados|tojson }},

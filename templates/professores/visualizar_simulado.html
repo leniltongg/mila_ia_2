@@ -9,150 +9,146 @@
                 <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Detalhes do Simulado</h5>
                     <div>
+                        {% if simulado.status == 'gerado' %}
+                            <button type="button" class="btn btn-light me-2" onclick="enviarSimulado({{ simulado.id }})">
+                                <i class="bi bi-send"></i> Enviar Simulado
+                            </button>
+                        {% endif %}
                         <a href="{{ url_for('simulados.listar_simulados_professor') }}" class="btn btn-light">
                             <i class="bi bi-arrow-left"></i> Voltar
                         </a>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Disciplina:</strong></p>
-                            <p>{{ simulado.disciplina_nome }}</p>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <p class="mb-1"><strong>Disciplina:</strong></p>
+                                <p class="mb-0">{{ simulado.disciplina_nome }}</p>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Série:</strong></p>
-                            <p>{{ simulado.serie_nome }}</p>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <p class="mb-1"><strong>Ano Escolar:</strong></p>
+                                <p class="mb-0">{{ simulado.Ano_escolar_nome }}</p>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Mês:</strong></p>
-                            <p>{{ simulado.mes_nome }}</p>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <p class="mb-1"><strong>Mês:</strong></p>
+                                <p class="mb-0">{{ simulado.mes_nome }}</p>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Data de Criação:</strong></p>
-                            <p>{{ simulado.data_criacao }}</p>
+                        <div class="col-12 col-md-6 col-lg-3">
+                            <div class="border rounded p-3 h-100">
+                                <p class="mb-1"><strong>Data de Criação:</strong></p>
+                                <p class="mb-0">{{ simulado.data_criacao }}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Status:</strong></p>
-                            <p>
-                                {% if simulado.status == 'enviado' %}
-                                    <span class="badge bg-success">Enviado</span>
-                                {% else %}
-                                    <span class="badge bg-warning text-dark">Gerado</span>
-                                {% endif %}
-                            </p>
+                        <div class="col-12">
+                            <div class="border rounded p-3">
+                                <p class="mb-1"><strong>Status:</strong></p>
+                                <p class="mb-0">
+                                    {% if simulado.status == 'enviado' %}
+                                        <span class="badge bg-success">Enviado</span>
+                                    {% else %}
+                                        <span class="badge bg-warning text-dark">Gerado</span>
+                                    {% endif %}
+                                </p>
+                            </div>
                         </div>
-                        <div class="col-md-3">
-                            <p class="mb-1"><strong>Alunos Responderam:</strong></p>
-                            <p>{{ simulado.total_alunos_responderam }}</p>
-                        </div>
+                        {% if simulado.status == 'enviado' %}
+                            <div class="col-12">
+                                <div class="border rounded p-3">
+                                    <p class="mb-1"><strong>Turmas:</strong></p>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Turma</th>
+                                                    <th>Data de Envio</th>
+                                                    <th>Data Limite</th>
+                                                    <th>Alunos Responderam</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for turma in simulado.turmas %}
+                                                    <tr>
+                                                        <td>{{ turma.turma }}</td>
+                                                        <td>{{ turma.data_envio }}</td>
+                                                        <td>{{ turma.data_limite }}</td>
+                                                        <td>{{ turma.total_responderam }}</td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Questões do Simulado -->
+        <!-- Questões -->
         <div class="col-12 mt-4">
             <div class="card">
-                <div class="card-header bg-primary text-white">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Questões</h5>
+                    {% if simulado.status == 'gerado' %}
+                        <a href="{{ url_for('simulados.criar_simulado', id=simulado.id) }}" class="btn btn-light">
+                            <i class="bi bi-pencil"></i> Editar
+                        </a>
+                    {% endif %}
                 </div>
                 <div class="card-body">
-                    {% for questao in questoes %}
+                    {% for questao in simulado.questoes %}
                         <div class="questao mb-4">
-                            <h6 class="mb-3">Questão {{ loop.index }}</h6>
-                            <p class="mb-3">{{ questao.questao }}</p>
-                            
-                            <div class="alternativas">
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" disabled 
-                                           {% if questao.questao_correta == 'a' %}checked{% endif %}>
-                                    <label class="form-check-label">
-                                        A) {{ questao.alternativa_a }}
-                                    </label>
+                            <div class="border rounded p-3">
+                                <h6 class="mb-3"><strong>Questão {{ loop.index }}</strong></h6>
+                                <p class="mb-3">{{ questao.questao }}</p>
+                                
+                                <div class="alternativas">
+                                    <div class="list-group">
+                                        <div class="list-group-item {% if questao.questao_correta == 'A' %}list-group-item-success{% endif %}">
+                                            <strong>A)</strong> {{ questao.alternativa_a }}
+                                        </div>
+                                        <div class="list-group-item {% if questao.questao_correta == 'B' %}list-group-item-success{% endif %}">
+                                            <strong>B)</strong> {{ questao.alternativa_b }}
+                                        </div>
+                                        <div class="list-group-item {% if questao.questao_correta == 'C' %}list-group-item-success{% endif %}">
+                                            <strong>C)</strong> {{ questao.alternativa_c }}
+                                        </div>
+                                        <div class="list-group-item {% if questao.questao_correta == 'D' %}list-group-item-success{% endif %}">
+                                            <strong>D)</strong> {{ questao.alternativa_d }}
+                                        </div>
+                                        {% if questao.alternativa_e %}
+                                            <div class="list-group-item {% if questao.questao_correta == 'E' %}list-group-item-success{% endif %}">
+                                                <strong>E)</strong> {{ questao.alternativa_e }}
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" disabled 
-                                           {% if questao.questao_correta == 'b' %}checked{% endif %}>
-                                    <label class="form-check-label">
-                                        B) {{ questao.alternativa_b }}
-                                    </label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" disabled 
-                                           {% if questao.questao_correta == 'c' %}checked{% endif %}>
-                                    <label class="form-check-label">
-                                        C) {{ questao.alternativa_c }}
-                                    </label>
-                                </div>
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" disabled 
-                                           {% if questao.questao_correta == 'd' %}checked{% endif %}>
-                                    <label class="form-check-label">
-                                        D) {{ questao.alternativa_d }}
-                                    </label>
-                                </div>
-                                {% if questao.alternativa_e %}
-                                <div class="form-check mb-2">
-                                    <input class="form-check-input" type="radio" disabled 
-                                           {% if questao.questao_correta == 'e' %}checked{% endif %}>
-                                    <label class="form-check-label">
-                                        E) {{ questao.alternativa_e }}
-                                    </label>
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <div class="mt-2">
-                                <p class="mb-1"><strong>Assunto:</strong> {{ questao.assunto }}</p>
+                                
+                                <p class="mt-3 mb-0">
+                                    <small class="text-muted">Assunto: {{ questao.assunto }}</small>
+                                </p>
                             </div>
                         </div>
-                        {% if not loop.last %}<hr>{% endif %}
                     {% endfor %}
                 </div>
             </div>
         </div>
-
-        <!-- Alunos que Responderam -->
-        {% if alunos %}
-        <div class="col-12 mt-4">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">Alunos que Responderam</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Aluno</th>
-                                    <th>Desempenho</th>
-                                    <th>Data da Resposta</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for aluno in alunos %}
-                                    <tr>
-                                        <td>{{ aluno.aluno_nome }}</td>
-                                        <td>
-                                            {% if aluno.desempenho is not none %}
-                                                {{ "%.1f"|format(aluno.desempenho) }}%
-                                            {% else %}
-                                                -
-                                            {% endif %}
-                                        </td>
-                                        <td>{{ aluno.data_resposta or '-' }}</td>
-                                    </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function enviarSimulado(simuladoId) {
+    // Redirecionar para a página de envio
+    window.location.href = `/professores/enviar-simulado/${simuladoId}`;
+}
+</script>
 {% endblock %}

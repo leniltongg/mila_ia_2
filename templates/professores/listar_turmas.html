@@ -16,45 +16,45 @@ Minhas Turmas
                     <table class="table table-hover">
                         <thead class="table-light">
                             <tr>
-                                <th>Série</th>
+                                <th>Ano Escolar</th>
                                 <th>Turma</th>
                                 <th>Escola</th>
                                 <th class="text-center">Ações</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {% for turma in turmas %}
+                            {% for turma, ano_escolar, escola in turmas %}
                             <tr>
-                                <td>{{ turma[1] }}</td>
-                                <td>{{ turma[2] }}</td>
-                                <td>{{ turma[3] }}</td>
+                                <td>{{ ano_escolar.nome }}</td>
+                                <td>{{ turma.turma }}</td>
+                                <td>{{ escola.nome_da_escola }}</td>
                                 <td class="text-center">
-                                    <button onclick="carregarAlunos({{ turma[0] }}, this)" class="btn btn-primary btn-sm">
+                                    <button onclick="carregarAlunos({{ turma.id }}, this)" class="btn btn-primary btn-sm">
                                         <i class="fas fa-users me-1"></i> Ver Alunos
                                     </button>
-                                    <a href="{{ url_for('conteudo.criar_plano_aula', turma_id=turma[0]) }}" class="btn btn-info btn-sm">
+                                    <a href="{{ url_for('conteudo.criar_plano_aula', turma_id=turma.id) }}" class="btn btn-info btn-sm">
                                         <i class="fas fa-chalkboard-teacher me-1"></i> Plano de Aula
                                     </a>
-                                    <a href="{{ url_for('professores.relatorio_turma', turma_id=turma[0]) }}" class="btn btn-success btn-sm">
+                                    <a href="{{ url_for('professores.relatorio_turma', turma_id=turma.id) }}" class="btn btn-success btn-sm">
                                         <i class="fas fa-chart-line me-1"></i> Relatório
                                     </a>
                                 </td>
                             </tr>
-                            <tr id="alunos-turma-{{ turma[0] }}" style="display: none;">
+                            <tr id="alunos-turma-{{ turma.id }}" style="display: none;">
                                 <td colspan="4">
                                     <div class="card">
                                         <div class="card-header bg-light">
                                             <h5 class="mb-0">Alunos da Turma</h5>
                                         </div>
                                         <div class="card-body">
-                                            <div id="loading-{{ turma[0] }}" style="display: none;">
+                                            <div id="loading-{{ turma.id }}" style="display: none;">
                                                 <div class="text-center">
                                                     <div class="spinner-border text-primary" role="status">
                                                         <span class="visually-hidden">Carregando...</span>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <div id="alunos-lista-{{ turma[0] }}"></div>
+                                            <div id="alunos-lista-{{ turma.id }}"></div>
                                         </div>
                                     </div>
                                 </td>
@@ -91,64 +91,49 @@ function carregarAlunos(turmaId, botao) {
     lista.innerHTML = '';
     
     // Faz a requisição AJAX
-    fetch(`/portal_professores/api/turma/${turmaId}/alunos`)
+    fetch(`/professores/api/turma/${turmaId}/alunos`)
         .then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             return response.json();
         })
-        .then(data => {
-            if (data.error) {
-                lista.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
-                return;
-            }
-            
-            if (!data || data.length === 0) {
+        .then(alunos => {
+            loading.style.display = 'none';
+            if (alunos.length === 0) {
                 lista.innerHTML = '<div class="alert alert-info">Nenhum aluno encontrado nesta turma.</div>';
                 return;
             }
             
-            // Cria a tabela de alunos
-            let html = `
-                <div class="table-responsive">
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Nome</th>
-                                <th class="text-center">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-            
-            data.forEach(aluno => {
+            let html = '<div class="list-group">';
+            alunos.forEach(aluno => {
                 html += `
-                    <tr>
-                        <td>${aluno.nome}</td>
-                        <td class="text-center">
-                            <a href="/portal_professores/relatorio_aluno/${aluno.id}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-chart-line me-1"></i>
-                                Ver Relatório
-                            </a>
-                        </td>
-                    </tr>
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="mb-0">${aluno.nome}</h6>
+                                <small class="text-muted">Matrícula: ${aluno.matricula}</small>
+                            </div>
+                            <div>
+                                <a href="/professores/aluno/${aluno.id}/relatorio" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-chart-line"></i> Relatório
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 `;
             });
-            
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            
+            html += '</div>';
             lista.innerHTML = html;
         })
         .catch(error => {
-            lista.innerHTML = `<div class="alert alert-danger">Erro ao carregar alunos: ${error.message}</div>`;
-        })
-        .finally(() => {
             loading.style.display = 'none';
+            lista.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    Erro ao carregar alunos: ${error.message}
+                </div>
+            `;
         });
 }
 </script>

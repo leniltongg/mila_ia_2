@@ -12,12 +12,12 @@
     </select>
 
     <label for="tipo_ensino_id">Tipo de Ensino:</label>
-    <select id="tipo_ensino_id" name="tipo_ensino_id" onchange="carregarseries()" required>
+    <select id="tipo_ensino_id" name="tipo_ensino_id" onchange="carregarAno_escolar()" required>
         <option value="">Selecione uma escola primeiro</option>
     </select>
 
-    <label for="serie_id">Série:</label>
-    <select id="serie_id" name="serie_id" required>
+    <label for="Ano_escolar_id">Ano Escolar:</label>
+    <select id="Ano_escolar_id" name="Ano_escolar_id" required>
         <option value="">Selecione o tipo de ensino primeiro</option>
     </select>
 
@@ -31,11 +31,11 @@
 async function carregarTiposDeEnsino() {
     const escolaId = document.getElementById("escola_id").value;
     const tipoEnsinoSelect = document.getElementById("tipo_ensino_id");
-    const serieSelect = document.getElementById("serie_id");
+    const Ano_escolarelect = document.getElementById("Ano_escolar_id");
 
     // Limpar campos dependentes
     tipoEnsinoSelect.innerHTML = '<option value="">Carregando...</option>';
-    serieSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+    Ano_escolarelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
 
     if (!escolaId) {
         tipoEnsinoSelect.innerHTML = '<option value="">Selecione uma escola primeiro</option>';
@@ -61,33 +61,33 @@ async function carregarTiposDeEnsino() {
     }
 }
 
-async function carregarseries() {
+async function carregarAno_escolar() {
     const tipoEnsinoId = document.getElementById("tipo_ensino_id").value;
-    const serieSelect = document.getElementById("serie_id");
+    const Ano_escolarelect = document.getElementById("Ano_escolar_id");
 
-    serieSelect.innerHTML = '<option value="">Carregando...</option>';
+    Ano_escolarelect.innerHTML = '<option value="">Carregando...</option>';
 
     if (!tipoEnsinoId) {
-        serieSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+        Ano_escolarelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
         return;
     }
 
     try {
-        const response = await fetch(`/get_serie_ids?tipo_ensino_id=${tipoEnsinoId}`);
+        const response = await fetch(`/get_Ano_escolar_ids?tipo_ensino_id=${tipoEnsinoId}`);
         if (!response.ok) {
             throw new Error("Erro ao carregar séries");
         }
-        const series = await response.json();
+        const Ano_escolar = await response.json();
 
-        console.log("Séries recebidas:", series);
+        console.log("Ano Escolars recebidas:", Ano_escolar);
 
-        serieSelect.innerHTML = '<option value="">Selecione...</option>';
-        series.forEach(serie => {
-            serieSelect.innerHTML += `<option value="${serie.id}">${serie.nome}</option>`;
+        Ano_escolarelect.innerHTML = '<option value="">Selecione...</option>';
+        Ano_escolar.forEach(Ano_escolar => {
+            Ano_escolarelect.innerHTML += `<option value="${Ano_escolar.id}">${Ano_escolar.nome}</option>`;
         });
     } catch (error) {
         console.error("Erro ao carregar séries:", error);
-        serieSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        Ano_escolarelect.innerHTML = '<option value="">Erro ao carregar</option>';
     }
 }
 </script>
