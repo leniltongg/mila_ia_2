@@ -33,14 +33,14 @@
                 {% for questao in questoes %}
                 <li class="mb-4">
                     <div class="pergunta-container">
-                        <p class="mb-3">{{ questao.questao }}</p>
+                        <div>{{ questao.questao | safe }}</div>
                     </div>
                     <ul class="list-unstyled ms-4">
-                        <li class="mb-2">A) {{ questao.alternativa_a }}</li>
-                        <li class="mb-2">B) {{ questao.alternativa_b }}</li>
-                        <li class="mb-2">C) {{ questao.alternativa_c }}</li>
-                        <li class="mb-2">D) {{ questao.alternativa_d }}</li>
-                        <li class="mb-2">E) {{ questao.alternativa_e }}</li>
+                        <li class="mb-2">A) {{ questao.alternativa_a | safe }}</li>
+                        <li class="mb-2">B) {{ questao.alternativa_b | safe }}</li>
+                        <li class="mb-2">C) {{ questao.alternativa_c | safe }}</li>
+                        <li class="mb-2">D) {{ questao.alternativa_d | safe }}</li>
+                        <li class="mb-2">E) {{ questao.alternativa_e | safe }}</li>
                     </ul>
                     <p><strong>Resposta Correta:</strong> {{ questao.questao_correta }}</p>
                 </li>
