@@ -15,6 +15,8 @@ import pandas as pd
 import base64
 from dotenv import load_dotenv
 from extensions import db
+from routes.relatorios import relatorios_bp
+
 
 # Carrega variáveis do arquivo .env
 load_dotenv()
@@ -41,6 +43,7 @@ openai.api_key="sk-proj-Gg9jvN-9P01lrIRSnqzqrS4OgksLOW-MLSK263_L7thN8JAhd8u9ARLd
 # Inicializa o SQLAlchemy
 db.init_app(app)
 
+
 # Cria o contexto da aplicação
 app.app_context().push()
 
@@ -64,6 +67,7 @@ app.register_blueprint(simulados_bp)
 app.register_blueprint(secretaria_educacao_bp)
 app.register_blueprint(conteudo_bp)
 app.register_blueprint(administrador_bp)
+app.register_blueprint(relatorios_bp, url_prefix='/secretaria_educacao')
 
 # Initialize LoginManager
 login_manager = LoginManager()

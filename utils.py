@@ -17,3 +17,21 @@ def verificar_permissao(*tipos_permitidos):
             return f(*args, **kwargs)
         return decorated_function
     return decorator
+
+def get_nome_mes(mes_id):
+    """Retorna o nome do mês correspondente ao número fornecido."""
+    meses = {
+        1: 'Janeiro',
+        2: 'Fevereiro',
+        3: 'Março',
+        4: 'Abril',
+        5: 'Maio',
+        6: 'Junho',
+        7: 'Julho',
+        8: 'Agosto',
+        9: 'Setembro',
+        10: 'Outubro',
+        11: 'Novembro',
+        12: 'Dezembro'
+    }
+    return meses.get(mes_id, '-')

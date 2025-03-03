@@ -43,10 +43,10 @@
                     <option value="12" {% if mes == 12 %}selected{% endif %}>Dezembro</option>
                 </select>
             </form>
-            <a href="{{ url_for('secretaria_educacao.export_pdf_relatorio', mes=mes) }}" class="btn btn-danger">
+            <a href="{{ url_for('relatorios.export_pdf_relatorio', mes=mes) }}" class="btn btn-danger">
                 <i class="fas fa-file-pdf"></i> Exportar PDF
             </a>
-            <a href="{{ url_for('secretaria_educacao.export_excel_relatorio', mes=mes) }}" class="btn btn-success">
+            <a href="{{ url_for('relatorios.export_excel_relatorio', mes=mes) }}" class="btn btn-success">
                 <i class="fas fa-file-excel"></i> Exportar Excel
             </a>
         </div>

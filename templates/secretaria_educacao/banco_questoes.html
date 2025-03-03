@@ -178,7 +178,7 @@
                                     </div>
                                     <div class="modal-body">
                                         <h6 class="font-weight-bold">Questão:</h6>
-                                        <p>{{ questao.questao }}</p>
+                                        <div>{{ questao.questao | safe }}</div>
                                         
                                         <h6 class="font-weight-bold mt-3">Alternativas:</h6>
                                         <div class="ml-3">

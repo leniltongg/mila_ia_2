@@ -34,10 +34,10 @@
                 </select>
             </form>
             {% if escola_id %}
-            <a href="{{ url_for('secretaria_educacao.export_pdf_escola', escola_id=escola_id, mes=mes) }}" class="btn btn-danger">
+            <a href="{{ url_for('relatorios.export_pdf_escola', escola_id=escola_id, mes=mes) }}" class="btn btn-danger">
                 <i class="fas fa-file-pdf"></i> Exportar PDF
             </a>
-            <a href="{{ url_for('secretaria_educacao.export_excel_escola', escola_id=escola_id, mes=mes) }}" class="btn btn-success">
+            <a href="{{ url_for('relatorios.export_excel_escola', escola_id=escola_id, mes=mes) }}" class="btn btn-success">
                 <i class="fas fa-file-excel"></i> Exportar Excel
             </a>
             {% endif %}
