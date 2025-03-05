@@ -4,7 +4,7 @@ from flask_migrate import Migrate
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from urllib.parse import quote_plus
-from datetime import datetime
+from datetime import datetime, timedelta
 import openai
 import os
 import json
@@ -16,7 +16,11 @@ import base64
 from dotenv import load_dotenv
 from extensions import db
 from routes.relatorios import relatorios_bp
-
+import uuid
+from flask_session import Session
+from io import StringIO
+import unicodedata
+import re
 
 # Carrega variáveis do arquivo .env
 load_dotenv()
@@ -32,6 +36,14 @@ password = quote_plus('31952814Gg@')
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://mila_user:{password}@127.0.0.1/mila_educacional'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'uploads'  # pasta onde os PDFs serão temporariamente salvos
+
+# Configuração do Flask-Session
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = tempfile.gettempdir()
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=24)
+Session(app)
+
+
 
 # Certifique-se que a pasta existe
 if not os.path.exists(app.config['UPLOAD_FOLDER']):
@@ -81,7 +93,7 @@ class User:
         self.nome = user_data.nome
         self.tipo_usuario_id = user_data.tipo_usuario_id
         self.escola_id = user_data.escola_id
-        self.Ano_escolar_id = user_data.Ano_escolar_id
+        self.ano_escolar_id = user_data.ano_escolar_id
         self.turma_id = user_data.turma_id
         self.email = user_data.email
         self.codigo_ibge = user_data.codigo_ibge
@@ -280,6 +292,24 @@ def get_tipos_usuarios():
         'descricao': tipo.descricao
     } for tipo in tipos])
 
+
+def save_temp_data(data, prefix='temp'):
+    temp_id = str(uuid.uuid4())
+    temp_file = os.path.join(tempfile.gettempdir(), f"{prefix}_{temp_id}.json")
+    with open(temp_file, 'w') as f:
+        json.dump(data, f)
+    return temp_id
+
+def get_temp_data(temp_id, prefix='temp'):
+    temp_file = os.path.join(tempfile.gettempdir(), f"{prefix}_{temp_id}.json")
+    try:
+        with open(temp_file, 'r') as f:
+            data = json.load(f)
+        os.remove(temp_file)  # Remove o arquivo após a leitura
+        return data
+    except FileNotFoundError:
+        return None
+
 # Função para validar os dados do CSV
 def validate_escolas(data):
     required_columns = [
@@ -300,43 +330,37 @@ def validate_escolas(data):
 
     return True
 
-@app.route("/cadastrar_escolas_massa", methods=["GET", "POST"])
-@login_required
+@app.route('/cadastrar_escolas_massa', methods=['POST'])
 def cadastrar_escolas_massa():
-    if current_user.tipo_usuario_id != 1:
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for('login'))
+    if 'file' not in request.files:
+        flash("Nenhum arquivo enviado", "error")
+        return redirect(request.url)
 
-    if request.method == "POST":
-        # Verificar se o arquivo foi enviado
-        if "file" not in request.files:
-            flash("Nenhum arquivo enviado", "error")
-            return redirect(request.url)
+    file = request.files["file"]
+    if file.filename == "":
+        flash("Nenhum arquivo selecionado", "error")
+        return redirect(request.url)
 
-        file = request.files["file"]
-        if file.filename == "":
-            flash("Nenhum arquivo selecionado", "error")
-            return redirect(request.url)
+    if file:
+        try:
+            # Ler o arquivo CSV
+            content = file.read().decode('utf-8')
+            df = pd.read_csv(StringIO(content))
 
-        if file:
-            try:
-                # Ler o arquivo CSV
-                content = file.read().decode('utf-8')
-                df = pd.read_csv(StringIO(content))
-
-                # Validar os dados
-                if not validate_escolas(df):
-                    flash("Erro na validação dos dados. Verifique o arquivo e tente novamente.", "error")
-                    return redirect(request.url)
-
-                # Armazenar os dados na sessão para confirmação
-                session['escolas_data'] = df.to_dict('records')
-                
-                return redirect(url_for('confirmar_cadastro_escolas_massa'))
-
-            except Exception as e:
-                flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+            # Validar os dados
+            if not validate_escolas(df):
+                flash("Erro na validação dos dados. Verifique o arquivo e tente novamente.", "error")
                 return redirect(request.url)
+
+            # Armazenar os dados em arquivo temporário
+            temp_id = save_temp_data(df.to_dict('records'), 'escolas')
+            session['escolas_temp_id'] = temp_id
+            
+            return redirect(url_for('confirmar_cadastro_escolas_massa'))
+
+        except Exception as e:
+            flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+            return redirect(request.url)
 
     return render_template("cadastrar_escolas_massa.html")
 
@@ -347,17 +371,20 @@ def confirmar_cadastro_escolas_massa():
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for('login'))
 
-    if 'escolas_data' not in session:
+    temp_id = session.get('escolas_temp_id')
+    if not temp_id:
         flash("Nenhum dado de escola para confirmar", "error")
         return redirect(url_for('cadastrar_escolas_massa'))
 
-    escolas_data = session['escolas_data']
+    escolas_data = get_temp_data(temp_id, 'escolas')
+    if not escolas_data:
+        flash("Dados temporários expirados. Por favor, faça o upload novamente.", "error")
+        return redirect(url_for('cadastrar_escolas_massa'))
 
     if request.method == "POST":
         try:
             for escola in escolas_data:
                 nova_escola = Escolas(
-                    tipo_de_registro='10',
                     nome_da_escola=escola['nome'],
                     cep=escola['cep'],
                     codigo_ibge=escola['codigo_ibge'],
@@ -370,7 +397,7 @@ def confirmar_cadastro_escolas_massa():
                 db.session.add(nova_escola)
 
             db.session.commit()
-            session.pop('escolas_data', None)
+            session.pop('escolas_temp_id', None)  # Remove o ID temporário da sessão
             flash("Escolas cadastradas com sucesso!", "success")
             return redirect(url_for('portal_administrador'))
 
@@ -384,53 +411,40 @@ def confirmar_cadastro_escolas_massa():
         escolas=escolas_data
     )
 
-@app.route("/cadastrar_turmas_massa", methods=["GET", "POST"])
-@login_required
+@app.route('/cadastrar_turmas_massa', methods=['POST'])
 def cadastrar_turmas_massa():
-    if current_user.tipo_usuario_id != 1:
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for('login'))
+    if 'file' not in request.files:
+        flash("Nenhum arquivo enviado", "error")
+        return redirect(request.url)
 
-    if request.method == "POST":
-        if "file" not in request.files:
-            flash("Nenhum arquivo enviado", "error")
-            return redirect(request.url)
+    file = request.files["file"]
+    if file.filename == "":
+        flash("Nenhum arquivo selecionado", "error")
+        return redirect(request.url)
 
-        file = request.files["file"]
-        if file.filename == "":
-            flash("Nenhum arquivo selecionado", "error")
-            return redirect(request.url)
+    if file:
+        try:
+            # Ler o arquivo CSV
+            content = file.read().decode('utf-8')
+            df = pd.read_csv(StringIO(content))
 
-        if file:
-            try:
-                content = file.read().decode('utf-8')
-                df = pd.read_csv(StringIO(content))
-
-                # Validar colunas necessárias
-                required_columns = ['escola_id', 'tipo_ensino_id', 'Ano_escolar_id', 'turma']
-                missing_columns = [col for col in required_columns if col not in df.columns]
-                if missing_columns:
-                    flash(f"Faltam as seguintes colunas no arquivo CSV: {', '.join(missing_columns)}", "error")
-                    return redirect(request.url)
-
-                # Armazenar os dados na sessão para confirmação
-                session['turmas_data'] = df.to_dict('records')
-                return redirect(url_for('confirmar_cadastro_turmas'))
-
-            except Exception as e:
-                flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+            # Validar os dados
+            required_columns = ['nome', 'escola_id', 'ano_escolar_id']
+            if not all(col in df.columns for col in required_columns):
+                flash("Arquivo não contém todas as colunas necessárias", "error")
                 return redirect(request.url)
 
-    escolas = Escolas.query.all()
-    tipos_ensino = TiposEnsino.query.all()
-    Ano_escolar = Ano_escolar.query.all()
+            # Armazenar os dados em arquivo temporário
+            temp_id = save_temp_data(df.to_dict('records'), 'turmas')
+            session['turmas_temp_id'] = temp_id
+            
+            return redirect(url_for('confirmar_cadastro_turmas'))
 
-    return render_template(
-        "cadastrar_turmas_massa.html",
-        escolas=escolas,
-        tipos_ensino=tipos_ensino,
-        Ano_escolar=Ano_escolar
-    )
+        except Exception as e:
+            flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+            return redirect(request.url)
+
+    return render_template("cadastrar_turmas_massa.html")
 
 @app.route("/confirmar_cadastro_turmas", methods=["GET", "POST"])
 @login_required
@@ -439,26 +453,28 @@ def confirmar_cadastro_turmas():
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for('login'))
 
-    if 'turmas_data' not in session:
+    temp_id = session.get('turmas_temp_id')
+    if not temp_id:
         flash("Nenhum dado de turma para confirmar", "error")
         return redirect(url_for('cadastrar_turmas_massa'))
 
-    turmas_data = session['turmas_data']
+    turmas_data = get_temp_data(temp_id, 'turmas')
+    if not turmas_data:
+        flash("Dados temporários expirados. Por favor, faça o upload novamente.", "error")
+        return redirect(url_for('cadastrar_turmas_massa'))
 
     if request.method == "POST":
         try:
             for turma in turmas_data:
                 nova_turma = Turmas(
-                    tipo_de_registro='20',
+                    nome=turma['nome'],
                     escola_id=turma['escola_id'],
-                    tipo_ensino_id=turma['tipo_ensino_id'],
-                    Ano_escolar_id=turma['Ano_escolar_id'],
-                    turma=turma['turma']
+                    ano_escolar_id=turma['ano_escolar_id']
                 )
                 db.session.add(nova_turma)
 
             db.session.commit()
-            session.pop('turmas_data', None)
+            session.pop('turmas_temp_id', None)  # Remove o ID temporário da sessão
             flash("Turmas cadastradas com sucesso!", "success")
             return redirect(url_for('portal_administrador'))
 
@@ -472,60 +488,40 @@ def confirmar_cadastro_turmas():
         turmas=turmas_data
     )
 
-@app.route("/cadastrar_usuarios_massa", methods=["GET", "POST"])
-@login_required
+@app.route('/cadastrar_usuarios_massa', methods=['POST'])
 def cadastrar_usuarios_massa():
-    if current_user.tipo_usuario_id != 1:
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for('login'))
+    if 'file' not in request.files:
+        flash("Nenhum arquivo enviado", "error")
+        return redirect(request.url)
 
-    if request.method == "POST":
-        if "file" not in request.files:
-            flash("Nenhum arquivo enviado", "error")
-            return redirect(request.url)
+    file = request.files["file"]
+    if file.filename == "":
+        flash("Nenhum arquivo selecionado", "error")
+        return redirect(request.url)
 
-        file = request.files["file"]
-        if file.filename == "":
-            flash("Nenhum arquivo selecionado", "error")
-            return redirect(request.url)
+    if file:
+        try:
+            # Ler o arquivo CSV
+            content = file.read().decode('utf-8')
+            df = pd.read_csv(StringIO(content))
 
-        if file:
-            try:
-                content = file.read().decode('utf-8')
-                df = pd.read_csv(StringIO(content))
-
-                # Validar colunas necessárias
-                required_columns = [
-                    'nome', 'email', 'cpf', 'tipo_usuario_id', 'escola_id',
-                    'tipo_ensino_id', 'Ano_escolar_id', 'turma_id'
-                ]
-                missing_columns = [col for col in required_columns if col not in df.columns]
-                if missing_columns:
-                    flash(f"Faltam as seguintes colunas no arquivo CSV: {', '.join(missing_columns)}", "error")
-                    return redirect(request.url)
-
-                # Armazenar os dados na sessão para confirmação
-                session['usuarios_data'] = df.to_dict('records')
-                return redirect(url_for('confirmar_cadastro_usuarios'))
-
-            except Exception as e:
-                flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+            # Validar os dados
+            required_columns = ['nome', 'email', 'tipo_usuario_id', 'escola_id', 'codigo_ibge']
+            if not all(col in df.columns for col in required_columns):
+                flash("Arquivo não contém todas as colunas necessárias", "error")
                 return redirect(request.url)
 
-    escolas = Escolas.query.all()
-    tipos_ensino = TiposEnsino.query.all()
-    Ano_escolar = Ano_escolar.query.all()
-    turmas = Turmas.query.all()
-    tipos_usuarios = TiposUsuarios.query.all()
+            # Armazenar os dados em arquivo temporário
+            temp_id = save_temp_data(df.to_dict('records'), 'usuarios')
+            session['usuarios_temp_id'] = temp_id
+            
+            return redirect(url_for('confirmar_cadastro_usuarios'))
 
-    return render_template(
-        "cadastrar_usuarios_massa.html",
-        escolas=escolas,
-        tipos_ensino=tipos_ensino,
-        Ano_escolar=Ano_escolar,
-        turmas=turmas,
-        tipos_usuarios=tipos_usuarios
-    )
+        except Exception as e:
+            flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+            return redirect(request.url)
+
+    return render_template("cadastrar_usuarios_massa.html")
 
 @app.route("/confirmar_cadastro_usuarios", methods=["GET", "POST"])
 @login_required
@@ -534,35 +530,36 @@ def confirmar_cadastro_usuarios():
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for('login'))
 
-    if 'usuarios_data' not in session:
+    temp_id = session.get('usuarios_temp_id')
+    if not temp_id:
         flash("Nenhum dado de usuário para confirmar", "error")
         return redirect(url_for('cadastrar_usuarios_massa'))
 
-    usuarios_data = session['usuarios_data']
+    usuarios_data = get_temp_data(temp_id, 'usuarios')
+    if not usuarios_data:
+        flash("Dados temporários expirados. Por favor, faça o upload novamente.", "error")
+        return redirect(url_for('cadastrar_usuarios_massa'))
 
     if request.method == "POST":
         try:
             for usuario in usuarios_data:
-                # Gerar senha inicial
-                senha_inicial = generate_password_hash('123456')
-
+                senha_padrao = generate_password_hash('123456')
                 novo_usuario = Usuarios(
-                    tipo_registro='00',
                     nome=usuario['nome'],
                     email=usuario['email'],
-                    senha=senha_inicial,
+                    senha=senha_padrao,
                     tipo_usuario_id=usuario['tipo_usuario_id'],
                     escola_id=usuario['escola_id'],
-                    turma_id=usuario['turma_id'],
-                    tipo_ensino_id=usuario['tipo_ensino_id'],
-                    Ano_escolar_id=usuario['Ano_escolar_id'],
+                    turma_id=usuario.get('turma_id'),
+                    tipo_ensino_id=usuario.get('tipo_ensino_id'),
+                    ano_escolar_id=usuario.get('ano_escolar_id'),
                     codigo_ibge=usuario['codigo_ibge'],
-                    cep=usuario['cep']
+                    cep=usuario.get('cep')
                 )
                 db.session.add(novo_usuario)
 
             db.session.commit()
-            session.pop('usuarios_data', None)
+            session.pop('usuarios_temp_id', None)  # Remove o ID temporário da sessão
             flash("Usuários cadastrados com sucesso!", "success")
             return redirect(url_for('portal_administrador'))
 
@@ -650,7 +647,7 @@ def importar_assuntos():
                         assunto = Assunto(
                             disciplina=row['disciplina'],
                             assunto=row['assunto'],
-                            Ano_escolar_id=row['Ano_escolar_id'],
+                            ano_escolar_id=row['ano_escolar_id'],
                             turma_id=None,
                             escola_id=None,
                             professor_id=None
@@ -686,17 +683,17 @@ def cadastrar_turma():
         # Obter os valores do formulário
         escola_id = request.form.get("escola_id", "").strip()
         tipo_ensino_id = request.form.get("tipo_ensino_id", "").strip()
-        Ano_escolar_id = request.form.get("Ano_escolar_id", "").strip()
+        ano_escolar_id = request.form.get("ano_escolar_id", "").strip()
         turma_nome = request.form.get("turma", "").strip()
 
         # Printar os valores recebidos para depuração
         print(f"escola_id: {escola_id}")
         print(f"tipo_ensino_id: {tipo_ensino_id}")
-        print(f"Ano_escolar_id: {Ano_escolar_id}")
+        print(f"ano_escolar_id: {ano_escolar_id}")
         print(f"turma_nome: {turma_nome}")
 
         # Validar campos obrigatórios
-        if not all([escola_id, tipo_ensino_id, Ano_escolar_id, turma_nome]):
+        if not all([escola_id, tipo_ensino_id, ano_escolar_id, turma_nome]):
             print("Erro: Campos obrigatórios não preenchidos!")
             return render_template(
                 "cadastrar_turma.html",
@@ -709,7 +706,7 @@ def cadastrar_turma():
             nova_turma = Turmas(
                 escola_id=int(escola_id),
                 tipo_ensino_id=int(tipo_ensino_id),
-                Ano_escolar_id=int(Ano_escolar_id),
+                ano_escolar_id=int(ano_escolar_id),
                 turma=turma_nome
             )
             db.session.add(nova_turma)
@@ -775,21 +772,21 @@ def get_Ano_escolar():
 def get_turmas():
     escola_id = request.args.get("escola_id")
     tipo_ensino_id = request.args.get("tipo_ensino_id")
-    Ano_escolar_id = request.args.get("Ano_escolar_id")
+    ano_escolar_id = request.args.get("ano_escolar_id")
 
-    app.logger.info(f"Parâmetros recebidos: escola_id={escola_id}, tipo_ensino_id={tipo_ensino_id}, Ano_escolar_id={Ano_escolar_id}")
+    app.logger.info(f"Parâmetros recebidos: escola_id={escola_id}, tipo_ensino_id={tipo_ensino_id}, ano_escolar_id={ano_escolar_id}")
 
-    if not all([escola_id, tipo_ensino_id, Ano_escolar_id]):
+    if not all([escola_id, tipo_ensino_id, ano_escolar_id]):
         app.logger.warning("Parâmetros insuficientes fornecidos para /get_turmas.")
         return jsonify([])
 
     # Buscar turmas com os filtros
     turmas = Turmas.query.join(
-        Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
     ).filter(
         Turmas.escola_id == escola_id,
         Turmas.tipo_ensino_id == tipo_ensino_id,
-        Turmas.Ano_escolar_id == Ano_escolar_id
+        Turmas.ano_escolar_id == ano_escolar_id
     ).all()
 
     app.logger.info(f"Turmas encontradas: {turmas}")
@@ -843,7 +840,7 @@ def cadastrar_usuario():
         # Capturando múltiplas turmas para professores
         escolas_ids = request.form.getlist("escola_id[]")
         tipos_ensino_ids = request.form.getlist("tipo_ensino[]")
-        Ano_escolar_ids = request.form.getlist("Ano_escolar[]")
+        ano_escolar_ids = request.form.getlist("Ano_escolar[]")
         turmas_ids = request.form.getlist("turma_id[]")
 
         print(f"Recebidos: Nome={nome}, Email={email}, Tipo={tipo_usuario_id}, Turmas={turmas_ids}")
@@ -856,12 +853,12 @@ def cadastrar_usuario():
 
         # Validação específica para professores e alunos
         if tipo_usuario_id == "4":  # Aluno
-            if not all([escolas_ids[0], turmas_ids[0], tipos_ensino_ids[0], Ano_escolar_ids[0]]):
+            if not all([escolas_ids[0], turmas_ids[0], tipos_ensino_ids[0], ano_escolar_ids[0]]):
                 flash("Escola, Tipo de Ensino, Ano Escolar e Turma são obrigatórios para Alunos!", "error")
                 return render_template("cadastrar_usuario.html", escolas=escolas)
 
         if tipo_usuario_id == "3":  # Professor
-            if not all([escolas_ids, turmas_ids, tipos_ensino_ids, Ano_escolar_ids]):
+            if not all([escolas_ids, turmas_ids, tipos_ensino_ids, ano_escolar_ids]):
                 flash("Escola, Tipo de Ensino, Ano Escolar e Turma são obrigatórios para Professores!", "error")
                 return render_template("cadastrar_usuario.html", escolas=escolas)
 
@@ -877,7 +874,7 @@ def cadastrar_usuario():
                     escola_id=escolas_ids[0],
                     turma_id=turmas_ids[0],
                     tipo_ensino_id=tipos_ensino_ids[0],
-                    Ano_escolar_id=Ano_escolar_ids[0],
+                    ano_escolar_id=ano_escolar_ids[0],
                     codigo_ibge=codigo_ibge,
                     cep=cep
                 )
@@ -900,13 +897,13 @@ def cadastrar_usuario():
                 print(f"Professor {nome} cadastrado com ID {novo_professor.id}")
 
                 # Associar turmas ao professor
-                for escola_id, tipo_ensino_id, Ano_escolar_id, turma_id in zip(escolas_ids, tipos_ensino_ids, Ano_escolar_ids, turmas_ids):
+                for escola_id, tipo_ensino_id, ano_escolar_id, turma_id in zip(escolas_ids, tipos_ensino_ids, ano_escolar_ids, turmas_ids):
                     prof_turma = ProfessorTurmaEscola(
                         professor_id=novo_professor.id,
                         escola_id=escola_id,
                         turma_id=turma_id,
                         tipo_ensino_id=tipo_ensino_id,
-                        Ano_escolar_id=Ano_escolar_id
+                        ano_escolar_id=ano_escolar_id
                     )
                     db.session.add(prof_turma)
                 db.session.commit()
@@ -1002,7 +999,7 @@ def cadastrar_turma_em_massa():
                         nova_turma = Turmas(
                             escola_id=int(row["escola_id"]),
                             tipo_ensino_id=int(row["tipo_ensino_id"]),
-                            Ano_escolar_id=int(row["Ano_escolar_id"]),
+                            ano_escolar_id=int(row["ano_escolar_id"]),
                             turma=row["turma"]
                         )
                         db.session.add(nova_turma)
@@ -1068,7 +1065,7 @@ def cadastrar_usuario_em_massa():
                             escola_id=int(row["escola_id"]) if not pd.isna(row["escola_id"]) else None,
                             turma_id=int(row["turma_id"]) if not pd.isna(row["turma_id"]) else None,
                             tipo_ensino_id=int(row["tipo_ensino_id"]) if not pd.isna(row["tipo_ensino_id"]) else None,
-                            Ano_escolar_id=int(row["Ano_escolar_id"]) if not pd.isna(row["Ano_escolar_id"]) else None,
+                            ano_escolar_id=int(row["ano_escolar_id"]) if not pd.isna(row["ano_escolar_id"]) else None,
                             codigo_ibge=row["codigo_ibge"],
                             cep=row["cep"]
                         )
@@ -1079,7 +1076,7 @@ def cadastrar_usuario_em_massa():
                             turmas = row["turmas_ids"].split("|") if not pd.isna(row["turmas_ids"]) else []
                             escolas = row["escolas_ids"].split("|") if not pd.isna(row["escolas_ids"]) else []
                             tipos_ensino = row["tipos_ensino_ids"].split("|") if not pd.isna(row["tipos_ensino_ids"]) else []
-                            Ano_escolar = row["Ano_escolar_ids"].split("|") if not pd.isna(row["Ano_escolar_ids"]) else []
+                            Ano_escolar = row["ano_escolar_ids"].split("|") if not pd.isna(row["ano_escolar_ids"]) else []
 
                             for t, e, te, s in zip(turmas, escolas, tipos_ensino, Ano_escolar):
                                 prof_turma = ProfessorTurmaEscola(
@@ -1087,7 +1084,7 @@ def cadastrar_usuario_em_massa():
                                     escola_id=int(e),
                                     turma_id=int(t),
                                     tipo_ensino_id=int(te),
-                                    Ano_escolar_id=int(s)
+                                    ano_escolar_id=int(s)
                                 )
                                 db.session.add(prof_turma)
 
@@ -1122,9 +1119,9 @@ def cadastrar_assunto():
     if request.method == "POST":
         disciplina = request.form.get("disciplina")
         assunto = request.form.get("assunto")
-        Ano_escolar_id = request.form.get("Ano_escolar_id")
+        ano_escolar_id = request.form.get("ano_escolar_id")
 
-        if not all([disciplina, assunto, Ano_escolar_id]):
+        if not all([disciplina, assunto, ano_escolar_id]):
             flash("Todos os campos são obrigatórios!", "error")
             return render_template("cadastrar_assunto.html")
 
@@ -1132,7 +1129,7 @@ def cadastrar_assunto():
             novo_assunto = Assunto(
                 disciplina=disciplina,
                 assunto=assunto,
-                Ano_escolar_id=Ano_escolar_id
+                ano_escolar_id=ano_escolar_id
             )
             db.session.add(novo_assunto)
             db.session.commit()
@@ -1184,15 +1181,15 @@ def api_get_Ano_escolar():
 def api_get_turmas():
     escola_id = request.args.get("escola_id")
     tipo_ensino_id = request.args.get("tipo_ensino_id")
-    Ano_escolar_id = request.args.get("Ano_escolar_id")
+    ano_escolar_id = request.args.get("ano_escolar_id")
     
-    if not all([escola_id, tipo_ensino_id, Ano_escolar_id]):
+    if not all([escola_id, tipo_ensino_id, ano_escolar_id]):
         return jsonify([])
     
     turmas = Turmas.query.filter_by(
         escola_id=escola_id,
         tipo_ensino_id=tipo_ensino_id,
-        Ano_escolar_id=Ano_escolar_id
+        ano_escolar_id=ano_escolar_id
     ).all()
     
     return jsonify([{
@@ -1277,12 +1274,12 @@ def cadastrar_turma_admin():
     if request.method == "POST":
         escola_id = request.form.get("escola_id")
         tipo_ensino_id = request.form.get("tipo_ensino_id")
-        Ano_escolar_id = request.form.get("Ano_escolar_id")
+        ano_escolar_id = request.form.get("ano_escolar_id")
         turma = request.form.get("turma")
         codigo_inep = request.form.get("codigo_inep")
 
         # Validações básicas
-        if not all([escola_id, tipo_ensino_id, Ano_escolar_id, turma, codigo_inep]):
+        if not all([escola_id, tipo_ensino_id, ano_escolar_id, turma, codigo_inep]):
             flash("Todos os campos são obrigatórios.", "danger")
             return redirect(url_for('cadastrar_turma'))
 
@@ -1294,11 +1291,10 @@ def cadastrar_turma_admin():
 
         # Cria nova turma
         nova_turma = Turmas(
-            tipo_de_registro='20',
             codigo_inep=codigo_inep,
             escola_id=escola_id,
             tipo_ensino_id=tipo_ensino_id,
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             turma=turma
         )
         db.session.add(nova_turma)
@@ -1332,7 +1328,6 @@ def cadastrar_escola_admin():
         return redirect(url_for('login'))
 
     if request.method == "POST":
-        tipo_de_registro = request.form.get("tipo_de_registro", "10")
         codigo_inep = request.form.get("codigo_inep")
         nome_da_escola = request.form.get("nome_da_escola")
         cep = request.form.get("cep")
@@ -1360,7 +1355,6 @@ def cadastrar_escola_admin():
 
         # Cria nova escola
         nova_escola = Escolas(
-            tipo_de_registro=tipo_de_registro,
             codigo_inep=codigo_inep,
             nome_da_escola=nome_da_escola,
             cep=cep,
@@ -1381,6 +1375,7 @@ def cadastrar_escola_admin():
             db.session.commit()
             flash("Escola cadastrada com sucesso!", "success")
             return redirect(url_for('portal_administrador'))
+
         except Exception as e:
             db.session.rollback()
             flash("Erro ao cadastrar escola. Por favor, tente novamente.", "danger")
@@ -1396,8 +1391,6 @@ def cadastrar_usuario_admin():
         return redirect(url_for('login'))
 
     if request.method == "POST":
-        tipo_registro = request.form.get("tipo_registro", "00")
-        codigo_inep_escola = request.form.get("codigo_inep_escola")
         cpf = request.form.get("cpf")
         email = request.form.get("email")
         senha = request.form.get("senha")
@@ -1410,7 +1403,7 @@ def cadastrar_usuario_admin():
         cep = request.form.get("cep")
         escola_id = request.form.get("escola_id")
         tipo_ensino_id = request.form.get("tipo_ensino_id")
-        Ano_escolar_id = request.form.get("Ano_escolar_id")
+        ano_escolar_id = request.form.get("ano_escolar_id")
         turma_id = request.form.get("turma_id")
         tipo_usuario_id = request.form.get("tipo_usuario_id")
 
@@ -1430,8 +1423,6 @@ def cadastrar_usuario_admin():
 
         # Cria novo usuário
         novo_usuario = Usuarios(
-            tipo_registro=tipo_registro,
-            codigo_inep_escola=codigo_inep_escola,
             cpf=cpf,
             email=email,
             senha=generate_password_hash(senha),
@@ -1444,7 +1435,7 @@ def cadastrar_usuario_admin():
             cep=cep,
             escola_id=escola_id,
             tipo_ensino_id=tipo_ensino_id,
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             turma_id=turma_id,
             tipo_usuario_id=tipo_usuario_id
         )
@@ -1454,6 +1445,7 @@ def cadastrar_usuario_admin():
             db.session.commit()
             flash("Usuário cadastrado com sucesso!", "success")
             return redirect(url_for('portal_administrador'))
+
         except Exception as e:
             db.session.rollback()
             flash("Erro ao cadastrar usuário. Por favor, tente novamente.", "danger")
@@ -1474,6 +1466,363 @@ def cadastrar_usuario_admin():
         turmas=turmas,
         tipos_usuarios=tipos_usuarios
     )
+
+@app.route("/upload_usuarios_escolas_massa", methods=["GET", "POST"])
+@login_required
+def upload_usuarios_escolas_massa():
+    if current_user.tipo_usuario_id != 1 and current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for('login'))
+
+    if request.method == "POST":
+        if "file" not in request.files:
+            flash("Nenhum arquivo enviado", "error")
+            return redirect(request.url)
+
+        file = request.files["file"]
+        if file.filename == "":
+            flash("Nenhum arquivo selecionado", "error")
+            return redirect(request.url)
+
+        if file and file.filename.endswith(('.xlsx', '.xls')):
+            try:
+                # Ler o arquivo Excel
+                df = pd.read_excel(file)
+                
+                # Converter todas as colunas datetime para string
+                for col in df.select_dtypes(include=['datetime64[ns]']).columns:
+                    df[col] = df[col].astype(str)
+                
+                # Extrair escolas únicas
+                escolas_df = df[['codigo_inep_escola', 'nome_da_escola', 'DEP_ADMINISTRATIVA', 'DC_LOCALIZACAO']].drop_duplicates()
+                escolas_list = escolas_df.to_dict('records')
+                
+                # Extrair turmas únicas
+                turmas_df = df[['codigo_inep_escola', 'nome_da_escola', 'ano_escolar_id', 'turma_institucional', 'turno']].drop_duplicates()
+                turmas_list = turmas_df.to_dict('records')
+                
+                # Salvar dados em arquivos temporários
+                upload_data = {
+                    'escolas': escolas_list,
+                    'turmas': turmas_list,
+                    'usuarios': df.to_dict('records')
+                }
+                
+                temp_id = save_temp_data(upload_data, 'upload_massa')
+                session['upload_massa_temp_id'] = temp_id
+                
+                return render_template('upload_usuarios_escolas_massa.html',
+                                    preview_data={
+                                        'escolas': escolas_list[:10],  # Mostrar apenas 10 primeiros
+                                        'turmas': turmas_list[:10]
+                                    },
+                                    session_id=temp_id)
+                
+            except Exception as e:
+                flash(f"Erro ao processar o arquivo: {str(e)}", "error")
+                return redirect(request.url)
+        else:
+            flash("Tipo de arquivo não permitido. Use apenas .xlsx ou .xls", "error")
+            return redirect(request.url)
+
+    return render_template("upload_usuarios_escolas_massa.html")
+
+@app.route("/confirmar_cadastro_massa", methods=["POST"])
+@login_required
+def confirmar_cadastro_massa():
+    if current_user.tipo_usuario_id != 1 and current_user.tipo_usuario_id != 5:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for('login'))
+
+    temp_id = session.get('upload_massa_temp_id')
+    if not temp_id:
+        flash("Nenhum dado para confirmar", "error")
+        return redirect(url_for('upload_usuarios_escolas_massa'))
+
+    upload_data = get_temp_data(temp_id, 'upload_massa')
+    if not upload_data:
+        flash("Dados temporários expirados. Por favor, faça o upload novamente.", "error")
+        return redirect(url_for('upload_usuarios_escolas_massa'))
+
+    try:
+        from datetime import datetime
+        
+        def print_timestamp(message):
+            print(f"\n[{datetime.now().strftime('%H:%M:%S')}] {message}")
+            
+        print_timestamp("Iniciando processamento de dados...")
+        
+        # Processar escolas
+        total_escolas = len(upload_data['escolas'])
+        print_timestamp(f"Processando {total_escolas} escolas:")
+        print("[", end="", flush=True)
+        
+        # Preparar dados das escolas para bulk insert/update
+        escolas_map = {}  # codigo_inep -> id
+        escolas_dict = []
+        escolas_atualizar = []
+        
+        # Mapear escolas existentes
+        for escola in db.session.query(Escolas).all():
+            escolas_map[str(escola.codigo_inep)] = escola.id
+            
+        for i, escola in enumerate(upload_data['escolas'], 1):
+            codigo_inep = str(escola['codigo_inep_escola'])
+            escola_dict = {
+                'codigo_inep': codigo_inep,
+                'nome_da_escola': escola['nome_da_escola'],
+                'cep': '00.000-000',  # Valor padrão temporário
+                'codigo_ibge': '0000000'  # Valor padrão temporário
+            }
+            
+            if codigo_inep in escolas_map:
+                # Atualizar escola existente
+                escola_dict['id'] = escolas_map[codigo_inep]
+                escolas_atualizar.append(escola_dict)
+            else:
+                # Nova escola
+                escolas_dict.append(escola_dict)
+            
+            if i % (total_escolas // 50 or 1) == 0:
+                print("=", end="", flush=True)
+                
+        # Bulk insert/update escolas
+        if escolas_dict:
+            db.session.bulk_insert_mappings(Escolas, escolas_dict)
+        if escolas_atualizar:
+            db.session.bulk_update_mappings(Escolas, escolas_atualizar)
+        db.session.flush()
+        
+        print_timestamp(f"Escolas: {len(escolas_dict)} novas, {len(escolas_atualizar)} atualizadas")
+        
+        # Processar turmas
+        total_turmas = len(upload_data['turmas'])
+        print_timestamp(f"Processando {total_turmas} turmas:")
+        print("[", end="", flush=True)
+        
+        # Mapear turmas existentes
+        turmas_existentes = {}
+        for turma in db.session.query(Turmas).all():
+            # Chave composta: codigo_inep_escola + turma + ano_escolar_id
+            chave = f"{turma.codigo_inep}_{turma.turma}_{turma.ano_escolar_id}"
+            turmas_existentes[chave] = turma.id
+            
+        turmas_novas = []
+        turmas_atualizar = []
+        chunk_size = 1000
+        
+        for i, turma in enumerate(upload_data['turmas'], 1):
+            codigo_inep = str(turma['codigo_inep_escola'])
+            escola_id = escolas_map.get(codigo_inep)
+            
+            if escola_id is None:
+                raise ValueError(f"Escola com código INEP {codigo_inep} não encontrada")
+                
+            turma_dict = {
+                'codigo_inep': codigo_inep,
+                'escola_id': escola_id,
+                'tipo_ensino_id': 1,  # Valor padrão temporário
+                'ano_escolar_id': turma['ano_escolar_id'],
+                'turma': turma['turma_institucional']
+            }
+            
+            # Chave composta para verificar se turma existe
+            chave = f"{codigo_inep}_{turma['turma_institucional']}"
+            
+            if chave in turmas_existentes:
+                # Atualizar turma existente
+                turma_dict['id'] = turmas_existentes[chave]
+                turmas_atualizar.append(turma_dict)
+            else:
+                # Nova turma
+                turmas_novas.append(turma_dict)
+            
+            # Commit parcial a cada chunk_size registros
+            if len(turmas_novas) >= chunk_size:
+                if turmas_novas:
+                    db.session.bulk_insert_mappings(Turmas, turmas_novas)
+                if turmas_atualizar:
+                    db.session.bulk_update_mappings(Turmas, turmas_atualizar)
+                db.session.flush()
+                turmas_novas = []
+                turmas_atualizar = []
+            
+            if i % (total_turmas // 50 or 1) == 0:
+                print("=", end="", flush=True)
+                
+        # Inserir turmas restantes
+        if turmas_novas:
+            db.session.bulk_insert_mappings(Turmas, turmas_novas)
+        if turmas_atualizar:
+            db.session.bulk_update_mappings(Turmas, turmas_atualizar)
+        db.session.flush()
+            
+        print_timestamp(f"Turmas: {len(turmas_novas)} novas, {len(turmas_atualizar)} atualizadas")
+        
+        # Processar usuários
+        total_usuarios = len(upload_data['usuarios'])
+        print_timestamp(f"Processando {total_usuarios} usuários:")
+        print("[", end="", flush=True)
+        
+        # Mapear usuários existentes
+        usuarios_existentes = {}
+        total_usuarios_banco = 0
+        
+        for usuario in db.session.query(Usuarios).all():
+            total_usuarios_banco += 1
+            # Mapear por nome e escola_id para garantir que encontremos o usuário correto
+            chave = f"{usuario.nome}_{usuario.escola_id}"
+            usuarios_existentes[chave] = {
+                'id': usuario.id,
+                'cpf': usuario.cpf,
+                'matricula': usuario.matricula_aluno,
+                'email': usuario.email,
+                'senha': usuario.senha
+            }
+        
+        print_timestamp(f"Total de usuários no banco: {total_usuarios_banco}")
+        
+        usuarios_novos = []
+        usuarios_atualizar = []
+        senha_padrao = generate_password_hash('123456')
+        
+        def clean_value(value, default=None):
+            try:
+                if pd.isna(value):
+                    return default
+                if value is None or value == '':
+                    return default
+                return str(value)  # Converter para string para evitar problemas com MySQL
+            except:
+                return default
+        
+        def map_sexo(sexo):
+            if not sexo:
+                return None
+            sexo = str(sexo).upper()
+            return 1 if sexo == 'MASCULINO' else 2 if sexo == 'FEMININO' else None
+            
+        for i, usuario in enumerate(upload_data['usuarios'], 1):
+            codigo_inep = str(usuario['codigo_inep_escola'])
+            escola_id = escolas_map.get(codigo_inep)
+            
+            if escola_id is None:
+                raise ValueError(f"Escola com código INEP {codigo_inep} não encontrada")
+                
+            nome = clean_value(usuario['nome'], '')
+            chave = f"{nome}_{escola_id}"
+            
+            # Verificar se usuário existe por nome e escola_id
+            usuario_existente = usuarios_existentes.get(chave)
+            
+            usuario_dict = {
+                'nome': nome,
+                'email': None,  # Email será adicionado depois pelo usuário
+                'senha': senha_padrao,
+                'tipo_usuario_id': int(clean_value(usuario['tipo_usuario_id'], 4)),
+                'escola_id': escola_id,
+                'cidade_id': 1,
+                'codigo_inep_escola': clean_value(usuario['codigo_inep_escola']),
+                'DEP_ADMINISTRATIVA': clean_value(usuario['DEP_ADMINISTRATIVA']),
+                'DC_LOCALIZACAO': clean_value(usuario['DC_LOCALIZACAO']),
+                'cpf': ''.join(filter(str.isdigit, str(usuario.get('cpf', '')))),
+                'data_nascimento': clean_value(usuario.get('data_nascimento')),
+                'mae': clean_value(usuario.get('nome_mae')),
+                'pai': clean_value(usuario.get('nome_pai')),
+                'sexo': map_sexo(usuario.get('sexo')),
+                'turno': clean_value(usuario.get('turno')),
+                'matricula_aluno': clean_value(usuario.get('matricula')),
+                'codigo_inep_aluno': clean_value(usuario.get('codigo_inep_aluno')),
+                'cor': clean_value(usuario.get('cor')),
+                'ano_escolar_id': clean_value(usuario.get('ano_escolar_id')),
+                'turma_id': turmas_existentes.get(f"{codigo_inep}_{usuario.get('turma_institucional')}_{usuario.get('ano_escolar_id')}")
+            }
+            
+            if usuario_existente:
+                # Atualizar usuário existente
+                usuario_dict['id'] = usuario_existente['id']
+                
+                # Manter email e senha existentes se não forem nulos
+                if usuario_existente['email']:
+                    usuario_dict['email'] = usuario_existente['email']
+                if usuario_existente['senha']:
+                    usuario_dict['senha'] = usuario_existente['senha']
+                    
+                # Buscar usuário existente para verificar campos vazios
+                usuario_atual = db.session.get(Usuarios, usuario_existente['id'])
+                if usuario_atual:
+                    # Atualizar apenas campos vazios
+                    if not usuario_atual.cpf and usuario_dict['cpf']:
+                        print_timestamp(f"Atualizando CPF de {nome}: {usuario_dict['cpf']}")
+                    if not usuario_atual.data_nascimento and usuario_dict['data_nascimento']:
+                        print_timestamp(f"Atualizando data de nascimento de {nome}: {usuario_dict['data_nascimento']}")
+                    if not usuario_atual.mae and usuario_dict['mae']:
+                        print_timestamp(f"Atualizando nome da mãe de {nome}: {usuario_dict['mae']}")
+                    if not usuario_atual.pai and usuario_dict['pai']:
+                        print_timestamp(f"Atualizando nome do pai de {nome}: {usuario_dict['pai']}")
+                    if not usuario_atual.sexo and usuario_dict['sexo']:
+                        print_timestamp(f"Atualizando sexo de {nome}: {usuario_dict['sexo']}")
+                    if not usuario_atual.cor and usuario_dict['cor']:
+                        print_timestamp(f"Atualizando cor de {nome}: {usuario_dict['cor']}")
+                    if not usuario_atual.codigo_inep_aluno and usuario_dict['codigo_inep_aluno']:
+                        print_timestamp(f"Atualizando código INEP de {nome}: {usuario_dict['codigo_inep_aluno']}")
+                        
+                usuarios_atualizar.append(usuario_dict)
+                if i % 100 == 0:
+                    print_timestamp(f"Atualizando usuário: {nome}")
+            else:
+                # Novo usuário
+                usuarios_novos.append(usuario_dict)
+            
+            # Commit parcial a cada chunk_size registros
+            if len(usuarios_novos) >= chunk_size:
+                if usuarios_novos:
+                    db.session.bulk_insert_mappings(Usuarios, usuarios_novos)
+                if usuarios_atualizar:
+                    db.session.bulk_update_mappings(Usuarios, usuarios_atualizar)
+                db.session.flush()
+                usuarios_novos = []
+                usuarios_atualizar = []
+            
+            if i % (total_usuarios // 50 or 1) == 0:
+                print("=", end="", flush=True)
+                
+        # Inserir usuários restantes
+        if usuarios_novos:
+            db.session.bulk_insert_mappings(Usuarios, usuarios_novos)
+        if usuarios_atualizar:
+            db.session.bulk_update_mappings(Usuarios, usuarios_atualizar)
+        db.session.flush()
+            
+        print_timestamp(f"Usuários: {len(usuarios_novos)} novos, {len(usuarios_atualizar)} atualizados")
+        
+        print_timestamp("Finalizando e salvando no banco de dados...")
+        db.session.commit()
+        session.pop('upload_massa_temp_id', None)
+        print_timestamp("Cadastro em massa realizado com sucesso!")
+        flash("Cadastro em massa realizado com sucesso!", "success")
+        return redirect(url_for('portal_administrador'))
+
+    except Exception as e:
+        db.session.rollback()
+        print_timestamp(f"ERRO: {str(e)}")
+        flash(f"Erro ao realizar cadastro em massa: {str(e)}", "error")
+        return redirect(url_for('upload_usuarios_escolas_massa'))
+
+    return render_template("upload_usuarios_escolas_massa.html")
+
+def limpar_nome_para_email(nome):
+    # Remove acentos
+    nome = unicodedata.normalize('NFKD', nome).encode('ASCII', 'ignore').decode('ASCII')
+    # Converte para minúsculas
+    nome = nome.lower()
+    # Remove caracteres especiais
+    nome = re.sub(r'[^a-z0-9]', '.', nome)
+    # Remove pontos duplicados
+    nome = re.sub(r'\.+', '.', nome)
+    # Remove pontos no início e fim
+    nome = nome.strip('.')
+    return nome
 
 if __name__ == "__main__":
     app.run(debug=True)
