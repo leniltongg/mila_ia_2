@@ -21,6 +21,8 @@ from flask_session import Session
 from io import StringIO
 import unicodedata
 import re
+import time
+import requests
 
 # Carrega variáveis do arquivo .env
 load_dotenv()
@@ -975,12 +977,12 @@ def cadastrar_turma_em_massa():
 
     if request.method == "POST":
         if "file" not in request.files:
-            flash("Nenhum arquivo enviado.", "error")
+            flash("Nenhum arquivo enviado", "error")
             return redirect(request.url)
 
         file = request.files["file"]
         if file.filename == "":
-            flash("Nenhum arquivo selecionado.", "error")
+            flash("Nenhum arquivo selecionado", "error")
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
@@ -1033,12 +1035,12 @@ def cadastrar_usuario_em_massa():
 
     if request.method == "POST":
         if "file" not in request.files:
-            flash("Nenhum arquivo enviado.", "error")
+            flash("Nenhum arquivo enviado", "error")
             return redirect(request.url)
 
         file = request.files["file"]
         if file.filename == "":
-            flash("Nenhum arquivo selecionado.", "error")
+            flash("Nenhum arquivo selecionado", "error")
             return redirect(request.url)
 
         if file and allowed_file(file.filename):
@@ -1303,6 +1305,7 @@ def cadastrar_turma_admin():
             db.session.commit()
             flash("Turma cadastrada com sucesso!", "success")
             return redirect(url_for('portal_administrador'))
+
         except Exception as e:
             db.session.rollback()
             flash("Erro ao cadastrar turma. Por favor, tente novamente.", "danger")
@@ -1494,11 +1497,23 @@ def upload_usuarios_escolas_massa():
                     df[col] = df[col].astype(str)
                 
                 # Extrair escolas únicas
-                escolas_df = df[['codigo_inep_escola', 'nome_da_escola', 'DEP_ADMINISTRATIVA', 'DC_LOCALIZACAO']].drop_duplicates()
+                colunas_obrigatorias_escola = ['codigo_inep_escola', 'nome_da_escola', 'codigo_ibge', 'DEP_ADMINISTRATIVA', 'DC_LOCALIZACAO']
+                colunas_opcionais_escola = ['email', 'telefone', 'endereco', 'numero', 'complemento', 'bairro', 'cep']
+                
+                colunas_faltantes = [col for col in colunas_obrigatorias_escola if col not in df.columns]
+                if colunas_faltantes:
+                    raise ValueError(f"Colunas obrigatórias faltando: {', '.join(colunas_faltantes)}")
+                
+                colunas_escola = colunas_obrigatorias_escola + [col for col in colunas_opcionais_escola if col in df.columns]
+                escolas_df = df[colunas_escola].drop_duplicates()
                 escolas_list = escolas_df.to_dict('records')
                 
                 # Extrair turmas únicas
-                turmas_df = df[['codigo_inep_escola', 'nome_da_escola', 'ano_escolar_id', 'turma_institucional', 'turno']].drop_duplicates()
+                colunas_obrigatorias_turma = ['codigo_inep_escola', 'nome_da_escola', 'ano_escolar_id', 'turma', 'turma_institucional']
+                colunas_opcionais_turma = ['turno', 'tipo_ensino_id']
+                
+                colunas_turma = colunas_obrigatorias_turma + [col for col in colunas_opcionais_turma if col in df.columns]
+                turmas_df = df[colunas_turma].drop_duplicates()
                 turmas_list = turmas_df.to_dict('records')
                 
                 # Salvar dados em arquivos temporários
@@ -1546,9 +1561,13 @@ def confirmar_cadastro_massa():
 
     try:
         from datetime import datetime
+        import pandas as pd
+        
+        session['upload_progress'] = {'status': 'Iniciando processamento...', 'progress': 0}
         
         def print_timestamp(message):
             print(f"\n[{datetime.now().strftime('%H:%M:%S')}] {message}")
+            session['upload_progress'] = {'status': message, 'progress': session['upload_progress']['progress']}
             
         print_timestamp("Iniciando processamento de dados...")
         
@@ -1566,14 +1585,132 @@ def confirmar_cadastro_massa():
         for escola in db.session.query(Escolas).all():
             escolas_map[str(escola.codigo_inep)] = escola.id
             
+        def clean_value(value, default=None):
+            try:
+                if pd.isna(value):
+                    return default
+                if value is None or value == '':
+                    return default
+                return str(value)  # Converter para string para evitar problemas com MySQL
+            except:
+                return default
+            
+        def clean_numeric(value):
+            if value is None or pd.isna(value):
+                return None
+            try:
+                return str(int(float(value)))
+            except:
+                return str(value)
+
+        def get_endereco_by_cep(cep):
+            try:
+                # Limpar o CEP, mantendo apenas números
+                cep = ''.join(filter(str.isdigit, str(cep)))
+                if len(cep) != 8:
+                    return None
+                
+                # Fazer requisição ao ViaCEP
+                url = f'https://viacep.com.br/ws/{cep}/json/'
+                response = requests.get(url)
+                if response.status_code == 200:
+                    data = response.json()
+                    if 'erro' not in data:
+                        return {
+                            'logradouro': data.get('logradouro', ''),
+                            'bairro': data.get('bairro', ''),
+                            'cidade': data.get('localidade', ''),
+                            'uf': data.get('uf', ''),
+                            'cep': cep
+                        }
+            except Exception as e:
+                print(f"Erro ao consultar CEP: {str(e)}")
+            return None
+
+        def map_dep_administrativa(valor):
+            # Mapeamento de valores comuns para o padrão
+            mapa = {
+                'MUNICIPAL': 'Municipal',
+                'ESTADUAL': 'Estadual',
+                'FEDERAL': 'Federal',
+                'PRIVADA': 'Privada',
+                'PARTICULAR': 'Privada'
+            }
+            if not valor:
+                return 'Municipal'  # Valor padrão
+            valor = str(valor).upper().strip()
+            return mapa.get(valor, 'Municipal')
+
+        def map_localizacao(valor):
+            # Mapeamento de valores comuns para o padrão
+            mapa = {
+                'URBANA': 'Urbana',
+                'RURAL': 'Rural',
+                'CAMPO': 'Rural',
+                'CIDADE': 'Urbana'
+            }
+            if not valor:
+                return 'Urbana'  # Valor padrão
+            valor = str(valor).upper().strip()
+            return mapa.get(valor, 'Urbana')
+
+        def map_turno(valor):
+            # Mapeamento de valores comuns para o padrão
+            mapa = {
+                'MANHA': 'matutino',
+                'MANHÃ': 'matutino',
+                'MATUTINO': 'matutino',
+                'TARDE': 'vespertino',
+                'VESPERTINO': 'vespertino',
+                'NOITE': 'noturno',
+                'NOTURNO': 'noturno',
+                'INTEGRAL': 'integral'
+            }
+            if not valor:
+                return 'matutino'  # Valor padrão
+            valor = str(valor).upper().strip()
+            return mapa.get(valor, 'matutino')
+
         for i, escola in enumerate(upload_data['escolas'], 1):
-            codigo_inep = str(escola['codigo_inep_escola'])
+            codigo_inep = clean_numeric(escola['codigo_inep_escola'])
+            print_timestamp(f"Dados da escola {codigo_inep}:")
+            
+            # Processar CEP e buscar endereço
+            cep = clean_value(escola.get('cep'))
+            endereco_data = get_endereco_by_cep(cep) if cep else None
+            
             escola_dict = {
                 'codigo_inep': codigo_inep,
                 'nome_da_escola': escola['nome_da_escola'],
-                'cep': '00.000-000',  # Valor padrão temporário
-                'codigo_ibge': '0000000'  # Valor padrão temporário
+                'codigo_ibge': clean_value(escola.get('codigo_ibge')),
+                'DEP_ADMINISTRATIVA': escola.get('DEP_ADMINISTRATIVA'),  # Pegando direto da planilha
+                'DC_LOCALIZACAO': escola.get('DC_LOCALIZACAO'),  # Pegando direto da planilha
+                'email': clean_value(escola.get('email')),
+                'telefone': clean_value(escola.get('telefone')),
+                'cep': cep if cep else '00.000-000',
+                'ensino_fundamental': 1  # Valor padrão
             }
+
+            print_timestamp(f"Dados administrativos da escola {codigo_inep}:")
+            print(f"DEP_ADMINISTRATIVA: {escola_dict['DEP_ADMINISTRATIVA']}")
+            print(f"DC_LOCALIZACAO: {escola_dict['DC_LOCALIZACAO']}")
+
+            # Atualizar com dados do ViaCEP se disponível
+            if endereco_data:
+                escola_dict.update({
+                    'endereco': endereco_data['logradouro'],
+                    'bairro': endereco_data['bairro'],
+                    'cidade': endereco_data['cidade'],
+                    'uf': endereco_data['uf']
+                })
+            else:
+                # Manter dados originais se ViaCEP não retornar
+                escola_dict.update({
+                    'endereco': clean_value(escola.get('endereco')),
+                    'numero': clean_value(escola.get('numero')),
+                    'complemento': clean_value(escola.get('complemento')),
+                    'bairro': clean_value(escola.get('bairro'))
+                })
             
             if codigo_inep in escolas_map:
                 # Atualizar escola existente
@@ -1582,6 +1719,9 @@ def confirmar_cadastro_massa():
             else:
                 # Nova escola
                 escolas_dict.append(escola_dict)
+            
+            progress = int((i / total_escolas) * 33)  # 33% do progresso total
+            session['upload_progress'] = {'status': f"Processando escolas... {i}/{total_escolas}", 'progress': progress}
             
             if i % (total_escolas // 50 or 1) == 0:
                 print("=", end="", flush=True)
@@ -1593,6 +1733,11 @@ def confirmar_cadastro_massa():
             db.session.bulk_update_mappings(Escolas, escolas_atualizar)
         db.session.flush()
         
+        # Atualizar o mapeamento de escolas após inserir/atualizar
+        escolas_map.clear()  # Limpar o mapeamento antigo
+        for escola in db.session.query(Escolas).all():
+            escolas_map[str(escola.codigo_inep)] = escola.id
+            
         print_timestamp(f"Escolas: {len(escolas_dict)} novas, {len(escolas_atualizar)} atualizadas")
         
         # Processar turmas
@@ -1612,22 +1757,31 @@ def confirmar_cadastro_massa():
         chunk_size = 1000
         
         for i, turma in enumerate(upload_data['turmas'], 1):
-            codigo_inep = str(turma['codigo_inep_escola'])
+            codigo_inep = clean_numeric(turma['codigo_inep_escola'])
             escola_id = escolas_map.get(codigo_inep)
             
             if escola_id is None:
                 raise ValueError(f"Escola com código INEP {codigo_inep} não encontrada")
                 
+            # Processar turno
+            turno = turma.get('turno')
+            if pd.isna(turno):
+                turno = None
+            elif isinstance(turno, str):
+                turno = turno.strip()
+            
             turma_dict = {
-                'codigo_inep': codigo_inep,
+                'codigo_inep': clean_numeric(turma['codigo_inep_escola']),
                 'escola_id': escola_id,
-                'tipo_ensino_id': 1,  # Valor padrão temporário
+                'tipo_ensino_id': clean_value(turma.get('tipo_ensino_id'), 1),
                 'ano_escolar_id': turma['ano_escolar_id'],
-                'turma': turma['turma_institucional']
+                'turma': clean_value(turma.get('turma')),  # A, B, C...
+                'turma_institucional': clean_value(turma.get('turma_institucional')),  # Código da turma
+                'turno': turno  # Usando o valor processado
             }
             
             # Chave composta para verificar se turma existe
-            chave = f"{codigo_inep}_{turma['turma_institucional']}"
+            chave = f"{codigo_inep}_{turma['turma']}_{turma['ano_escolar_id']}"
             
             if chave in turmas_existentes:
                 # Atualizar turma existente
@@ -1636,6 +1790,9 @@ def confirmar_cadastro_massa():
             else:
                 # Nova turma
                 turmas_novas.append(turma_dict)
+            
+            progress = 33 + int((i / total_turmas) * 33)  # 33% a 66% do progresso total
+            session['upload_progress'] = {'status': f"Processando turmas... {i}/{total_turmas}", 'progress': progress}
             
             # Commit parcial a cada chunk_size registros
             if len(turmas_novas) >= chunk_size:
@@ -1670,31 +1827,40 @@ def confirmar_cadastro_massa():
         
         for usuario in db.session.query(Usuarios).all():
             total_usuarios_banco += 1
-            # Mapear por nome e escola_id para garantir que encontremos o usuário correto
-            chave = f"{usuario.nome}_{usuario.escola_id}"
-            usuarios_existentes[chave] = {
-                'id': usuario.id,
-                'cpf': usuario.cpf,
-                'matricula': usuario.matricula_aluno,
-                'email': usuario.email,
-                'senha': usuario.senha
-            }
+            
+            # Criar múltiplas chaves para o mesmo usuário
+            chaves = []
+            
+            # Chave por CPF se disponível
+            if usuario.cpf:
+                chaves.append(f"cpf_{usuario.cpf}")
+            
+            # Chave por matrícula se disponível
+            if usuario.matricula_aluno:
+                chaves.append(f"matricula_{usuario.matricula_aluno}")
+            
+            # Chave por código INEP se disponível
+            if usuario.codigo_inep_aluno:
+                chaves.append(f"inep_{usuario.codigo_inep_aluno}")
+            
+            # Chave por nome + escola como fallback
+            chaves.append(f"nome_{usuario.nome}_{usuario.escola_id}")
+            
+            # Adicionar todas as chaves ao mapeamento
+            for chave in chaves:
+                usuarios_existentes[chave] = {
+                    'id': usuario.id,
+                    'cpf': usuario.cpf,
+                    'matricula': usuario.matricula_aluno,
+                    'email': usuario.email,
+                    'senha': usuario.senha
+                }
         
         print_timestamp(f"Total de usuários no banco: {total_usuarios_banco}")
         
         usuarios_novos = []
         usuarios_atualizar = []
         senha_padrao = generate_password_hash('123456')
-        
-        def clean_value(value, default=None):
-            try:
-                if pd.isna(value):
-                    return default
-                if value is None or value == '':
-                    return default
-                return str(value)  # Converter para string para evitar problemas com MySQL
-            except:
-                return default
         
         def map_sexo(sexo):
             if not sexo:
@@ -1703,41 +1869,71 @@ def confirmar_cadastro_massa():
             return 1 if sexo == 'MASCULINO' else 2 if sexo == 'FEMININO' else None
             
         for i, usuario in enumerate(upload_data['usuarios'], 1):
-            codigo_inep = str(usuario['codigo_inep_escola'])
+            codigo_inep = clean_numeric(usuario['codigo_inep_escola'])
             escola_id = escolas_map.get(codigo_inep)
             
             if escola_id is None:
                 raise ValueError(f"Escola com código INEP {codigo_inep} não encontrada")
                 
-            nome = clean_value(usuario['nome'], '')
+            nome = clean_value(usuario.get('nome'), '')
             chave = f"{nome}_{escola_id}"
             
-            # Verificar se usuário existe por nome e escola_id
-            usuario_existente = usuarios_existentes.get(chave)
+            # Buscar turma pelo turma_institucional
+            turma_id = None
+            turma_institucional = usuario.get('turma_institucional', '')
+            
+            if pd.isna(turma_institucional):
+                turma_institucional = None
+            elif isinstance(turma_institucional, str):
+                turma_institucional = turma_institucional.strip()
+            elif isinstance(turma_institucional, (int, float)):
+                turma_institucional = str(int(turma_institucional))
+            
+            if turma_institucional:
+                # Buscar a turma pelo código institucional e código INEP da escola
+                turma = db.session.query(Turmas).filter(
+                    Turmas.codigo_inep == codigo_inep,
+                    Turmas.turma_institucional == turma_institucional
+                ).first()
+                
+                if turma:
+                    turma_id = turma.id
+                    print_timestamp(f"Encontrou turma_id: {turma_id} pelo turma_institucional: {turma_institucional}")
+                else:
+                    print_timestamp(f"Não encontrou turma para turma_institucional: {turma_institucional}")
+
+            print_timestamp(f"Processando usuário {nome}:")
+            print(f"Turma institucional original: '{usuario.get('turma_institucional')}'")
+            print(f"Turma institucional processada: '{turma_institucional}'")
             
             usuario_dict = {
                 'nome': nome,
                 'email': None,  # Email será adicionado depois pelo usuário
                 'senha': senha_padrao,
-                'tipo_usuario_id': int(clean_value(usuario['tipo_usuario_id'], 4)),
+                'tipo_usuario_id': int(clean_value(usuario.get('tipo_usuario_id'), 4)),
                 'escola_id': escola_id,
                 'cidade_id': 1,
-                'codigo_inep_escola': clean_value(usuario['codigo_inep_escola']),
-                'DEP_ADMINISTRATIVA': clean_value(usuario['DEP_ADMINISTRATIVA']),
-                'DC_LOCALIZACAO': clean_value(usuario['DC_LOCALIZACAO']),
+                'codigo_inep_escola': clean_numeric(usuario.get('codigo_inep_escola')),
+                'DEP_ADMINISTRATIVA': clean_value(usuario.get('DEP_ADMINISTRATIVA')),
+                'DC_LOCALIZACAO': clean_value(usuario.get('DC_LOCALIZACAO')),
                 'cpf': ''.join(filter(str.isdigit, str(usuario.get('cpf', '')))),
                 'data_nascimento': clean_value(usuario.get('data_nascimento')),
-                'mae': clean_value(usuario.get('nome_mae')),
+                'mae': clean_value(usuario.get('mae')),  # Mantendo o nome do campo como 'mae'
                 'pai': clean_value(usuario.get('nome_pai')),
                 'sexo': map_sexo(usuario.get('sexo')),
-                'turno': clean_value(usuario.get('turno')),
-                'matricula_aluno': clean_value(usuario.get('matricula')),
-                'codigo_inep_aluno': clean_value(usuario.get('codigo_inep_aluno')),
-                'cor': clean_value(usuario.get('cor')),
+                'codigo_ibge': clean_value(usuario.get('codigo_ibge')),
+                'cep': clean_value(usuario.get('cep')),
+                'tipo_ensino_id': clean_value(usuario.get('tipo_ensino_id')),
                 'ano_escolar_id': clean_value(usuario.get('ano_escolar_id')),
-                'turma_id': turmas_existentes.get(f"{codigo_inep}_{usuario.get('turma_institucional')}_{usuario.get('ano_escolar_id')}")
+                'turma_institucional': turma_institucional,
+                'turma_id': turma_id,
+                'matricula_aluno': clean_value(usuario.get('matricula_aluno')),
+                'codigo_inep_aluno': clean_numeric(usuario.get('codigo_inep_aluno')),
+                'cor': clean_value(usuario.get('cor')),
+                'turno': clean_value(usuario.get('turno'))
             }
             
+            usuario_existente = usuarios_existentes.get(chave)
             if usuario_existente:
                 # Atualizar usuário existente
                 usuario_dict['id'] = usuario_existente['id']
@@ -1774,6 +1970,9 @@ def confirmar_cadastro_massa():
                 # Novo usuário
                 usuarios_novos.append(usuario_dict)
             
+            progress = 66 + int((i / total_usuarios) * 33)  # 66% a 99% do progresso total
+            session['upload_progress'] = {'status': f"Processando usuários... {i}/{total_usuarios}", 'progress': progress}
+            
             # Commit parcial a cada chunk_size registros
             if len(usuarios_novos) >= chunk_size:
                 if usuarios_novos:
@@ -1798,18 +1997,29 @@ def confirmar_cadastro_massa():
         
         print_timestamp("Finalizando e salvando no banco de dados...")
         db.session.commit()
-        session.pop('upload_massa_temp_id', None)
-        print_timestamp("Cadastro em massa realizado com sucesso!")
-        flash("Cadastro em massa realizado com sucesso!", "success")
-        return redirect(url_for('portal_administrador'))
+        session['upload_progress'] = {'status': 'Processamento concluído com sucesso!', 'progress': 100, 'complete': True}
+        flash('Dados importados com sucesso!', 'success')
+        return redirect(url_for('upload_usuarios_escolas_massa'))
 
     except Exception as e:
         db.session.rollback()
-        print_timestamp(f"ERRO: {str(e)}")
-        flash(f"Erro ao realizar cadastro em massa: {str(e)}", "error")
+        session['upload_progress'] = {'error': True, 'message': str(e)}
+        flash(f'Erro durante o processamento: {str(e)}', 'error')
         return redirect(url_for('upload_usuarios_escolas_massa'))
 
-    return render_template("upload_usuarios_escolas_massa.html")
+@app.route('/progress')
+def progress():
+    def generate():
+        while True:
+            progress = session.get('upload_progress', {})
+            if progress:
+                if 'progress' in progress:
+                    progress['percent'] = progress['progress']
+                yield f"data: {json.dumps(progress)}\n\n"
+                if progress.get('complete') or progress.get('error'):
+                    break
+            time.sleep(0.5)
+    return Response(generate(), mimetype='text/event-stream')
 
 def limpar_nome_para_email(nome):
     # Remove acentos
@@ -1823,6 +2033,20 @@ def limpar_nome_para_email(nome):
     # Remove pontos no início e fim
     nome = nome.strip('.')
     return nome
+
+def clean_value(value, default=None):
+    """Limpa um valor, substituindo nan por None"""
+    if pd.isna(value):
+        return default
+    return value
+
+def clean_numeric(value):
+    if value is None or pd.isna(value):
+        return None
+    try:
+        return str(int(float(value)))
+    except:
+        return str(value)
 
 if __name__ == "__main__":
     app.run(debug=True)

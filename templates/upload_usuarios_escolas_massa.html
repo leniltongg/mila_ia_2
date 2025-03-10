@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Upload de Usuários e Escolas em Massa</h2>
+    
+    <!-- Progress Container -->
+    <div id="progress-container" style="display: none;" class="mb-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Progresso do Processamento</h5>
+                <div class="progress mb-3">
+                    <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" style="width: 0%">0%</div>
+                </div>
+                <p id="status-message" class="mb-2"></p>
+                <div class="row">
+                    <div class="col">
+                        <div class="alert alert-success mb-0">
+                            Sucessos: <span id="sucessos">0</span>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="alert alert-danger mb-0">
+                            Erros: <span id="erros">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="file" class="form-label">Selecione o arquivo Excel:</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">Enviar</button>
+            </form>
+        </div>
+    </div>
+
+    {% if preview_data %}
+    <div class="mt-4">
+        <h3>Prévia dos Dados</h3>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Escolas a serem cadastradas</h4>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Código INEP</th>
+                            <th>Nome da Escola</th>
+                            <th>Dep. Administrativa</th>
+                            <th>Localização</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for escola in preview_data.escolas %}
+                        <tr>
+                            <td>{{ escola.codigo_inep }}</td>
+                            <td>{{ escola.nome_da_escola }}</td>
+                            <td>{{ escola.DEP_ADMINISTRATIVA }}</td>
+                            <td>{{ escola.DC_LOCALIZACAO }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Turmas a serem cadastradas</h4>
+            </div>
+            <div class="card-body">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Escola</th>
+                            <th>Série</th>
+                            <th>Turma</th>
+                            <th>Turno</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for turma in preview_data.turmas %}
+                        <tr>
+                            <td>{{ turma.escola }}</td>
+                            <td>{{ turma.serie }}</td>
+                            <td>{{ turma.turma }}</td>
+                            <td>{{ turma.turno }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('confirmar_cadastro_massa') }}" id="confirmForm">
+            <input type="hidden" name="session_id" value="{{ session_id }}">
+            <button type="submit" class="btn btn-success">Confirmar e Cadastrar</button>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-danger mt-4">
+        {{ error }}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const confirmForm = document.getElementById('confirmForm');
+    const progressContainer = document.getElementById('progress-container');
+    const progressBar = document.getElementById('progress-bar');
+    const statusMessage = document.getElementById('status-message');
+    const sucessosSpan = document.getElementById('sucessos');
+    const errosSpan = document.getElementById('erros');
+
+    if (confirmForm) {
+        confirmForm.onsubmit = function(e) {
+            progressContainer.style.display = 'block';
+            
+            const eventSource = new EventSource('/progress');
+            
+            eventSource.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.error) {
+                    statusMessage.textContent = 'Erro: ' + data.message;
+                    progressContainer.classList.add('error');
+                    eventSource.close();
+                    return;
+                }
+                
+                if (data.complete) {
+                    progressBar.style.width = '100%';
+                    progressBar.textContent = '100%';
+                    statusMessage.textContent = data.message;
+                    sucessosSpan.textContent = data.sucessos;
+                    errosSpan.textContent = data.erros;
+                    eventSource.close();
+                    return;
+                }
+                
+                progressBar.style.width = data.percent + '%';
+                progressBar.textContent = data.percent + '%';
+                statusMessage.textContent = data.message;
+                sucessosSpan.textContent = data.sucessos;
+                errosSpan.textContent = data.erros;
+            };
+        };
+    }
+});
+</script>
+{% endblock %}
