@@ -1498,7 +1498,7 @@ def upload_usuarios_escolas_massa():
                 
                 # Extrair escolas únicas
                 colunas_obrigatorias_escola = ['codigo_inep_escola', 'nome_da_escola', 'codigo_ibge', 'DEP_ADMINISTRATIVA', 'DC_LOCALIZACAO']
-                colunas_opcionais_escola = ['email', 'telefone', 'endereco', 'numero', 'complemento', 'bairro', 'cep']
+                colunas_opcionais_escola = ['email', 'telefone', 'endereco', 'numero', 'complemento', 'bairro', 'cep_escola']
                 
                 colunas_faltantes = [col for col in colunas_obrigatorias_escola if col not in df.columns]
                 if colunas_faltantes:
@@ -1606,12 +1606,12 @@ def confirmar_cadastro_massa():
         def get_endereco_by_cep(cep):
             try:
                 # Limpar o CEP, mantendo apenas números
-                cep = ''.join(filter(str.isdigit, str(cep)))
-                if len(cep) != 8:
+                cep_limpo = ''.join(filter(str.isdigit, str(cep)))
+                if len(cep_limpo) != 8:
                     return None
                 
                 # Fazer requisição ao ViaCEP
-                url = f'https://viacep.com.br/ws/{cep}/json/'
+                url = f'https://viacep.com.br/ws/{cep_limpo}/json/'
                 response = requests.get(url)
                 if response.status_code == 200:
                     data = response.json()
@@ -1621,7 +1621,9 @@ def confirmar_cadastro_massa():
                             'bairro': data.get('bairro', ''),
                             'cidade': data.get('localidade', ''),
                             'uf': data.get('uf', ''),
-                            'cep': cep
+                            'endereco': data.get('logradouro', ''),
+                            'numero': '',
+                            'complemento': ''
                         }
             except Exception as e:
                 print(f"Erro ao consultar CEP: {str(e)}")
@@ -1674,43 +1676,39 @@ def confirmar_cadastro_massa():
         for i, escola in enumerate(upload_data['escolas'], 1):
             codigo_inep = clean_numeric(escola['codigo_inep_escola'])
             print_timestamp(f"Dados da escola {codigo_inep}:")
+            print_timestamp(f"Escola completa: {escola}")
+            print_timestamp(f"Tipo do CEP: {type(escola.get('cep_escola'))}")
+            print_timestamp(f"CEP da planilha (raw): {escola.get('cep_escola')}")
             
-            # Processar CEP e buscar endereço
-            cep = clean_value(escola.get('cep'))
-            endereco_data = get_endereco_by_cep(cep) if cep else None
-            
+
+            # Criar dicionário base da escola
             escola_dict = {
                 'codigo_inep': codigo_inep,
                 'nome_da_escola': escola['nome_da_escola'],
                 'codigo_ibge': clean_value(escola.get('codigo_ibge')),
-                'DEP_ADMINISTRATIVA': escola.get('DEP_ADMINISTRATIVA'),  # Pegando direto da planilha
-                'DC_LOCALIZACAO': escola.get('DC_LOCALIZACAO'),  # Pegando direto da planilha
+                'DEP_ADMINISTRATIVA': escola.get('DEP_ADMINISTRATIVA', ''),
+                'DC_LOCALIZACAO': escola.get('DC_LOCALIZACAO', ''),
                 'email': clean_value(escola.get('email')),
                 'telefone': clean_value(escola.get('telefone')),
-                'cep': cep if cep else '00.000-000',
-                'ensino_fundamental': 1  # Valor padrão
+                'cep_escola': clean_value(escola.get('cep_escola')),
+                'ensino_fundamental': 1
             }
 
-            print_timestamp(f"Dados administrativos da escola {codigo_inep}:")
-            print(f"DEP_ADMINISTRATIVA: {escola_dict['DEP_ADMINISTRATIVA']}")
-            print(f"DC_LOCALIZACAO: {escola_dict['DC_LOCALIZACAO']}")
+            # Buscar dados do CEP
+            if escola_dict['cep_escola']:
+                endereco = get_endereco_by_cep(escola_dict['cep_escola'])
+                if endereco:
+                    escola_dict.update(endereco)
+                    print_timestamp(f"Dados do CEP encontrados: {endereco}")
+                else:
+                    print_timestamp(f"Não encontrou dados para o CEP: {escola_dict['cep_escola']}")
 
-            # Atualizar com dados do ViaCEP se disponível
-            if endereco_data:
-                escola_dict.update({
-                    'endereco': endereco_data['logradouro'],
-                    'bairro': endereco_data['bairro'],
-                    'cidade': endereco_data['cidade'],
-                    'uf': endereco_data['uf']
-                })
-            else:
-                # Manter dados originais se ViaCEP não retornar
-                escola_dict.update({
-                    'endereco': clean_value(escola.get('endereco')),
-                    'numero': clean_value(escola.get('numero')),
-                    'complemento': clean_value(escola.get('complemento')),
-                    'bairro': clean_value(escola.get('bairro'))
-                })
+            print_timestamp(f"CEP final no dicionário: {escola_dict['cep_escola']}")
+
+            # Para buscar no ViaCEP, remove pontos e hífens
+            cep_busca = escola_dict['cep_escola'].replace('.', '').replace('-', '') if escola_dict['cep_escola'] else None
+
+            print_timestamp(f"CEP final no dicionário: {escola_dict['cep_escola']}")
             
             if codigo_inep in escolas_map:
                 # Atualizar escola existente
@@ -1769,7 +1767,13 @@ def confirmar_cadastro_massa():
                 turno = None
             elif isinstance(turno, str):
                 turno = turno.strip()
-            
+            elif isinstance(turno, (int, float)):
+                turno = str(int(turno))
+
+            print_timestamp(f"Processando turma - Dados:")
+            print(f"Turno original: '{turma.get('turno')}'")
+            print(f"Turno processado: '{turno}'")
+
             turma_dict = {
                 'codigo_inep': clean_numeric(turma['codigo_inep_escola']),
                 'escola_id': escola_id,
@@ -1779,6 +1783,8 @@ def confirmar_cadastro_massa():
                 'turma_institucional': clean_value(turma.get('turma_institucional')),  # Código da turma
                 'turno': turno  # Usando o valor processado
             }
+
+            print(f"Turno no dicionário: {turma_dict['turno']}")
             
             # Chave composta para verificar se turma existe
             chave = f"{codigo_inep}_{turma['turma']}_{turma['ano_escolar_id']}"
@@ -1878,33 +1884,25 @@ def confirmar_cadastro_massa():
             nome = clean_value(usuario.get('nome'), '')
             chave = f"{nome}_{escola_id}"
             
-            # Buscar turma pelo turma_institucional
             turma_id = None
-            turma_institucional = usuario.get('turma_institucional', '')
-            
-            if pd.isna(turma_institucional):
-                turma_institucional = None
-            elif isinstance(turma_institucional, str):
-                turma_institucional = turma_institucional.strip()
-            elif isinstance(turma_institucional, (int, float)):
-                turma_institucional = str(int(turma_institucional))
-            
-            if turma_institucional:
-                # Buscar a turma pelo código institucional e código INEP da escola
+            turno = None
+            turma_institucional = None
+
+            # Buscar a turma usando o código da turma e ano escolar
+            if usuario.get('turma') and usuario.get('ano_escolar_id'):
                 turma = db.session.query(Turmas).filter(
                     Turmas.codigo_inep == codigo_inep,
-                    Turmas.turma_institucional == turma_institucional
+                    Turmas.turma == str(usuario.get('turma')),
+                    Turmas.ano_escolar_id == usuario.get('ano_escolar_id')
                 ).first()
                 
                 if turma:
                     turma_id = turma.id
-                    print_timestamp(f"Encontrou turma_id: {turma_id} pelo turma_institucional: {turma_institucional}")
+                    turno = turma.turno
+                    turma_institucional = turma.turma_institucional
+                    print_timestamp(f"Encontrou turma para {nome}: turma_id={turma_id}, turno={turno}, turma_institucional={turma_institucional}")
                 else:
-                    print_timestamp(f"Não encontrou turma para turma_institucional: {turma_institucional}")
-
-            print_timestamp(f"Processando usuário {nome}:")
-            print(f"Turma institucional original: '{usuario.get('turma_institucional')}'")
-            print(f"Turma institucional processada: '{turma_institucional}'")
+                    print_timestamp(f"Não encontrou turma para {nome} com turma={usuario.get('turma')}, ano_escolar={usuario.get('ano_escolar_id')}")
             
             usuario_dict = {
                 'nome': nome,
@@ -1914,15 +1912,13 @@ def confirmar_cadastro_massa():
                 'escola_id': escola_id,
                 'cidade_id': 1,
                 'codigo_inep_escola': clean_numeric(usuario.get('codigo_inep_escola')),
-                'DEP_ADMINISTRATIVA': clean_value(usuario.get('DEP_ADMINISTRATIVA')),
-                'DC_LOCALIZACAO': clean_value(usuario.get('DC_LOCALIZACAO')),
                 'cpf': ''.join(filter(str.isdigit, str(usuario.get('cpf', '')))),
                 'data_nascimento': clean_value(usuario.get('data_nascimento')),
                 'mae': clean_value(usuario.get('mae')),  # Mantendo o nome do campo como 'mae'
                 'pai': clean_value(usuario.get('nome_pai')),
                 'sexo': map_sexo(usuario.get('sexo')),
                 'codigo_ibge': clean_value(usuario.get('codigo_ibge')),
-                'cep': clean_value(usuario.get('cep')),
+                'cep_usuario': clean_value(usuario.get('cep_usuario')),  # Nome atualizado do campo
                 'tipo_ensino_id': clean_value(usuario.get('tipo_ensino_id')),
                 'ano_escolar_id': clean_value(usuario.get('ano_escolar_id')),
                 'turma_institucional': turma_institucional,
@@ -1962,10 +1958,12 @@ def confirmar_cadastro_massa():
                         print_timestamp(f"Atualizando cor de {nome}: {usuario_dict['cor']}")
                     if not usuario_atual.codigo_inep_aluno and usuario_dict['codigo_inep_aluno']:
                         print_timestamp(f"Atualizando código INEP de {nome}: {usuario_dict['codigo_inep_aluno']}")
-                        
-                usuarios_atualizar.append(usuario_dict)
-                if i % 100 == 0:
-                    print_timestamp(f"Atualizando usuário: {nome}")
+                    
+                    # Adicionar o ID do usuário para o bulk update
+                    usuario_dict['id'] = usuario_atual.id
+                    usuarios_atualizar.append(usuario_dict)  # Movido para dentro do if
+                    if i % 100 == 0:
+                        print_timestamp(f"Atualizando usuário: {nome}")
             else:
                 # Novo usuário
                 usuarios_novos.append(usuario_dict)
