@@ -20,11 +20,11 @@
                 <div class="card-body">
                     <form id="simulado-form">
                         <div class="mb-3">
-                            <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
-                            <select class="form-select" id="Ano_escolar_id" required>
+                            <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="ano_escolar_id" required>
                                 <option value="">Selecione...</option>
                                 {% for Ano_escolar in Ano_escolar %}
-                                <option value="{{ Ano_escolar.id }}" {% if simulado and simulado.Ano_escolar_id == Ano_escolar.id %}selected{% endif %}>
+                                <option value="{{ Ano_escolar.id }}" {% if simulado and simulado.ano_escolar_id == Ano_escolar.id %}selected{% endif %}>
                                     {{ Ano_escolar.nome }}
                                 </option>
                                 {% endfor %}
@@ -208,12 +208,12 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('filtro-disciplina').addEventListener('change', buscarQuestoes);
     document.getElementById('filtro-assunto').addEventListener('input', debounce(buscarQuestoes, 500));
     
-    document.getElementById('Ano_escolar_id').addEventListener('change', atualizarResumo);
+    document.getElementById('ano_escolar_id').addEventListener('change', atualizarResumo);
     document.getElementById('disciplina_id').addEventListener('change', atualizarResumo);
     document.getElementById('mes_id').addEventListener('change', atualizarResumo);
     
     {% if simulado %}
-        document.getElementById('Ano_escolar_id').value = '{{ simulado.Ano_escolar_id }}';
+        document.getElementById('ano_escolar_id').value = '{{ simulado.ano_escolar_id }}';
         document.getElementById('disciplina_id').value = '{{ simulado.disciplina_id }}';
         document.getElementById('mes_id').value = '{{ simulado.mes_id }}';
         
@@ -280,7 +280,7 @@ function criarElementoQuestao(questao) {
 }
 
 function atualizarResumo() {
-    const Ano_escolar = document.getElementById('Ano_escolar_id');
+    const Ano_escolar = document.getElementById('ano_escolar_id');
     const disciplina = document.getElementById('disciplina_id');
     const mes = document.getElementById('mes_id');
     
@@ -300,7 +300,7 @@ async function buscarQuestoes() {
     const assunto = document.getElementById('filtro-assunto').value;
     
     try {
-        const response = await fetch(`/simulados/buscar-questoes?Ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        const response = await fetch(`/simulados/buscar-questoes?ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&assunto=${assunto}`);
         if (!response.ok) {
             throw new Error('Erro ao buscar questões');
         }
@@ -459,11 +459,11 @@ function setupDragAndDrop() {
 async function salvarSimulado(event) {
     event.preventDefault();
     
-    const Ano_escolar_id = document.getElementById('Ano_escolar_id').value;
+    const ano_escolar_id = document.getElementById('ano_escolar_id').value;
     const disciplina_id = document.getElementById('disciplina_id').value;
     const mes_id = document.getElementById('mes_id').value;
     
-    if (!Ano_escolar_id || !disciplina_id || !mes_id) {
+    if (!ano_escolar_id || !disciplina_id || !mes_id) {
         mostrarFeedback('Preencha todos os campos obrigatórios', 'warning');
         return;
     }
@@ -486,7 +486,7 @@ async function salvarSimulado(event) {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                Ano_escolar_id: parseInt(Ano_escolar_id),
+                ano_escolar_id: parseInt(ano_escolar_id),
                 disciplina_id: parseInt(disciplina_id),
                 mes_id: parseInt(mes_id),
                 questoes: Array.from(questoesSelecionadas)

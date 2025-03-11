@@ -12,7 +12,7 @@ class User(UserMixin, db.Model):
     senha_hash = db.Column(db.String(128))
     tipo_usuario_id = db.Column(db.Integer, nullable=False)
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'))
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'))
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'))
     turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'))
     codigo_ibge = db.Column(db.String(7))
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)

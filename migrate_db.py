@@ -59,7 +59,7 @@ def migrate_database():
             cursor.execute("""
                 CREATE TABLE usuarios_new AS 
                 SELECT id, nome, email, senha_hash, tipo_usuario_id, escola_id, 
-                       Ano_escolar_id, turma_id, codigo_ibge, data_criacao, 
+                       ano_escolar_id, turma_id, codigo_ibge, data_criacao, 
                        data_atualizacao_senha, ultimo_login, tentativas_login, bloqueado
                 FROM usuarios
             """)

@@ -89,11 +89,11 @@ def criar_plano_aula():
         db.session.query(
             Disciplinas.id.label('disciplina_id'),
             Disciplinas.nome.label('disciplina_nome'),
-            Ano_escolar.id.label('Ano_escolar_id'),
+            Ano_escolar.id.label('ano_escolar_id'),
             Ano_escolar.nome.label('Ano_escolar_nome')
         )
         .join(SimuladosGeradosProfessor, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id)
-        .join(Ano_escolar, SimuladosGeradosProfessor.Ano_escolar_id == Ano_escolar.id)
+        .join(Ano_escolar, SimuladosGeradosProfessor.ano_escolar_id == Ano_escolar.id)
         .filter(SimuladosGeradosProfessor.professor_id == current_user.id)
         .distinct()
         .order_by(Disciplinas.nome, Ano_escolar.nome)
@@ -107,7 +107,7 @@ def criar_plano_aula():
         
         for item in disciplinas_series:
             disciplinas[item.disciplina_id] = item.disciplina_nome  # Usar ID como chave
-            anos_escolares.add((item.Ano_escolar_id, item.Ano_escolar_nome))
+            anos_escolares.add((item.ano_escolar_id, item.Ano_escolar_nome))
         
         return render_template('conteudo/plano_aula.html', 
                              disciplinas=[(id, nome) for id, nome in disciplinas.items()],  # Enviar tuplas (id, nome)
@@ -123,7 +123,7 @@ def criar_plano_aula():
         tem_acesso = False
         disciplina_nome = None
         for item in disciplinas_series:
-            if str(item.disciplina_id) == disciplina_id and str(item.Ano_escolar_id) == ano_escolar_id:
+            if str(item.disciplina_id) == disciplina_id and str(item.ano_escolar_id) == ano_escolar_id:
                 tem_acesso = True
                 disciplina_nome = item.disciplina_nome
                 break

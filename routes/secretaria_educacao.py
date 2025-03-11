@@ -107,7 +107,7 @@ def criar_simulado():
         simulado = db.session.query(
             SimuladosGerados.id,
             SimuladosGerados.disciplina_id,
-            SimuladosGerados.Ano_escolar_id,
+            SimuladosGerados.ano_escolar_id,
             SimuladosGerados.mes_id,
             SimuladosGerados.status,
             Disciplinas.nome.label('disciplina_nome'),
@@ -116,7 +116,7 @@ def criar_simulado():
         ).join(
             Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
         ).join(
-            Ano_escolar, Ano_escolar.id == SimuladosGerados.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == SimuladosGerados.ano_escolar_id
         ).join(
             MESES, MESES.id == SimuladosGerados.mes_id
         ).filter(
@@ -133,7 +133,7 @@ def criar_simulado():
             simulado_data = {
                 'id': simulado.id,
                 'disciplina_id': simulado.disciplina_id,
-                'Ano_escolar_id': simulado.Ano_escolar_id,
+                'ano_escolar_id': simulado.ano_escolar_id,
                 'mes_id': simulado.mes_id,
                 'status': simulado.status,
                 'disciplina_nome': simulado.disciplina_nome,
@@ -153,7 +153,7 @@ def criar_simulado():
                 BancoQuestoes.questao_correta,
                 BancoQuestoes.assunto,
                 BancoQuestoes.disciplina_id,
-                BancoQuestoes.Ano_escolar_id,
+                BancoQuestoes.ano_escolar_id,
                 BancoQuestoes.mes_id
             ).join(
                 SimuladoQuestoes,
@@ -185,23 +185,23 @@ def salvar_simulado():
         print(f"Dados recebidos: {dados}")
         
         # Extrair dados do JSON
-        Ano_escolar_id = dados.get('Ano_escolar_id')
+        ano_escolar_id = dados.get('ano_escolar_id')
         mes_id = dados.get('mes_id')
         disciplina_id = dados.get('disciplina_id')
         questoes = dados.get('questoes', [])
         simulado_id = dados.get('simulado_id')
         
         print(f"3. Dados extraídos:")
-        print(f"- Ano_escolar_id: {Ano_escolar_id}")
+        print(f"- ano_escolar_id: {ano_escolar_id}")
         print(f"- mes_id: {mes_id}")
         print(f"- disciplina_id: {disciplina_id}")
         print(f"- Número de questões: {len(questoes)}")
         print(f"- simulado_id: {simulado_id}")
         
         # Validar dados obrigatórios
-        if not all([Ano_escolar_id, mes_id, disciplina_id]) or not questoes:
+        if not all([ano_escolar_id, mes_id, disciplina_id]) or not questoes:
             print("Dados incompletos:")
-            print(f"- Ano_escolar_id presente: {bool(Ano_escolar_id)}")
+            print(f"- ano_escolar_id presente: {bool(ano_escolar_id)}")
             print(f"- mes_id presente: {bool(mes_id)}")
             print(f"- disciplina_id presente: {bool(disciplina_id)}")
             print(f"- questoes presentes: {bool(questoes)}")
@@ -217,7 +217,7 @@ def salvar_simulado():
                 return jsonify({'success': False, 'message': 'Simulado não encontrado'}), 404
             
             # Atualizar dados do simulado
-            simulado.Ano_escolar_id = Ano_escolar_id
+            simulado.ano_escolar_id = ano_escolar_id
             simulado.mes_id = mes_id
             simulado.disciplina_id = disciplina_id
             
@@ -227,7 +227,7 @@ def salvar_simulado():
         else:  # Novo simulado
             print("4.2 Criando novo simulado")
             simulado = SimuladosGerados(
-                Ano_escolar_id=Ano_escolar_id,
+                ano_escolar_id=ano_escolar_id,
                 mes_id=mes_id,
                 disciplina_id=disciplina_id,
                 status='gerado',
@@ -284,7 +284,7 @@ def salvar_simulado():
 #     if current_user.tipo_usuario_id not in [5, 6]:
 #         return jsonify({'error': 'Acesso não autorizado'}), 403
 
-#     Ano_escolar_id = request.args.get('Ano_escolar_id', '')
+#     ano_escolar_id = request.args.get('ano_escolar_id', '')
 #     disciplina_id = request.args.get('disciplina_id', '')
 #     assunto = request.args.get('assunto', '')
     
@@ -297,15 +297,15 @@ def salvar_simulado():
 #             d.nome as disciplina_nome,
 #             s.nome Ano_escolar_nome
 #         FROM banco_questoes bq
-#         LEFT JOIN Ano_escolar s ON bq.Ano_escolar_id = s.id
+#         LEFT JOIN Ano_escolar s ON bq.ano_escolar_id = s.id
 #         LEFT JOIN disciplinas d ON bq.disciplina_id = d.id
 #         WHERE 1=1
 #     """
 #     params = []
 
-#     if Ano_escolar_id:
-#         query += " AND bq.Ano_escolar_id = ?"
-#         params.append(Ano_escolar_id)
+#     if ano_escolar_id:
+#         query += " AND bq.ano_escolar_id = ?"
+#         params.append(ano_escolar_id)
     
 #     if disciplina_id:
 #         query += " AND bq.disciplina_id = ?"
@@ -334,7 +334,7 @@ def salvar_simulado():
 #                 'questao_correta': q[7],
 #                 'disciplina_id': q[8],
 #                 'assunto': q[9],
-#                 'Ano_escolar_id': q[10],
+#                 'ano_escolar_id': q[10],
 #                 'mes_id': q[11],
 #                 'disciplina_nome': q[12],
 #                 'Ano_escolar_nome': q[13]
@@ -358,22 +358,22 @@ def buscar_questoes():
         print("2. Pegando parâmetros da URL")
         # Pegar parâmetros da URL
         disciplina_id = request.args.get('disciplina_id', '')
-        Ano_escolar_id = request.args.get('Ano_escolar_id', '')
+        ano_escolar_id = request.args.get('ano_escolar_id', '')
         mes_id = request.args.get('mes_id', '')
         assunto = request.args.get('assunto', '')
         
-        print(f"3. Parâmetros recebidos: disciplina={disciplina_id}, Ano_escolar={Ano_escolar_id}, mes={mes_id}, assunto={assunto}")
+        print(f"3. Parâmetros recebidos: disciplina={disciplina_id}, Ano_escolar={ano_escolar_id}, mes={mes_id}, assunto={assunto}")
         
         print("4. Construindo query base")
         # Construir a query base usando SQL nativo
         sql = """
             SELECT bq.id, bq.questao, bq.alternativa_a, bq.alternativa_b, bq.alternativa_c, 
                    bq.alternativa_d, bq.alternativa_e, bq.questao_correta, bq.assunto,
-                   bq.disciplina_id, bq.Ano_escolar_id, bq.mes_id,
+                   bq.disciplina_id, bq.ano_escolar_id, bq.mes_id,
                    d.nome as disciplina_nome, ae.nome as Ano_escolar_nome
             FROM banco_questoes bq
             JOIN disciplinas d ON bq.disciplina_id = d.id
-            JOIN Ano_escolar ae ON bq.Ano_escolar_id = ae.id
+            JOIN Ano_escolar ae ON bq.ano_escolar_id = ae.id
             WHERE bq.codigo_ibge = :codigo_ibge
         """
         params = {'codigo_ibge': current_user.codigo_ibge}
@@ -382,9 +382,9 @@ def buscar_questoes():
         if disciplina_id and disciplina_id != '' and disciplina_id.isdigit():
             sql += " AND bq.disciplina_id = :disciplina_id"
             params['disciplina_id'] = int(disciplina_id)
-        if Ano_escolar_id and Ano_escolar_id != '' and Ano_escolar_id.isdigit():
-            sql += " AND bq.Ano_escolar_id = :Ano_escolar_id"
-            params['Ano_escolar_id'] = int(Ano_escolar_id)
+        if ano_escolar_id and ano_escolar_id != '' and ano_escolar_id.isdigit():
+            sql += " AND bq.ano_escolar_id = :ano_escolar_id"
+            params['ano_escolar_id'] = int(ano_escolar_id)
         if mes_id and mes_id != '' and mes_id.isdigit():
             sql += " AND bq.mes_id = :mes_id"
             params['mes_id'] = int(mes_id)
@@ -415,7 +415,7 @@ def buscar_questoes():
                 'questao_correta': q.questao_correta,
                 'assunto': q.assunto,
                 'disciplina_id': q.disciplina_id,
-                'Ano_escolar_id': q.Ano_escolar_id,
+                'ano_escolar_id': q.ano_escolar_id,
                 'mes_id': q.mes_id,
                 'disciplina_nome': q.disciplina_nome,
                 'Ano_escolar_nome': q.Ano_escolar_nome
@@ -453,17 +453,17 @@ def gerar_simulado_automatico():
     
     try:
         # Pegar dados do formulário
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         mes_id = request.form.get('mes_id')
         disciplina_id = request.form.get('disciplina_id')
         num_questoes = request.form.get('num_questoes', type=int)
         
-        if not all([Ano_escolar_id, mes_id, disciplina_id, num_questoes]):
+        if not all([ano_escolar_id, mes_id, disciplina_id, num_questoes]):
             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
         
         # Buscar questões aleatórias do banco
         questoes = db.session.query(BancoQuestoes).filter(
-            BancoQuestoes.Ano_escolar_id == Ano_escolar_id,
+            BancoQuestoes.ano_escolar_id == ano_escolar_id,
             BancoQuestoes.mes_id == mes_id,
             BancoQuestoes.disciplina_id == disciplina_id,
             BancoQuestoes.codigo_ibge == current_user.codigo_ibge
@@ -479,7 +479,7 @@ def gerar_simulado_automatico():
         
         # Criar novo simulado
         simulado = SimuladosGerados(
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             mes_id=mes_id,
             disciplina_id=disciplina_id,
             status='gerado',
@@ -532,21 +532,21 @@ def gerar_simulado_automatico():
     
 #     try:
 #         # Pegar dados do formulário
-#         Ano_escolar_id = request.form.get('Ano_escolar_id')
+#         ano_escolar_id = request.form.get('ano_escolar_id')
 #         mes_id = request.form.get('mes_id')
 #         disciplina_id = request.form.get('disciplina_id')
 #         questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
         
-#         if not all([Ano_escolar_id, mes_id, disciplina_id, questoes]):
+#         if not all([ano_escolar_id, mes_id, disciplina_id, questoes]):
 #             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
         
 #         # Criar novo simulado
 #         query = """
-#             INSERT INTO simulados_gerados (Ano_escolar_id, mes_id, disciplina_id, status, data_envio)
+#             INSERT INTO simulados_gerados (ano_escolar_id, mes_id, disciplina_id, status, data_envio)
 #             VALUES (?, ?, ?, 'gerado', CURRENT_TIMESTAMP)
 #         """
 #         cursor = get_db().cursor()
-#         cursor.execute(query, (Ano_escolar_id, mes_id, disciplina_id))
+#         cursor.execute(query, (ano_escolar_id, mes_id, disciplina_id))
 #         simulado_id = cursor.lastrowid
         
 #         # Inserir questões do simulado
@@ -584,13 +584,13 @@ def banco_questoes():
             questao_correta = request.form.get('questao_correta')
             disciplina_id = request.form.get('disciplina_id')
             assunto = request.form.get('assunto')
-            Ano_escolar_id = request.form.get('Ano_escolar_id')
+            ano_escolar_id = request.form.get('ano_escolar_id')
             mes_id = request.form.get('mes_id')
             codigo_ibge = current_user.codigo_ibge
 
             # Validar dados
             if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
-                       questao_correta, disciplina_id, Ano_escolar_id]):
+                       questao_correta, disciplina_id, ano_escolar_id]):
                 return jsonify({
                     'success': False,
                     'message': 'Por favor, preencha todos os campos obrigatórios'
@@ -621,7 +621,7 @@ def banco_questoes():
                 questao_correta=questao_correta,
                 disciplina_id=disciplina_id,
                 assunto=assunto,
-                Ano_escolar_id=Ano_escolar_id,
+                ano_escolar_id=ano_escolar_id,
                 mes_id=mes_id,
                 usuario_id=current_user.id,
                 codigo_ibge=codigo_ibge
@@ -656,7 +656,7 @@ def banco_questoes():
         ).join(
             Disciplinas, Disciplinas.id == BancoQuestoes.disciplina_id
         ).join(
-            Ano_escolar, Ano_escolar.id == BancoQuestoes.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == BancoQuestoes.ano_escolar_id
         ).outerjoin(
             MESES, MESES.id == BancoQuestoes.mes_id
         )
@@ -734,7 +734,7 @@ def portal_secretaria_educacao():
 
     # Buscar o número de simulados gerados na mesma codigo_ibge
     numero_simulados_gerados = db.session.query(SimuladosGerados)\
-        .join(Usuarios, SimuladosGerados.Ano_escolar_id == Usuarios.Ano_escolar_id)\
+        .join(Usuarios, SimuladosGerados.ano_escolar_id == Usuarios.ano_escolar_id)\
         .filter(Usuarios.codigo_ibge == current_user.codigo_ibge)\
         .count()
 
@@ -753,7 +753,7 @@ def portal_secretaria_educacao():
         Disciplinas.nome.label('disciplina_nome'),
         SimuladosGerados.data_envio,
         SimuladosGerados.status
-    ).join(Ano_escolar, SimuladosGerados.Ano_escolar_id == Ano_escolar.id)\
+    ).join(Ano_escolar, SimuladosGerados.ano_escolar_id == Ano_escolar.id)\
      .join(Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id)\
      .order_by(SimuladosGerados.data_envio.desc())\
      .all()
@@ -822,7 +822,7 @@ def meus_simulados():
             SimuladosGerados.status,
             SimuladosGerados.data_envio,
             SimuladosGerados.disciplina_id,
-            SimuladosGerados.Ano_escolar_id,
+            SimuladosGerados.ano_escolar_id,
             SimuladosGerados.mes_id,
             Disciplinas.nome.label('disciplina_nome'),
             Ano_escolar.nome.label('Ano_escolar_nome'),
@@ -831,7 +831,7 @@ def meus_simulados():
         ).join(
             Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
         ).join(
-            Ano_escolar, Ano_escolar.id == SimuladosGerados.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == SimuladosGerados.ano_escolar_id
         ).join(
             MESES, MESES.id == SimuladosGerados.mes_id
         ).outerjoin(
@@ -843,7 +843,7 @@ def meus_simulados():
             SimuladosGerados.status,
             SimuladosGerados.data_envio,
             SimuladosGerados.disciplina_id,
-            SimuladosGerados.Ano_escolar_id,
+            SimuladosGerados.ano_escolar_id,
             SimuladosGerados.mes_id,
             Disciplinas.nome,
             Ano_escolar.nome,
@@ -901,7 +901,7 @@ def enviar_simulado(simulado_id):
         print(f"Simulado encontrado: {simulado is not None}")
         if simulado:
             print(f"Status do simulado: {simulado.status}")
-            print(f"Ano Escolar do simulado: {simulado.Ano_escolar_id}")
+            print(f"Ano Escolar do simulado: {simulado.ano_escolar_id}")
         
         if not simulado:
             print("Erro: Simulado não encontrado ou não pode ser enviado")
@@ -913,7 +913,7 @@ def enviar_simulado(simulado_id):
         # Buscar alunos da série do município
         alunos = db.session.query(Usuarios).filter(
             Usuarios.tipo_usuario_id == 4,  # Aluno
-            Usuarios.Ano_escolar_id == simulado.Ano_escolar_id,
+            Usuarios.ano_escolar_id == simulado.ano_escolar_id,
             Usuarios.codigo_ibge == current_user.codigo_ibge
         ).all()
         
@@ -955,7 +955,7 @@ def enviar_simulado(simulado_id):
                     
                 print(f"\nCriando registro para aluno {aluno.id}:")
                 print(f"Escola: {aluno.escola_id}")
-                print(f"Ano Escolar: {simulado.Ano_escolar_id}")
+                print(f"Ano Escolar: {simulado.ano_escolar_id}")
                 print(f"Turma: {aluno.turma_id}")
                 
                 try:
@@ -963,7 +963,7 @@ def enviar_simulado(simulado_id):
                         aluno_id=aluno.id,
                         simulado_id=simulados_enviados[aluno.turma_id],  # ID do simulado_enviado da turma
                         escola_id=aluno.escola_id,
-                        Ano_escolar_id=simulado.Ano_escolar_id,
+                        ano_escolar_id=simulado.ano_escolar_id,
                         codigo_ibge=int(current_user.codigo_ibge),
                         respostas_aluno='{}',  # JSON vazio
                         respostas_corretas='{}',  # JSON vazio
@@ -1011,7 +1011,7 @@ def visualizar_simulado(simulado_id):
         ).join(
             Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
         ).join(
-            Ano_escolar, Ano_escolar.id == SimuladosGerados.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == SimuladosGerados.ano_escolar_id
         ).join(
             MESES, MESES.id == SimuladosGerados.mes_id
         ).filter(
@@ -1195,7 +1195,7 @@ def buscar_questao(questao_id):
             SELECT q.*, d.nome as disciplina_nome, s.nome Ano_escolar_nome
             FROM banco_questoes q
             LEFT JOIN disciplinas d ON q.disciplina_id = d.id
-            LEFT JOIN Ano_escolar s ON q.Ano_escolar_id = s.id
+            LEFT JOIN Ano_escolar s ON q.ano_escolar_id = s.id
             WHERE q.id = ?
         """, (questao_id,))
         
@@ -1221,7 +1221,7 @@ def buscar_questao(questao_id):
                 'disciplina_id': questao[8],
                 'disciplina_nome': questao[12],  # Agora é o nome do componente
                 'assunto': questao[9],
-                'Ano_escolar_id': questao[10],
+                'ano_escolar_id': questao[10],
                 'Ano_escolar_nome': questao[13],  # Agora é o nome do ano escolar
                 'mes_id': questao[11],
                 'mes_nome': mes_nome
@@ -1252,11 +1252,11 @@ def atualizar_questao(questao_id):
         assunto = request.form.get('assunto')
         
         # Trata campos opcionais
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         mes_id = request.form.get('mes_id')
         
         # Converte para None se vazio
-        Ano_escolar_id = None if not Ano_escolar_id else int(Ano_escolar_id)
+        ano_escolar_id = None if not ano_escolar_id else int(ano_escolar_id)
         mes_id = None if not mes_id else int(mes_id)
         
         # Validate required fields
@@ -1280,11 +1280,11 @@ def atualizar_questao(questao_id):
                 questao_correta = ?,
                 disciplina_id = ?,
                 assunto = ?,
-                Ano_escolar_id = ?,
+                ano_escolar_id = ?,
                 mes_id = ?
             WHERE id = ?
         """, (questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
-              alternativa_e, questao_correta, disciplina_id, assunto, Ano_escolar_id, mes_id, questao_id))
+              alternativa_e, questao_correta, disciplina_id, assunto, ano_escolar_id, mes_id, questao_id))
         
         db.commit()
         
@@ -1480,7 +1480,7 @@ def adicionar_questao():
         alternativa_d = request.form.get('alternativa_d')
         alternativa_e = request.form.get('alternativa_e')
         questao_correta = request.form.get('questao_correta')
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         mes_id = request.form.get('mes_id')
         codigo_ibge = current_user.codigo_ibge
         
@@ -1499,7 +1499,7 @@ def adicionar_questao():
             alternativa_d=alternativa_d,
             alternativa_e=alternativa_e,
             questao_correta=questao_correta,
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             mes_id=mes_id,
             codigo_ibge=codigo_ibge
         )

@@ -77,12 +77,12 @@ openai.api_key="sk-proj-Gg9jvN-9P01lrIRSnqzqrS4OgksLOW-MLSK263_L7thN8JAhd8u9ARLd
 from flask_login import UserMixin
 
 class User(UserMixin):
-    def __init__(self, id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, codigo_ibge):
+    def __init__(self, id, nome, tipo_usuario_id, escola_id, ano_escolar_id, turma_id, email, codigo_ibge):
         self.id = id
         self.nome = nome
         self.tipo_usuario_id = tipo_usuario_id
         self.escola_id = escola_id
-        self.Ano_escolar_id = Ano_escolar_id
+        self.ano_escolar_id = ano_escolar_id
         self.turma_id = turma_id
         self.email = email
         self.codigo_ibge = codigo_ibge
@@ -97,7 +97,7 @@ def load_user(user_id):
     db = get_db()
     cursor = db.cursor()
     cursor.execute("""
-        SELECT id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, codigo_ibge
+        SELECT id, nome, tipo_usuario_id, escola_id, ano_escolar_id, turma_id, email, codigo_ibge
         FROM usuarios
         WHERE id = ?
     """, (user_id,))
@@ -110,7 +110,7 @@ def load_user(user_id):
             nome=user_data[1],
             tipo_usuario_id=user_data[2],
             escola_id=user_data[3],
-            Ano_escolar_id=user_data[4],
+            ano_escolar_id=user_data[4],
             turma_id=user_data[5],
             email=user_data[6],
             codigo_ibge=user_data[7]
@@ -282,7 +282,7 @@ def gerar_perguntas(disciplina, assunto, quantidade, nivel, alternativas):
         print(f"Erro inesperado ao gerar perguntas: {e}")
         return None
 
-def enviar_questoes_automaticamente(Ano_escolar_id, codigo_ibge):
+def enviar_questoes_automaticamente(ano_escolar_id, codigo_ibge):
     """
     Envia automaticamente as questões do banco_questoes para alunos da série especificada
     em escolas vinculadas ao código IBGE (codigo_ibge).
@@ -295,14 +295,14 @@ def enviar_questoes_automaticamente(Ano_escolar_id, codigo_ibge):
         """
         SELECT id, questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d, alternativa_e, questao_correta
         FROM banco_questoes
-        WHERE Ano_escolar_id = ?
+        WHERE ano_escolar_id = ?
         """,
-        (Ano_escolar_id,),
+        (ano_escolar_id,),
     )
     questoes = cursor.fetchall()
 
     if not questoes:
-        print(f"Nenhuma questão encontrada para a série ID {Ano_escolar_id}.")
+        print(f"Nenhuma questão encontrada para a série ID {ano_escolar_id}.")
         return
 
     # Buscar alunos (tipo_usuario_id = 4) da série nas escolas vinculadas ao código IBGE
@@ -311,23 +311,23 @@ def enviar_questoes_automaticamente(Ano_escolar_id, codigo_ibge):
         SELECT usuarios.id, usuarios.nome, usuarios.email
         FROM usuarios
         JOIN escolas ON usuarios.escola_id = escolas.id
-        WHERE usuarios.Ano_escolar_id = ? AND usuarios.tipo_usuario_id = 4 AND escolas.codigo_ibge = ?
+        WHERE usuarios.ano_escolar_id = ? AND usuarios.tipo_usuario_id = 4 AND escolas.codigo_ibge = ?
         """,
-        (Ano_escolar_id, codigo_ibge),
+        (ano_escolar_id, codigo_ibge),
     )
     alunos = cursor.fetchall()
 
     if not alunos:
-        print(f"Nenhum aluno encontrado para a série ID {Ano_escolar_id} e cidade ID {codigo_ibge}.")
+        print(f"Nenhum aluno encontrado para a série ID {ano_escolar_id} e cidade ID {codigo_ibge}.")
         return
 
     # Criar o simulado no banco
     cursor.execute(
         """
-        INSERT INTO simulados (titulo, Ano_escolar_id)
+        INSERT INTO simulados (titulo, ano_escolar_id)
         VALUES (?, ?)
         """,
-        (f"Simulado Automático Ano Escolar {Ano_escolar_id}", Ano_escolar_id),
+        (f"Simulado Automático Ano Escolar {ano_escolar_id}", ano_escolar_id),
     )
     simulado_id = cursor.lastrowid
 
@@ -353,7 +353,7 @@ def enviar_questoes_automaticamente(Ano_escolar_id, codigo_ibge):
 
     # Finalizar a operação
     db.commit()
-    print(f"Simulado ID {simulado_id} enviado para {len(alunos)} alunos da série ID {Ano_escolar_id}.")
+    print(f"Simulado ID {simulado_id} enviado para {len(alunos)} alunos da série ID {ano_escolar_id}.")
 
 
 # Inicializa o banco de dados
@@ -585,14 +585,14 @@ def login():
         cursor = db.cursor()
         # Modifica a consulta para buscar por email OU CPF
         cursor.execute("""
-            SELECT id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, senha, codigo_ibge
+            SELECT id, nome, tipo_usuario_id, escola_id, ano_escolar_id, turma_id, email, senha, codigo_ibge
             FROM usuarios
             WHERE email = ? OR cpf = ?
         """, (login_identifier, login_identifier))
         user_data = cursor.fetchone()
 
         if user_data:
-            user_id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email_db, senha_hash, codigo_ibge = user_data
+            user_id, nome, tipo_usuario_id, escola_id, ano_escolar_id, turma_id, email_db, senha_hash, codigo_ibge = user_data
 
             if check_password_hash(senha_hash, senha):
                 user = User(
@@ -600,7 +600,7 @@ def login():
                     nome=nome,
                     tipo_usuario_id=tipo_usuario_id,
                     escola_id=escola_id,
-                    Ano_escolar_id=Ano_escolar_id,
+                    ano_escolar_id=ano_escolar_id,
                     turma_id=turma_id,
                     email=email_db,
                     codigo_ibge=codigo_ibge
@@ -885,9 +885,9 @@ def importar_assuntos():
                         print(f"Processando linha: {row}")  # Debug
                         try:
                             cursor.execute("""
-                                INSERT INTO assunto (disciplina, assunto, Ano_escolar_id, turma_id, escola_id, professor_id)
+                                INSERT INTO assunto (disciplina, assunto, ano_escolar_id, turma_id, escola_id, professor_id)
                                 VALUES (?, ?, ?, ?, ?, ?)
-                            """, (row['disciplina'], row['assunto'], row['Ano_escolar_id'], None, None, None))
+                            """, (row['disciplina'], row['assunto'], row['ano_escolar_id'], None, None, None))
                             registros_importados += 1
                         except Exception as e:
                             print(f"Erro ao inserir linha: {e}")
@@ -972,17 +972,17 @@ def cadastrar_turma():
         # Obter os valores do formulário
         escola_id = request.form.get("escola_id", "").strip()
         tipo_ensino_id = request.form.get("tipo_ensino_id", "").strip()
-        Ano_escolar_id = request.form.get("Ano_escolar_id", "").strip()
+        ano_escolar_id = request.form.get("ano_escolar_id", "").strip()
         turma_nome = request.form.get("turma", "").strip()
 
         # Printar os valores recebidos para depuração
         print(f"escola_id: {escola_id}")
         print(f"tipo_ensino_id: {tipo_ensino_id}")
-        print(f"Ano_escolar_id: {Ano_escolar_id}")
+        print(f"ano_escolar_id: {ano_escolar_id}")
         print(f"turma_nome: {turma_nome}")
 
         # Validar campos obrigatórios
-        if not all([escola_id, tipo_ensino_id, Ano_escolar_id, turma_nome]):
+        if not all([escola_id, tipo_ensino_id, ano_escolar_id, turma_nome]):
             print("Erro: Campos obrigatórios não preenchidos!")
             return render_template(
                 "cadastrar_turma.html",
@@ -994,10 +994,10 @@ def cadastrar_turma():
             # Inserir a turma no banco de dados
             cursor.execute(
                 """
-                INSERT INTO turmas (escola_id, tipo_ensino_id, Ano_escolar_id, turma)
+                INSERT INTO turmas (escola_id, tipo_ensino_id, ano_escolar_id, turma)
                 VALUES (?, ?, ?, ?)
                 """,
-                (int(escola_id), int(tipo_ensino_id), int(Ano_escolar_id), turma_nome)
+                (int(escola_id), int(tipo_ensino_id), int(ano_escolar_id), turma_nome)
             )
             db.commit()
             print("Turma cadastrada com sucesso!")
@@ -1155,11 +1155,11 @@ import logging
 def get_turmas():
     escola_id = request.args.get("escola_id")
     tipo_ensino_id = request.args.get("tipo_ensino_id")
-    Ano_escolar_id = request.args.get("Ano_escolar_id")
+    ano_escolar_id = request.args.get("ano_escolar_id")
 
-    app.logger.info(f"Parâmetros recebidos: escola_id={escola_id}, tipo_ensino_id={tipo_ensino_id}, Ano_escolar_id={Ano_escolar_id}")
+    app.logger.info(f"Parâmetros recebidos: escola_id={escola_id}, tipo_ensino_id={tipo_ensino_id}, ano_escolar_id={ano_escolar_id}")
 
-    if not all([escola_id, tipo_ensino_id, Ano_escolar_id]):
+    if not all([escola_id, tipo_ensino_id, ano_escolar_id]):
         app.logger.warning("Parâmetros insuficientes fornecidos para /get_turmas.")
         return jsonify([])
 
@@ -1172,10 +1172,10 @@ def get_turmas():
             """
             SELECT turmas.id, Ano_escolar.nome Ano_escolar, turmas.turma
             FROM turmas
-            JOIN Ano_escolar ON turmas.Ano_escolar_id = Ano_escolar.id
-            WHERE turmas.escola_id = ? AND turmas.tipo_ensino_id = ? AND turmas.Ano_escolar_id = ?
+            JOIN Ano_escolar ON turmas.ano_escolar_id = Ano_escolar.id
+            WHERE turmas.escola_id = ? AND turmas.tipo_ensino_id = ? AND turmas.ano_escolar_id = ?
             """,
-            (escola_id, tipo_ensino_id, Ano_escolar_id),
+            (escola_id, tipo_ensino_id, ano_escolar_id),
         )
         turmas = cursor.fetchall()
 
@@ -1307,7 +1307,7 @@ def cadastrar_usuario():
         # Capturando múltiplas turmas para professores
         escolas_ids = request.form.getlist("escola_id[]")
         tipos_ensino_ids = request.form.getlist("tipo_ensino[]")
-        Ano_escolar_ids = request.form.getlist("Ano_escolar[]")
+        ano_escolar_ids = request.form.getlist("Ano_escolar[]")
         turmas_ids = request.form.getlist("turma_id[]")
 
         print(f"Recebidos: Nome={nome}, Email={email}, Tipo={tipo_usuario_id}, Turmas={turmas_ids}")
@@ -1322,12 +1322,12 @@ def cadastrar_usuario():
 
         # Validação específica para professores e alunos
         if tipo_usuario_id == "4":  # Aluno
-            if not all([escolas_ids[0], turmas_ids[0], tipos_ensino_ids[0], Ano_escolar_ids[0]]):
+            if not all([escolas_ids[0], turmas_ids[0], tipos_ensino_ids[0], ano_escolar_ids[0]]):
                 flash("Escola, Tipo de Ensino, Ano Escolar e Turma são obrigatórios para Alunos!", "error")
                 return render_template("cadastrar_usuario.html", escolas=escolas)
 
         if tipo_usuario_id == "3":  # Professor
-            if not all([escolas_ids, turmas_ids, tipos_ensino_ids, Ano_escolar_ids]):
+            if not all([escolas_ids, turmas_ids, tipos_ensino_ids, ano_escolar_ids]):
                 flash("Escola, Tipo de Ensino, Ano Escolar e Turma são obrigatórios para Professores!", "error")
                 return render_template("cadastrar_usuario.html", escolas=escolas)
 
@@ -1338,7 +1338,7 @@ def cadastrar_usuario():
             if tipo_usuario_id != "3":  # Não é professor
                 cursor.execute(
                     """
-                    INSERT INTO usuarios (nome, email, senha, tipo_usuario_id, escola_id, turma_id, tipo_ensino_id, Ano_escolar_id, codigo_ibge, cep)
+                    INSERT INTO usuarios (nome, email, senha, tipo_usuario_id, escola_id, turma_id, tipo_ensino_id, ano_escolar_id, codigo_ibge, cep)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
@@ -1349,7 +1349,7 @@ def cadastrar_usuario():
                         escolas_ids[0],
                         turmas_ids[0],
                         tipos_ensino_ids[0],
-                        Ano_escolar_ids[0],
+                        ano_escolar_ids[0],
                         codigo_ibge,
                         cep,
                     ),
@@ -1377,10 +1377,10 @@ def cadastrar_usuario():
                 print(f"Professor {nome} cadastrado na tabela `usuarios` com ID {usuario_id}")
 
                 # Insere as turmas do professor na tabela `professor_turma_escola`
-                for escola_id, tipo_ensino_id, Ano_escolar_id, turma_id in zip(escolas_ids, tipos_ensino_ids, Ano_escolar_ids, turmas_ids):
+                for escola_id, tipo_ensino_id, ano_escolar_id, turma_id in zip(escolas_ids, tipos_ensino_ids, ano_escolar_ids, turmas_ids):
                     cursor.execute(
                         """
-                        INSERT INTO professor_turma_escola (professor_id, escola_id, turma_id, tipo_ensino_id, Ano_escolar_id)
+                        INSERT INTO professor_turma_escola (professor_id, escola_id, turma_id, tipo_ensino_id, ano_escolar_id)
                         VALUES (?, ?, ?, ?, ?)
                         """,
                         (
@@ -1388,7 +1388,7 @@ def cadastrar_usuario():
                             escola_id,
                             turma_id,
                             tipo_ensino_id,
-                            Ano_escolar_id,
+                            ano_escolar_id,
                         ),
                     )
                 db.commit()
@@ -1645,7 +1645,7 @@ def cadastrar_turmas_massa():
                 for index, turma in data.iterrows():
                     codigo_inep = turma['Codigo_inep'].strip()
                     tipo_ensino_nome = turma['Tipo_ensino_id'].strip()
-                    Ano_escolar_nome = turma['Ano_escolar_id'].strip()
+                    Ano_escolar_nome = turma['ano_escolar_id'].strip()
                     turma_nome = turma['Turma'].strip()
 
                     # Buscar o ID da escola com base no Código INEP
@@ -1669,12 +1669,12 @@ def cadastrar_turmas_massa():
 
                     # Buscar o ID da série com base no nome
                     cursor.execute("SELECT id FROM Ano_escolar WHERE nome = ?", (Ano_escolar_nome,))
-                    Ano_escolar_id = cursor.fetchone()
-                    if Ano_escolar_id:
-                        data.at[index, 'Ano_escolar_id'] = int(Ano_escolar_id[0])  # Converte para inteiro
+                    ano_escolar_id = cursor.fetchone()
+                    if ano_escolar_id:
+                        data.at[index, 'ano_escolar_id'] = int(ano_escolar_id[0])  # Converte para inteiro
                     else:
                         print(f"Ano Escolar '{Ano_escolar_nome}' não encontrada no banco de dados.")
-                        data.at[index, 'Ano_escolar_id'] = None
+                        data.at[index, 'ano_escolar_id'] = None
 
                     # Validar a letra da turma
                     if turma_nome and turma_nome.strip():
@@ -1685,7 +1685,7 @@ def cadastrar_turmas_massa():
                 # Converter IDs para inteiros
                 data['escola_id'] = data['escola_id'].astype('Int64')  # Usa Int64 para permitir valores nulos
                 data['tipo_ensino_id'] = data['tipo_ensino_id'].astype('Int64')
-                data['Ano_escolar_id'] = data['Ano_escolar_id'].astype('Int64')
+                data['ano_escolar_id'] = data['ano_escolar_id'].astype('Int64')
 
                 print("Dados após conversão de IDs:", data)
 
@@ -1719,19 +1719,19 @@ def confirmar_cadastro_turmas():
             escola_id = turma.get('escola_id')
             codigo_inep = turma.get('codigo_inep')  # Agora enviado corretamente
             tipo_ensino_id = turma.get('tipo_ensino_id')
-            Ano_escolar_id = turma.get('Ano_escolar_id')
+            ano_escolar_id = turma.get('ano_escolar_id')
             turma_nome = turma.get('turma')
 
             # Verificar se todos os dados necessários estão presentes
-            if not all([escola_id, codigo_inep, tipo_ensino_id, Ano_escolar_id, turma_nome]):
+            if not all([escola_id, codigo_inep, tipo_ensino_id, ano_escolar_id, turma_nome]):
                 print(f"Dados incompletos para a turma: {turma}")
                 continue
 
             # Inserir a turma no banco de dados
             cursor.execute("""
-                INSERT INTO turmas (tipo_de_registro, codigo_inep, escola_id, tipo_ensino_id, Ano_escolar_id, turma)
+                INSERT INTO turmas (tipo_de_registro, codigo_inep, escola_id, tipo_ensino_id, ano_escolar_id, turma)
                 VALUES ('20', ?, ?, ?, ?, ?)
-            """, (codigo_inep, escola_id, tipo_ensino_id, Ano_escolar_id, turma_nome))
+            """, (codigo_inep, escola_id, tipo_ensino_id, ano_escolar_id, turma_nome))
 
             print(f"Turma cadastrada com sucesso: {turma_nome}")
 
@@ -1796,7 +1796,7 @@ def cadastrar_usuarios_massa():
                 colunas_necessarias = [
                     "tipo_registro", "codigo_inep_escola", "cpf",
                     "nome", "data_nascimento", "mae", "pai", "sexo", "codigo_ibge",
-                    "cep", "escola_id", "tipo_ensino_id", "Ano_escolar_id", "turma_id", 
+                    "cep", "escola_id", "tipo_ensino_id", "ano_escolar_id", "turma_id", 
                     "codigo_ibge", "tipo_usuario_id"
                 ]
                 
@@ -1842,35 +1842,35 @@ def cadastrar_usuarios_massa():
                             print(f"ID do tipo de ensino encontrado: {tipo_ensino_id}")
 
                             # Buscar série
-                            print(f"Buscando série: {usuario['Ano_escolar_id']}")
-                            cursor.execute("SELECT id FROM Ano_escolar WHERE nome = ?", (usuario["Ano_escolar_id"],))
-                            Ano_escolar_id = cursor.fetchone()
-                            Ano_escolar_id = Ano_escolar_id[0] if Ano_escolar_id else None
-                            print(f"ID da série encontrado: {Ano_escolar_id}")
+                            print(f"Buscando série: {usuario['ano_escolar_id']}")
+                            cursor.execute("SELECT id FROM Ano_escolar WHERE nome = ?", (usuario["ano_escolar_id"],))
+                            ano_escolar_id = cursor.fetchone()
+                            ano_escolar_id = ano_escolar_id[0] if ano_escolar_id else None
+                            print(f"ID da série encontrado: {ano_escolar_id}")
 
                             # Buscar turma
                             print(f"Buscando turma: {usuario['turma_id']}")
                             cursor.execute(
-                                "SELECT id FROM turmas WHERE turma = ? AND escola_id = ? AND Ano_escolar_id = ?",
-                                (usuario["turma_id"], escola_id, Ano_escolar_id)
+                                "SELECT id FROM turmas WHERE turma = ? AND escola_id = ? AND ano_escolar_id = ?",
+                                (usuario["turma_id"], escola_id, ano_escolar_id)
                             )
                             turma_id = cursor.fetchone()
                             turma_id = turma_id[0] if turma_id else None
                             print(f"ID da turma encontrado: {turma_id}")
 
-                            if not all([escola_id, tipo_ensino_id, Ano_escolar_id, turma_id]):
+                            if not all([escola_id, tipo_ensino_id, ano_escolar_id, turma_id]):
                                 print("AVISO: Alguns IDs não foram encontrados:")
                                 print(f"- Escola ID: {escola_id}")
                                 print(f"- Tipo Ensino ID: {tipo_ensino_id}")
-                                print(f"- Ano Escolar ID: {Ano_escolar_id}")
+                                print(f"- Ano Escolar ID: {ano_escolar_id}")
                                 print(f"- Turma ID: {turma_id}")
                         else:
-                            escola_id, tipo_ensino_id, Ano_escolar_id, turma_id = None, None, None, None
+                            escola_id, tipo_ensino_id, ano_escolar_id, turma_id = None, None, None, None
 
                         # Atualizar os valores no DataFrame
                         data.at[index, "escola_id"] = escola_id
                         data.at[index, "tipo_ensino_id"] = tipo_ensino_id
-                        data.at[index, "Ano_escolar_id"] = Ano_escolar_id
+                        data.at[index, "ano_escolar_id"] = ano_escolar_id
                         data.at[index, "turma_id"] = turma_id
 
                         # Gerar senha padrão para cada usuário
@@ -1881,7 +1881,7 @@ def cadastrar_usuarios_massa():
                             cpf = str(usuario["cpf"]).strip()
                             data.at[index, "email"] = f"{cpf}@aluno.edu.br"
 
-                        print(f"IDs convertidos: escola_id={escola_id}, tipo_ensino_id={tipo_ensino_id}, Ano_escolar_id={Ano_escolar_id}, turma_id={turma_id}")
+                        print(f"IDs convertidos: escola_id={escola_id}, tipo_ensino_id={tipo_ensino_id}, ano_escolar_id={ano_escolar_id}, turma_id={turma_id}")
 
                     except Exception as e:
                         print(f"Erro ao processar o usuário {usuario['nome']}: {e}")
@@ -1956,7 +1956,7 @@ def confirmar_cadastro_usuarios():
                         usuario["tipo_usuario_id"],
                         usuario.get("escola_id"),
                         usuario.get("turma_id"),
-                        usuario.get("Ano_escolar_id"),
+                        usuario.get("ano_escolar_id"),
                         usuario.get("tipo_ensino_id"),
                         usuario.get("cep"),
                         usuario.get("codigo_ibge"),
@@ -1973,7 +1973,7 @@ def confirmar_cadastro_usuarios():
                         """
                         INSERT INTO usuarios (
                             nome, email, senha, tipo_usuario_id, escola_id, turma_id,
-                            Ano_escolar_id, tipo_ensino_id, cep, codigo_ibge, cpf, data_nascimento,
+                            ano_escolar_id, tipo_ensino_id, cep, codigo_ibge, cpf, data_nascimento,
                             mae, pai, sexo, codigo_ibge
                         )
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1992,10 +1992,10 @@ def confirmar_cadastro_usuarios():
                         print("13. Inserindo vínculo professor-turma")
                         cursor.execute(
                             """
-                            INSERT INTO professor_turma_escola (professor_id, escola_id, turma_id, tipo_ensino_id, Ano_escolar_id)
+                            INSERT INTO professor_turma_escola (professor_id, escola_id, turma_id, tipo_ensino_id, ano_escolar_id)
                             VALUES (?, ?, ?, ?, ?)
                             """,
-                            (usuario_id, usuario["escola_id"], usuario["turma_id"], usuario["tipo_ensino_id"], usuario["Ano_escolar_id"]),
+                            (usuario_id, usuario["escola_id"], usuario["turma_id"], usuario["tipo_ensino_id"], usuario["ano_escolar_id"]),
                         )
                         db.commit()
                         print("14. Vínculo professor-turma criado com sucesso")

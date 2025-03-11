@@ -25,8 +25,8 @@
                             <label for="Ano_escolar" class="form-label">Ano Escolar</label>
                             <select class="form-select" id="Ano_escolar" name="Ano_escolar" required>
                                 <option value="">Selecione a série</option>
-                                {% for Ano_escolar_id, Ano_escolar_nome in Ano_escolar %}
-                                <option value="{{ Ano_escolar_id }}">{{ Ano_escolar_nome }}</option>
+                                {% for ano_escolar_id, Ano_escolar_nome in Ano_escolar %}
+                                <option value="{{ ano_escolar_id }}">{{ Ano_escolar_nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>

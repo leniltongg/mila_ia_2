@@ -177,6 +177,23 @@
         </div>
     </div>
 
+    <!-- Modal para exibir gráficos -->
+    <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="chartModalLabel">Visualização Detalhada</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="chart-container-modal" style="position: relative; height:80vh;">
+                        <canvas id="modalChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Lista de Escolas -->
     <div class="card shadow mb-4">
         <div class="card-header py-3">
@@ -244,15 +261,65 @@ document.addEventListener('DOMContentLoaded', function() {
                 primary: '#1cc88a',
                 light: '#1cc88a80'
             },
-            red: {
-                primary: '#e74a3b',
-                light: '#e74a3b80'
-            },
             yellow: {
                 primary: '#f6c23e',
                 light: '#f6c23e80'
+            },
+            red: {
+                primary: '#e74a3b',
+                light: '#e74a3b80'
             }
         };
+
+        let modalChart = null;
+
+        // Função para criar gráfico no modal
+        function createModalChart(originalCanvas, title) {
+            const originalChart = Chart.getChart(originalCanvas);
+            const modalCanvas = document.getElementById('modalChart');
+            
+            if (modalChart) {
+                modalChart.destroy();
+            }
+
+            modalChart = new Chart(modalCanvas, {
+                type: originalChart.config.type,
+                data: JSON.parse(JSON.stringify(originalChart.data)),
+                options: {
+                    ...JSON.parse(JSON.stringify(originalChart.config.options)),
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title,
+                            font: {
+                                size: 16
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Adicionar eventos de clique nos gráficos
+        const charts = {
+            'escolasChart': 'Desempenho por Escola',
+            'anosChart': 'Desempenho por Ano Escolar',
+            'disciplinasChart': 'Desempenho por Disciplina',
+            'participacaoChart': 'Taxa de Participação por Escola'
+        };
+
+        Object.entries(charts).forEach(([chartId, title]) => {
+            const chartElement = document.getElementById(chartId);
+            if (chartElement) {
+                chartElement.style.cursor = 'pointer';
+                chartElement.addEventListener('click', function() {
+                    const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+                    modal.show();
+                    createModalChart(this, title);
+                });
+            }
+        });
 
         // Gráfico de Desempenho por Escola
         new Chart(

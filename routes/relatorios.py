@@ -91,7 +91,7 @@ def relatorios_dashboard():
     ).join(
         Usuarios, DesempenhoSimulado.aluno_id == Usuarios.id
     ).join(
-        Ano_escolar, Usuarios.Ano_escolar_id == Ano_escolar.id
+        Ano_escolar, Usuarios.ano_escolar_id == Ano_escolar.id
     ).filter(
         Usuarios.codigo_ibge == codigo_ibge,
         Usuarios.tipo_usuario_id == 4
@@ -182,7 +182,7 @@ def relatorio_rede_municipal():
         func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
     ).outerjoin(
         Usuarios, and_(
-            Usuarios.Ano_escolar_id == Ano_escolar.id,
+            Usuarios.ano_escolar_id == Ano_escolar.id,
             Usuarios.tipo_usuario_id == 4
         )
     ).outerjoin(
@@ -496,7 +496,7 @@ def export_excel_relatorio():
 
     # Para cada série, criar uma aba com desempenho por escola
     for Ano_escolar in Ano_escolar:
-        Ano_escolar_id = Ano_escolar[0]
+        ano_escolar_id = Ano_escolar[0]
         Ano_escolar_nome = Ano_escolar[1]
         
         # Query para dados da série específica
@@ -519,7 +519,7 @@ def export_excel_relatorio():
             Usuarios, and_(
                 Usuarios.escola_id == Escolas.id,
                 Usuarios.tipo_usuario_id == 4,
-                Usuarios.Ano_escolar_id == Ano_escolar_id,
+                Usuarios.ano_escolar_id == ano_escolar_id,
                 Usuarios.codigo_ibge == codigo_ibge
             )
         ).outerjoin(
@@ -779,7 +779,7 @@ def relatorio_escola():
             func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
         ).outerjoin(
             Usuarios, and_(
-                Usuarios.Ano_escolar_id == Ano_escolar.id,
+                Usuarios.ano_escolar_id == Ano_escolar.id,
                 Usuarios.tipo_usuario_id == 4,
                 Usuarios.escola_id == escola_id
             )
@@ -831,7 +831,7 @@ def relatorio_escola():
             func.count(func.distinct(DesempenhoSimulado.aluno_id)).label('alunos_ativos'),
             func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
         ).join(
-            Ano_escolar, Ano_escolar.id == Turmas.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == Turmas.ano_escolar_id
         ).outerjoin(
             Usuarios, and_(
                 Usuarios.turma_id == Turmas.id,
@@ -859,7 +859,7 @@ def relatorio_escola():
             func.count(func.distinct(DesempenhoSimulado.simulado_id)).label('total_simulados'),
             func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
         ).join(
-            Ano_escolar, Ano_escolar.id == Turmas.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == Turmas.ano_escolar_id
         ).join(
             Usuarios, and_(
                 Usuarios.turma_id == Turmas.id,
@@ -1016,7 +1016,7 @@ def export_pdf_escola():
         func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
     ).outerjoin(
         Usuarios, and_(
-            Usuarios.Ano_escolar_id == Ano_escolar.id,
+            Usuarios.ano_escolar_id == Ano_escolar.id,
             Usuarios.tipo_usuario_id == 4,
             Usuarios.escola_id == escola_id
         )
@@ -1153,7 +1153,7 @@ def export_excel_escola():
         func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
     ).outerjoin(
         Usuarios, and_(
-            Usuarios.Ano_escolar_id == Ano_escolar.id,
+            Usuarios.ano_escolar_id == Ano_escolar.id,
             Usuarios.tipo_usuario_id == 4,
             Usuarios.escola_id == escola_id
         )
@@ -1319,7 +1319,7 @@ def relatorio_disciplina():
             func.count(simulados_disciplina.c.simulado_id).label('total_questoes'),
             func.coalesce(func.avg(simulados_disciplina.c.desempenho), 0.0).label('media')
         ).outerjoin(
-            Usuarios, Usuarios.Ano_escolar_id == Ano_escolar.id
+            Usuarios, Usuarios.ano_escolar_id == Ano_escolar.id
         ).outerjoin(
             simulados_disciplina, simulados_disciplina.c.aluno_id == Usuarios.id
         ).group_by(
@@ -1444,7 +1444,7 @@ def export_pdf_disciplina():
         func.count(simulados_disciplina.c.simulado_id).label('total_questoes'),
         func.coalesce(func.avg(simulados_disciplina.c.desempenho), 0.0).label('media')
     ).outerjoin(
-        Usuarios, Usuarios.Ano_escolar_id == Ano_escolar.id
+        Usuarios, Usuarios.ano_escolar_id == Ano_escolar.id
     ).outerjoin(
         simulados_disciplina, simulados_disciplina.c.aluno_id == Usuarios.id
     ).group_by(
@@ -1590,7 +1590,7 @@ def export_excel_disciplina():
         func.count(simulados_disciplina.c.simulado_id).label('total_questoes'),
         func.coalesce(func.avg(simulados_disciplina.c.desempenho), 0.0).label('media')
     ).outerjoin(
-        Usuarios, Usuarios.Ano_escolar_id == Ano_escolar.id
+        Usuarios, Usuarios.ano_escolar_id == Ano_escolar.id
     ).outerjoin(
         simulados_disciplina, simulados_disciplina.c.aluno_id == Usuarios.id
     ).group_by(
@@ -2003,7 +2003,7 @@ def relatorio_turma():
         ).filter(
             Turmas.escola_id == escola_id
         ).join(
-            Ano_escolar, Ano_escolar.id == Turmas.Ano_escolar_id
+            Ano_escolar, Ano_escolar.id == Turmas.ano_escolar_id
         ).outerjoin(
             Usuarios, and_(
                 Usuarios.turma_id == Turmas.id,
@@ -2404,7 +2404,7 @@ def relatorio_individual():
     ).join(
         Turmas, Usuarios.turma_id == Turmas.id
     ).join(
-        Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
     ).outerjoin(
         DesempenhoSimulado, and_(
             DesempenhoSimulado.aluno_id == Usuarios.id,
@@ -2420,7 +2420,7 @@ def relatorio_individual():
     if escola_id:
         alunos_query = alunos_query.filter(Usuarios.escola_id == escola_id)
     if ano_escolar_id:
-        alunos_query = alunos_query.filter(Turmas.Ano_escolar_id == ano_escolar_id)
+        alunos_query = alunos_query.filter(Turmas.ano_escolar_id == ano_escolar_id)
     if turma_id:
         alunos_query = alunos_query.filter(Usuarios.turma_id == turma_id)
 
@@ -2507,7 +2507,7 @@ def relatorio_individual():
         ).join(
             Turmas, Usuarios.turma_id == Turmas.id
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).filter(
             Usuarios.id == aluno_id
         ).first()

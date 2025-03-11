@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Upload de Questões em Massa{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4">Upload de Questões em Massa</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Instruções</h5>
+            <p>Para fazer o upload de questões em massa, siga estas instruções:</p>
+            <ol>
+                <li>Baixe o modelo de planilha clicando no botão abaixo</li>
+                <li>Preencha a planilha com as questões seguindo o formato</li>
+                <li>Faça o upload da planilha preenchida</li>
+                <li>Confira os dados antes de confirmar o cadastro</li>
+            </ol>
+            <a href="{{ url_for('download_modelo_questoes') }}" class="btn btn-secondary">
+                <i class="fas fa-download"></i> Baixar Modelo da Planilha
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Upload de Arquivo</h5>
+            <form action="{{ url_for('upload_questoes_massa') }}" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="file" class="form-label">Selecione o arquivo Excel</label>
+                    <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls">
+                </div>
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-upload"></i> Fazer Upload
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if preview_data %}
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Prévia dos Dados</h5>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Questão</th>
+                            <th>Alternativa A</th>
+                            <th>Alternativa B</th>
+                            <th>Alternativa C</th>
+                            <th>Alternativa D</th>
+                            <th>Alternativa E</th>
+                            <th>Resposta Correta</th>
+                            <th>Disciplina</th>
+                            <th>Ano Escolar</th>
+                            <th>Assunto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for questao in preview_data %}
+                        <tr>
+                            <td>{{ questao.questao }}</td>
+                            <td>{{ questao.alternativa_a }}</td>
+                            <td>{{ questao.alternativa_b }}</td>
+                            <td>{{ questao.alternativa_c }}</td>
+                            <td>{{ questao.alternativa_d }}</td>
+                            <td>{{ questao.alternativa_e }}</td>
+                            <td>{{ questao.questao_correta }}</td>
+                            <td>{{ questao.disciplina }}</td>
+                            <td>{{ questao.ano_escolar }}</td>
+                            <td>{{ questao.assunto }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <form action="{{ url_for('confirmar_cadastro_questoes_massa') }}" method="POST">
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-check"></i> Confirmar Cadastro
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

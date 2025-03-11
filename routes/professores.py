@@ -41,7 +41,7 @@ def portal():
             SELECT t.id, t.nome, d.nome as disciplina, s.nome Ano_escolar
             FROM turmas t
             JOIN disciplinas d ON t.disciplina_id = d.id
-            JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+            JOIN Ano_escolar s ON t.ano_escolar_id = s.id
             ORDER BY t.nome
         """)
     else:
@@ -50,7 +50,7 @@ def portal():
             SELECT t.id, t.nome, d.nome as disciplina, s.nome Ano_escolar
             FROM turmas t
             JOIN disciplinas d ON t.disciplina_id = d.id
-            JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+            JOIN Ano_escolar s ON t.ano_escolar_id = s.id
             WHERE t.professor_id = ?
             ORDER BY t.nome
         """, (current_user.id,))
@@ -102,7 +102,7 @@ def listar_turmas():
             SELECT DISTINCT t.id, se.nome Ano_escolar, t.turma, e.nome_da_escola AS escola
             FROM professor_turma_escola pte
             JOIN turmas t ON pte.turma_id = t.id
-            JOIN Ano_escolar se ON t.Ano_escolar_id = se.id
+            JOIN Ano_escolar se ON t.ano_escolar_id = se.id
             JOIN escolas e ON t.escola_id = e.id
             ORDER BY se.nome, t.turma
         """)
@@ -112,7 +112,7 @@ def listar_turmas():
             SELECT DISTINCT t.id, se.nome Ano_escolar, t.turma, e.nome_da_escola AS escola
             FROM professor_turma_escola pte
             JOIN turmas t ON pte.turma_id = t.id
-            JOIN Ano_escolar se ON t.Ano_escolar_id = se.id
+            JOIN Ano_escolar se ON t.ano_escolar_id = se.id
             JOIN escolas e ON t.escola_id = e.id
             WHERE pte.professor_id = ?
             ORDER BY se.nome, t.turma
@@ -169,7 +169,7 @@ def relatorio_aluno(aluno_id):
                s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM usuarios u
         JOIN turmas t ON u.turma_id = t.id
-        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+        JOIN Ano_escolar s ON t.ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE u.id = ? AND u.tipo_usuario_id = 4
     """, (aluno_id,))
@@ -315,7 +315,7 @@ def relatorio_aluno_pdf(aluno_id):
                s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM usuarios u
         JOIN turmas t ON u.turma_id = t.id
-        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+        JOIN Ano_escolar s ON t.ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE u.id = ? AND u.tipo_usuario_id = 4
     """, (aluno_id,))
@@ -487,7 +487,7 @@ def relatorio_turma(turma_id):
     cursor.execute("""
         SELECT t.id, s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM turmas t
-        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+        JOIN Ano_escolar s ON t.ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE t.id = ?
     """, (turma_id,))
@@ -685,7 +685,7 @@ def relatorio_turma_pdf(turma_id):
     cursor.execute("""
         SELECT t.id, s.nome Ano_escolar, t.turma, e.nome_da_escola as escola
         FROM turmas t
-        JOIN Ano_escolar s ON t.Ano_escolar_id = s.id
+        JOIN Ano_escolar s ON t.ano_escolar_id = s.id
         JOIN escolas e ON t.escola_id = e.id
         WHERE t.id = ?
     """, (turma_id,))

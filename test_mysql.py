@@ -104,7 +104,7 @@ def criar_simulado():
             SELECT 
                 sgs.id,
                 sgs.disciplina_id,
-                sgs.Ano_escolar_id,
+                sgs.ano_escolar_id,
                 sgs.mes_id,
                 sgs.status,
                 d.nome as disciplina_nome,
@@ -112,7 +112,7 @@ def criar_simulado():
                 m.nome as mes_nome
             FROM simulados_gerados sgs
             JOIN disciplinas d ON d.id = sgs.disciplina_id
-            JOIN Ano_escolar s ON s.id = sgs.Ano_escolar_id
+            JOIN Ano_escolar s ON s.id = sgs.ano_escolar_id
             JOIN meses m ON m.id = sgs.mes_id
             WHERE sgs.id = ?
         """, [simulado_id])
@@ -128,7 +128,7 @@ def criar_simulado():
             simulado_data = {
                 'id': simulado['id'],
                 'disciplina_id': simulado['disciplina_id'],
-                'Ano_escolar_id': simulado['Ano_escolar_id'],
+                'ano_escolar_id': simulado['ano_escolar_id'],
                 'mes_id': simulado['mes_id'],
                 'status': simulado['status'],
                 'disciplina_nome': simulado['disciplina_nome'],
@@ -149,7 +149,7 @@ def criar_simulado():
                     bq.questao_correta,
                     bq.assunto,
                     bq.disciplina_id,
-                    bq.Ano_escolar_id,
+                    bq.ano_escolar_id,
                     bq.mes_id
                 FROM simulado_questoes sqs
                 JOIN banco_questoes bq ON bq.id = sqs.questao_id
@@ -173,13 +173,13 @@ def salvar_simulado():
     
     try:
         # Pegar dados do formulário
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         mes_id = request.form.get('mes_id')
         disciplina_id = request.form.get('disciplina_id')
         questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
         simulado_id = request.form.get('simulado_id')
         
-        if not all([Ano_escolar_id, mes_id, disciplina_id]) or not questoes:
+        if not all([ano_escolar_id, mes_id, disciplina_id]) or not questoes:
             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
         
         db = get_db()
@@ -189,9 +189,9 @@ def salvar_simulado():
             # Atualizar simulado existente
             cursor.execute("""
                 UPDATE simulados_gerados 
-                SET Ano_escolar_id = ?, mes_id = ?, disciplina_id = ?
+                SET ano_escolar_id = ?, mes_id = ?, disciplina_id = ?
                 WHERE id = ? AND status = 'gerado'
-            """, (Ano_escolar_id, mes_id, disciplina_id, simulado_id))
+            """, (ano_escolar_id, mes_id, disciplina_id, simulado_id))
             
             # Remover questões antigas
             cursor.execute("DELETE FROM simulado_questoes WHERE simulado_id = ?", [simulado_id])
@@ -205,9 +205,9 @@ def salvar_simulado():
         else:  # Novo simulado
             # Criar novo simulado
             cursor.execute("""
-                INSERT INTO simulados_gerados (Ano_escolar_id, mes_id, disciplina_id, status, data_envio)
+                INSERT INTO simulados_gerados (ano_escolar_id, mes_id, disciplina_id, status, data_envio)
                 VALUES (?, ?, ?, 'gerado', CURRENT_TIMESTAMP)
-            """, (Ano_escolar_id, mes_id, disciplina_id))
+            """, (ano_escolar_id, mes_id, disciplina_id))
             simulado_id = cursor.lastrowid
             
             # Inserir questões do simulado
@@ -231,7 +231,7 @@ def salvar_simulado():
 #     if current_user.tipo_usuario_id not in [5, 6]:
 #         return jsonify({'error': 'Acesso não autorizado'}), 403
 
-#     Ano_escolar_id = request.args.get('Ano_escolar_id', '')
+#     ano_escolar_id = request.args.get('ano_escolar_id', '')
 #     disciplina_id = request.args.get('disciplina_id', '')
 #     assunto = request.args.get('assunto', '')
     
@@ -244,15 +244,15 @@ def salvar_simulado():
 #             d.nome as disciplina_nome,
 #             s.nome Ano_escolar_nome
 #         FROM banco_questoes bq
-#         LEFT JOIN Ano_escolar s ON bq.Ano_escolar_id = s.id
+#         LEFT JOIN Ano_escolar s ON bq.ano_escolar_id = s.id
 #         LEFT JOIN disciplinas d ON bq.disciplina_id = d.id
 #         WHERE 1=1
 #     """
 #     params = []
 
-#     if Ano_escolar_id:
-#         query += " AND bq.Ano_escolar_id = ?"
-#         params.append(Ano_escolar_id)
+#     if ano_escolar_id:
+#         query += " AND bq.ano_escolar_id = ?"
+#         params.append(ano_escolar_id)
     
 #     if disciplina_id:
 #         query += " AND bq.disciplina_id = ?"
@@ -281,7 +281,7 @@ def salvar_simulado():
 #                 'questao_correta': q[7],
 #                 'disciplina_id': q[8],
 #                 'assunto': q[9],
-#                 'Ano_escolar_id': q[10],
+#                 'ano_escolar_id': q[10],
 #                 'mes_id': q[11],
 #                 'disciplina_nome': q[12],
 #                 'Ano_escolar_nome': q[13]
@@ -295,7 +295,7 @@ def salvar_simulado():
 
 @secretaria_educacao_bp.route('/buscar_questoes')
 def buscar_questoes():
-    Ano_escolar_id = request.args.get('Ano_escolar_id')
+    ano_escolar_id = request.args.get('ano_escolar_id')
     disciplina_id = request.args.get('disciplina_id')
     assunto = request.args.get('assunto', '')
     
@@ -311,14 +311,14 @@ def buscar_questoes():
             ) as total_usos
         FROM banco_questoes bq
         JOIN disciplinas d ON d.id = bq.disciplina_id
-        JOIN Ano_escolar s ON s.id = bq.Ano_escolar_id
+        JOIN Ano_escolar s ON s.id = bq.ano_escolar_id
         WHERE 1=1
     """
     params = []
     
-    if Ano_escolar_id:
-        query += " AND bq.Ano_escolar_id = ?"
-        params.append(Ano_escolar_id)
+    if ano_escolar_id:
+        query += " AND bq.ano_escolar_id = ?"
+        params.append(ano_escolar_id)
     
     if disciplina_id:
         query += " AND bq.disciplina_id = ?"
@@ -342,17 +342,17 @@ def gerar_simulado_automatico():
         
     try:
         data = request.get_json()
-        Ano_escolar_id = data.get('Ano_escolar_id')
+        ano_escolar_id = data.get('ano_escolar_id')
         disciplina_id = data.get('disciplina_id')
         quantidade = int(data.get('quantidade', 10))
         
-        if not Ano_escolar_id or not disciplina_id:
+        if not ano_escolar_id or not disciplina_id:
             return jsonify({'success': False, 'message': 'Ano Escolar e disciplina são obrigatórios'}), 400
         
         db = get_db()
         questoes = db.execute(
-            "SELECT id FROM banco_questoes WHERE Ano_escolar_id = ? AND disciplina_id = ? ORDER BY RANDOM() LIMIT ?",
-            [Ano_escolar_id, disciplina_id, quantidade]
+            "SELECT id FROM banco_questoes WHERE ano_escolar_id = ? AND disciplina_id = ? ORDER BY RANDOM() LIMIT ?",
+            [ano_escolar_id, disciplina_id, quantidade]
         ).fetchall()
         
         questoes_ids = [q['id'] for q in questoes]
@@ -376,21 +376,21 @@ def gerar_simulado_automatico():
     
 #     try:
 #         # Pegar dados do formulário
-#         Ano_escolar_id = request.form.get('Ano_escolar_id')
+#         ano_escolar_id = request.form.get('ano_escolar_id')
 #         mes_id = request.form.get('mes_id')
 #         disciplina_id = request.form.get('disciplina_id')
 #         questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
         
-#         if not all([Ano_escolar_id, mes_id, disciplina_id, questoes]):
+#         if not all([ano_escolar_id, mes_id, disciplina_id, questoes]):
 #             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
         
 #         # Criar novo simulado
 #         query = """
-#             INSERT INTO simulados_gerados (Ano_escolar_id, mes_id, disciplina_id, status, data_envio)
+#             INSERT INTO simulados_gerados (ano_escolar_id, mes_id, disciplina_id, status, data_envio)
 #             VALUES (?, ?, ?, 'gerado', CURRENT_TIMESTAMP)
 #         """
 #         cursor = get_db().cursor()
-#         cursor.execute(query, (Ano_escolar_id, mes_id, disciplina_id))
+#         cursor.execute(query, (ano_escolar_id, mes_id, disciplina_id))
 #         simulado_id = cursor.lastrowid
         
 #         # Inserir questões do simulado
@@ -430,14 +430,14 @@ def banco_questoes():
             q.questao_correta,
             q.disciplina_id,
             q.assunto,
-            q.Ano_escolar_id,
+            q.ano_escolar_id,
             q.mes_id,
             q.data_criacao,
             d.nome as disciplina_nome,
             s.nome Ano_escolar_nome
         FROM banco_questoes q
         LEFT JOIN disciplinas d ON q.disciplina_id = d.id
-        LEFT JOIN Ano_escolar s ON q.Ano_escolar_id = s.id
+        LEFT JOIN Ano_escolar s ON q.ano_escolar_id = s.id
         ORDER BY q.id DESC
     """)
     questoes_raw = cursor.fetchall()
@@ -464,7 +464,7 @@ def banco_questoes():
             'questao_correta': q[7],
             'disciplina_id': q[8],
             'assunto': q[9],
-            'Ano_escolar_id': q[10],
+            'ano_escolar_id': q[10],
             'mes_id': q[11],
             'data_criacao': q[12],
             'disciplina_nome': q[13],
@@ -560,7 +560,7 @@ def relatorios_dashboard():
     ).join(
         Usuarios, DesempenhoSimulado.aluno_id == Usuarios.id
     ).join(
-        Ano_escolar, Usuarios.Ano_escolar_id == Ano_escolar.id
+        Ano_escolar, Usuarios.ano_escolar_id == Ano_escolar.id
     ).filter(
         Usuarios.codigo_ibge == codigo_ibge,
         Usuarios.tipo_usuario_id == 4
@@ -628,7 +628,7 @@ def portal_secretaria_educacao():
 
     # Buscar o número de simulados gerados na mesma codigo_ibge
     numero_simulados_gerados = db.session.query(SimuladosGerados)\
-        .join(Usuarios, SimuladosGerados.Ano_escolar_id == Usuarios.Ano_escolar_id)\
+        .join(Usuarios, SimuladosGerados.ano_escolar_id == Usuarios.ano_escolar_id)\
         .filter(Usuarios.codigo_ibge == current_user.codigo_ibge)\
         .count()
 
@@ -647,7 +647,7 @@ def portal_secretaria_educacao():
         Disciplinas.nome.label('disciplina_nome'),
         SimuladosGerados.data_envio,
         SimuladosGerados.status
-    ).join(Ano_escolar, SimuladosGerados.Ano_escolar_id == Ano_escolar.id)\
+    ).join(Ano_escolar, SimuladosGerados.ano_escolar_id == Ano_escolar.id)\
      .join(Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id)\
      .order_by(SimuladosGerados.data_envio.desc())\
      .all()
@@ -718,7 +718,7 @@ def meus_simulados():
                COUNT(DISTINCT r.aluno_id) as total_responderam,
                COUNT(DISTINCT sq.questao_id) as total_questoes
         FROM simulados_gerados sg
-        JOIN Ano_escolar s ON sg.Ano_escolar_id = s.id
+        JOIN Ano_escolar s ON sg.ano_escolar_id = s.id
         JOIN meses m ON sg.mes_id = m.id
         JOIN disciplinas d ON sg.disciplina_id = d.id
         LEFT JOIN respostas_simulado r ON sg.id = r.simulado_id
@@ -792,7 +792,7 @@ def visualizar_simulado(simulado_id):
                 d.nome as disciplina_nome,
                 m.nome as mes_nome
             FROM simulados_gerados sg
-            JOIN Ano_escolar s ON sg.Ano_escolar_id = s.id
+            JOIN Ano_escolar s ON sg.ano_escolar_id = s.id
             JOIN disciplinas d ON sg.disciplina_id = d.id
             JOIN meses m ON sg.mes_id = m.id
             WHERE sg.id = ?
@@ -819,7 +819,7 @@ def visualizar_simulado(simulado_id):
         # Converter para dicionário
         simulado_dict = {
             'id': simulado[0],
-            'Ano_escolar_id': simulado[1],
+            'ano_escolar_id': simulado[1],
             'mes_id': simulado[2],
             'disciplina_id': simulado[3],
             'status': simulado[4],
@@ -941,7 +941,7 @@ def buscar_questao(questao_id):
             SELECT q.*, d.nome as disciplina_nome, s.nome Ano_escolar_nome
             FROM banco_questoes q
             LEFT JOIN disciplinas d ON q.disciplina_id = d.id
-            LEFT JOIN Ano_escolar s ON q.Ano_escolar_id = s.id
+            LEFT JOIN Ano_escolar s ON q.ano_escolar_id = s.id
             WHERE q.id = ?
         """, (questao_id,))
         
@@ -967,7 +967,7 @@ def buscar_questao(questao_id):
                 'disciplina_id': questao[8],
                 'disciplina_nome': questao[12],  # Agora é o nome do componente
                 'assunto': questao[9],
-                'Ano_escolar_id': questao[10],
+                'ano_escolar_id': questao[10],
                 'Ano_escolar_nome': questao[13],  # Agora é o nome do ano escolar
                 'mes_id': questao[11],
                 'mes_nome': mes_nome
@@ -998,11 +998,11 @@ def atualizar_questao(questao_id):
         assunto = request.form.get('assunto')
         
         # Trata campos opcionais
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         mes_id = request.form.get('mes_id')
         
         # Converte para None se vazio
-        Ano_escolar_id = None if not Ano_escolar_id else int(Ano_escolar_id)
+        ano_escolar_id = None if not ano_escolar_id else int(ano_escolar_id)
         mes_id = None if not mes_id else int(mes_id)
         
         # Validate required fields
@@ -1026,11 +1026,11 @@ def atualizar_questao(questao_id):
                 questao_correta = ?,
                 disciplina_id = ?,
                 assunto = ?,
-                Ano_escolar_id = ?,
+                ano_escolar_id = ?,
                 mes_id = ?
             WHERE id = ?
         """, (questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
-              alternativa_e, questao_correta, disciplina_id, assunto, Ano_escolar_id, mes_id, questao_id))
+              alternativa_e, questao_correta, disciplina_id, assunto, ano_escolar_id, mes_id, questao_id))
         
         db.commit()
         
@@ -1159,7 +1159,7 @@ def relatorio_rede_municipal():
         func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
     ).outerjoin(
         Usuarios, and_(
-            Usuarios.Ano_escolar_id == Ano_escolar.id,
+            Usuarios.ano_escolar_id == Ano_escolar.id,
             Usuarios.tipo_usuario_id == 4,
             Usuarios.codigo_ibge == codigo_ibge
         )
@@ -1453,7 +1453,7 @@ def export_excel_relatorio():
 
     # Para cada série, criar uma aba com desempenho por escola
     for Ano_escolar in Ano_escolar:
-        Ano_escolar_id = Ano_escolar['id']
+        ano_escolar_id = Ano_escolar['id']
         Ano_escolar_nome = Ano_escolar['nome']
         
         # Query para buscar dados da série específica
@@ -1468,7 +1468,7 @@ def export_excel_relatorio():
                 FROM escolas e
                 LEFT JOIN usuarios u ON u.escola_id = e.id 
                     AND u.tipo_usuario_id = 4 
-                    AND u.Ano_escolar_id = ? 
+                    AND u.ano_escolar_id = ? 
                     AND u.codigo_ibge = ?
                 LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
                     AND {data_condition}
@@ -1482,7 +1482,7 @@ def export_excel_relatorio():
                     COALESCE(AVG(ds.desempenho), 0) as media_disciplina
                 FROM desempenho_simulado ds
                 JOIN usuarios u ON u.id = ds.aluno_id 
-                    AND u.Ano_escolar_id = ? 
+                    AND u.ano_escolar_id = ? 
                     AND u.codigo_ibge = ?
                 JOIN disciplinas d ON d.id = (
                     CASE 
@@ -1504,7 +1504,7 @@ def export_excel_relatorio():
             ORDER BY ds.media_geral DESC
         '''
         
-        params = [Ano_escolar_id, codigo_ibge] + data_params + [codigo_ibge, Ano_escolar_id, codigo_ibge, codigo_ibge] + data_params
+        params = [ano_escolar_id, codigo_ibge] + data_params + [codigo_ibge, ano_escolar_id, codigo_ibge, codigo_ibge] + data_params
         rows = cursor.execute(query, params).fetchall()
         
         # Transformar os dados em um DataFrame
@@ -1758,7 +1758,7 @@ def relatorio_escola():
                 COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
                 COALESCE(AVG(ds.desempenho), 0) as media
             FROM Ano_escolar s
-            LEFT JOIN usuarios u ON u.Ano_escolar_id = s.id 
+            LEFT JOIN usuarios u ON u.ano_escolar_id = s.id 
                 AND u.tipo_usuario_id = 4 
                 AND u.escola_id = ?
             LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
@@ -1808,7 +1808,7 @@ def relatorio_escola():
                 COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
                 COALESCE(AVG(ds.desempenho), 0) as media
             FROM turmas t
-            JOIN Ano_escolar s ON s.id = t.Ano_escolar_id
+            JOIN Ano_escolar s ON s.id = t.ano_escolar_id
             LEFT JOIN usuarios u ON u.turma_id = t.id 
                 AND u.tipo_usuario_id = 4
                 AND u.escola_id = ?
@@ -1964,7 +1964,7 @@ def export_pdf_escola():
             COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
             COALESCE(AVG(ds.desempenho), 0) as media
         FROM Ano_escolar s
-        LEFT JOIN usuarios u ON u.Ano_escolar_id = s.id 
+        LEFT JOIN usuarios u ON u.ano_escolar_id = s.id 
             AND u.tipo_usuario_id = 4 
             AND u.escola_id = ?
         LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
@@ -2096,7 +2096,7 @@ def export_excel_escola():
             COUNT(DISTINCT ds.aluno_id) as alunos_ativos,
             COALESCE(AVG(ds.desempenho), 0) as media
         FROM Ano_escolar s
-        LEFT JOIN usuarios u ON u.Ano_escolar_id = s.id 
+        LEFT JOIN usuarios u ON u.ano_escolar_id = s.id 
             AND u.tipo_usuario_id = 4 
             AND u.escola_id = ?
         LEFT JOIN desempenho_simulado ds ON ds.aluno_id = u.id 
@@ -2246,7 +2246,7 @@ def relatorio_disciplina():
                     ds.aluno_id,
                     ds.simulado_id,
                     ds.desempenho,
-                    u.Ano_escolar_id
+                    u.ano_escolar_id
                 FROM desempenho_simulado ds
                 JOIN usuarios u ON u.id = ds.aluno_id
                 WHERE (
@@ -2270,7 +2270,7 @@ def relatorio_disciplina():
                 COUNT(sd.simulado_id) as total_questoes,
                 COALESCE(AVG(sd.desempenho), 0) as media
             FROM Ano_escolar s
-            LEFT JOIN SimuladosDisciplina sd ON sd.Ano_escolar_id = s.id
+            LEFT JOIN SimuladosDisciplina sd ON sd.ano_escolar_id = s.id
             GROUP BY s.id, s.nome
             ORDER BY s.id
         """, [disciplina_id, disciplina_id, codigo_ibge] + data_params)
@@ -2402,7 +2402,7 @@ def export_pdf_disciplina():
                 ds.aluno_id,
                 ds.simulado_id,
                 ds.desempenho,
-                u.Ano_escolar_id
+                u.ano_escolar_id
             FROM desempenho_simulado ds
             JOIN usuarios u ON u.id = ds.aluno_id
             WHERE (
@@ -2426,7 +2426,7 @@ def export_pdf_disciplina():
             COUNT(sd.simulado_id) as total_questoes,
             COALESCE(AVG(sd.desempenho), 0) as media
         FROM Ano_escolar s
-        LEFT JOIN SimuladosDisciplina sd ON sd.Ano_escolar_id = s.id
+        LEFT JOIN SimuladosDisciplina sd ON sd.ano_escolar_id = s.id
         GROUP BY s.id, s.nome
         ORDER BY s.id
     """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params)
@@ -2580,7 +2580,7 @@ def export_excel_disciplina():
                 ds.aluno_id,
                 ds.simulado_id,
                 ds.desempenho,
-                u.Ano_escolar_id
+                u.ano_escolar_id
             FROM desempenho_simulado ds
             JOIN usuarios u ON u.id = ds.aluno_id
             WHERE (
@@ -2603,7 +2603,7 @@ def export_excel_disciplina():
             COUNT(sd.simulado_id) as total_questoes,
             COALESCE(AVG(sd.desempenho), 0) as media
         FROM Ano_escolar s
-        LEFT JOIN SimuladosDisciplina sd ON sd.Ano_escolar_id = s.id
+        LEFT JOIN SimuladosDisciplina sd ON sd.ano_escolar_id = s.id
         GROUP BY s.id, s.nome
         ORDER BY s.id
     """, [disciplina_id, disciplina_id, current_user.codigo_ibge] + data_params)

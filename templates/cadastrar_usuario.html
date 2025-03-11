@@ -149,7 +149,7 @@ async function carregarAno_escolar(index) {
     }
 
     try {
-        const response = await fetch(`/get_Ano_escolar_ids?tipo_ensino_id=${tipoEnsinoId}`);
+        const response = await fetch(`/get_ano_escolar_ids?tipo_ensino_id=${tipoEnsinoId}`);
         const Ano_escolar = await response.json();
         Ano_escolarelect.innerHTML = '<option value="">Selecione...</option>';
         Ano_escolar.forEach(Ano_escolar => {
@@ -173,7 +173,7 @@ async function carregarTurmas(index) {
     }
 
     try {
-        const response = await fetch(`/get_turmas?escola_id=${escolaId}&tipo_ensino_id=${tipoEnsinoId}&Ano_escolar_id=${Ano_escolarId}`);
+        const response = await fetch(`/get_turmas?escola_id=${escolaId}&tipo_ensino_id=${tipoEnsinoId}&ano_escolar_id=${Ano_escolarId}`);
         const turmas = await response.json();
         turmaSelect.innerHTML = '<option value="">Selecione...</option>';
         turmas.forEach(turma => {

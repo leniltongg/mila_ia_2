@@ -27,12 +27,12 @@ def banco_questoes():
             questao_correta = request.form.get('questao_correta')
             disciplina_id = request.form.get('disciplina_id')
             assunto = request.form.get('assunto')
-            Ano_escolar_id = request.form.get('Ano_escolar_id')
+            ano_escolar_id = request.form.get('ano_escolar_id')
             mes_id = request.form.get('mes_id')
             
             # Validar dados
             if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
-                       questao_correta, disciplina_id, Ano_escolar_id]):
+                       questao_correta, disciplina_id, ano_escolar_id]):
                 return jsonify({
                     'success': False,
                     'message': 'Por favor, preencha todos os campos obrigatórios'
@@ -49,7 +49,7 @@ def banco_questoes():
                 questao_correta=questao_correta,
                 disciplina_id=disciplina_id,
                 assunto=assunto,
-                Ano_escolar_id=Ano_escolar_id,
+                ano_escolar_id=ano_escolar_id,
                 mes_id=mes_id,
                 usuario_id=current_user.id
             )
@@ -82,7 +82,7 @@ def banco_questoes():
         ).join(
             Disciplinas, Disciplinas.id == BancoQuestoes.disciplina_id
         ).join(
-            AnoEscolarModel, AnoEscolarModel.id == BancoQuestoes.Ano_escolar_id
+            AnoEscolarModel, AnoEscolarModel.id == BancoQuestoes.ano_escolar_id
         ).filter(
             BancoQuestoes.usuario_id == current_user.id
         ).order_by(
@@ -115,7 +115,7 @@ def criar_simulado():
         # Se for professor normal, buscar apenas os anos escolares associados
         Ano_escolar = AnoEscolarModel.query.join(
             ProfessorTurmaEscola, 
-            AnoEscolarModel.id == ProfessorTurmaEscola.Ano_escolar_id
+            AnoEscolarModel.id == ProfessorTurmaEscola.ano_escolar_id
         ).filter_by(professor_id=current_user.id).distinct().all()
     
     # Buscar disciplinas
@@ -157,7 +157,7 @@ def criar_simulado():
                 'id': simulado.id,
                 'professor_id': simulado.professor_id,
                 'disciplina_id': simulado.disciplina_id,
-                'Ano_escolar_id': simulado.Ano_escolar_id,
+                'ano_escolar_id': simulado.ano_escolar_id,
                 'mes_id': simulado.mes_id,
                 'status': simulado.status,
                 'disciplina_nome': simulado.disciplina.nome,
@@ -181,7 +181,7 @@ def criar_simulado():
                 'resposta': q.questao.questao_correta,
                 'assunto': q.questao.assunto,
                 'disciplina_id': q.questao.disciplina_id,
-                'Ano_escolar_id': q.questao.Ano_escolar_id,
+                'ano_escolar_id': q.questao.ano_escolar_id,
                 'mes_id': q.questao.mes_id
             } for q in questoes]
 
@@ -203,12 +203,12 @@ def salvar_simulado(simulado_id=None):
         data = request.get_json()
         print("Dados recebidos:", data)  # Debug
         
-        Ano_escolar_id = data.get('Ano_escolar_id')
+        ano_escolar_id = data.get('ano_escolar_id')
         disciplina_id = data.get('disciplina_id')
         mes_id = data.get('mes_id')
         questoes = data.get('questoes', [])
         
-        if not all([Ano_escolar_id, disciplina_id, mes_id]) or not questoes:
+        if not all([ano_escolar_id, disciplina_id, mes_id]) or not questoes:
             return jsonify({'success': False, 'error': 'Dados incompletos'})
         
         if simulado_id:
@@ -224,7 +224,7 @@ def salvar_simulado(simulado_id=None):
             print(f"Atualizando simulado {simulado_id}")  # Debug
             
             # Atualizar simulado
-            simulado.Ano_escolar_id = Ano_escolar_id
+            simulado.ano_escolar_id = ano_escolar_id
             simulado.disciplina_id = disciplina_id
             simulado.mes_id = mes_id
             
@@ -239,7 +239,7 @@ def salvar_simulado(simulado_id=None):
             print(f"Inseridas {len(questoes)} questões")  # Debug
         else:
             # Criar novo simulado
-            simulado = SimuladosGeradosProfessor(professor_id=current_user.id, Ano_escolar_id=Ano_escolar_id, disciplina_id=disciplina_id, mes_id=mes_id, status='gerado')
+            simulado = SimuladosGeradosProfessor(professor_id=current_user.id, ano_escolar_id=ano_escolar_id, disciplina_id=disciplina_id, mes_id=mes_id, status='gerado')
             db.session.add(simulado)
             db.session.flush()  # Isso força o banco a gerar o ID
             
@@ -373,7 +373,7 @@ def listar_simulados_professor():
     ).join(
         Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
     ).join(
-        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
+        AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id
     ).outerjoin(
         MESES, SimuladosGeradosProfessor.mes_id == MESES.id
     ).outerjoin(
@@ -422,7 +422,7 @@ def visualizar_simulado_professor(simulado_id):
     ).join(
         Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
     ).join(
-        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
+        AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id
     ).outerjoin(
         MESES, SimuladosGeradosProfessor.mes_id == MESES.id
     ).filter(
@@ -942,20 +942,20 @@ def buscar_questoes():
         
     try:
         print("Iniciando busca de questões...")
-        Ano_escolar_id = request.args.get('Ano_escolar_id')
+        ano_escolar_id = request.args.get('ano_escolar_id')
         disciplina_id = request.args.get('disciplina_id')
         assunto = request.args.get('assunto', '').strip()
         pagina = int(request.args.get('pagina', 1))
         por_pagina = 10
         
-        print(f"Parâmetros recebidos: Ano_escolar_id={Ano_escolar_id}, disciplina_id={disciplina_id}, assunto={assunto}, pagina={pagina}")
+        print(f"Parâmetros recebidos: ano_escolar_id={ano_escolar_id}, disciplina_id={disciplina_id}, assunto={assunto}, pagina={pagina}")
         
         # Construir query base
         query = BancoQuestoes.query
         
         # Aplicar filtros
-        if Ano_escolar_id:
-            query = query.filter_by(Ano_escolar_id=Ano_escolar_id)
+        if ano_escolar_id:
+            query = query.filter_by(ano_escolar_id=ano_escolar_id)
         if disciplina_id:
             query = query.filter_by(disciplina_id=disciplina_id)
         if assunto:
@@ -1134,7 +1134,7 @@ def relatorio_simulado(simulado_id):
     ).join(
         Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
     ).join(
-        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
+        AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id
     ).outerjoin(
         MESES, SimuladosGeradosProfessor.mes_id == MESES.id
     ).filter(
@@ -1233,7 +1233,7 @@ def pagina_enviar_simulado(simulado_id):
         # Verificar se o simulado pertence ao professor
         simulado = SimuladosGeradosProfessor.query\
             .join(Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id)\
-            .join(AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id)\
+            .join(AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id)\
             .join(MESES, SimuladosGeradosProfessor.mes_id == MESES.id)\
             .add_columns(
                 Disciplinas.nome.label('disciplina_nome'),
@@ -1249,10 +1249,10 @@ def pagina_enviar_simulado(simulado_id):
         # Buscar turmas do professor
         turmas = ProfessorTurmaEscola.query\
             .join(Turmas, ProfessorTurmaEscola.turma_id == Turmas.id)\
-            .join(AnoEscolarModel, ProfessorTurmaEscola.Ano_escolar_id == AnoEscolarModel.id)\
+            .join(AnoEscolarModel, ProfessorTurmaEscola.ano_escolar_id == AnoEscolarModel.id)\
             .filter(
                 ProfessorTurmaEscola.professor_id == current_user.id,
-                ProfessorTurmaEscola.Ano_escolar_id == simulado[0].Ano_escolar_id
+                ProfessorTurmaEscola.ano_escolar_id == simulado[0].ano_escolar_id
             )\
             .all()
         

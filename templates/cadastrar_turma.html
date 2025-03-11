@@ -16,8 +16,8 @@
         <option value="">Selecione uma escola primeiro</option>
     </select>
 
-    <label for="Ano_escolar_id">Ano Escolar:</label>
-    <select id="Ano_escolar_id" name="Ano_escolar_id" required>
+    <label for="ano_escolar_id">Ano Escolar:</label>
+    <select id="ano_escolar_id" name="ano_escolar_id" required>
         <option value="">Selecione o tipo de ensino primeiro</option>
     </select>
 
@@ -31,7 +31,7 @@
 async function carregarTiposDeEnsino() {
     const escolaId = document.getElementById("escola_id").value;
     const tipoEnsinoSelect = document.getElementById("tipo_ensino_id");
-    const Ano_escolarelect = document.getElementById("Ano_escolar_id");
+    const Ano_escolarelect = document.getElementById("ano_escolar_id");
 
     // Limpar campos dependentes
     tipoEnsinoSelect.innerHTML = '<option value="">Carregando...</option>';
@@ -63,7 +63,7 @@ async function carregarTiposDeEnsino() {
 
 async function carregarAno_escolar() {
     const tipoEnsinoId = document.getElementById("tipo_ensino_id").value;
-    const Ano_escolarelect = document.getElementById("Ano_escolar_id");
+    const Ano_escolarelect = document.getElementById("ano_escolar_id");
 
     Ano_escolarelect.innerHTML = '<option value="">Carregando...</option>';
 
@@ -73,7 +73,7 @@ async function carregarAno_escolar() {
     }
 
     try {
-        const response = await fetch(`/get_Ano_escolar_ids?tipo_ensino_id=${tipoEnsinoId}`);
+        const response = await fetch(`/get_ano_escolar_ids?tipo_ensino_id=${tipoEnsinoId}`);
         if (!response.ok) {
             throw new Error("Erro ao carregar séries");
         }

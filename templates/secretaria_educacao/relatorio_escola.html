@@ -1,5 +1,20 @@
 {% extends "secretaria_educacao/base_secretaria_educacao.html" %}
 
+{% block extra_css %}
+{{ super() }}
+<style>
+    .chart-container {
+        position: relative;
+        height: 50vh;
+        cursor: pointer;
+    }
+    .chart-container:hover {
+        transform: scale(1.02);
+        transition: transform 0.2s;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -125,7 +140,7 @@
                         <h6 class="m-0 font-weight-bold text-primary">Desempenho por Ano Escolar</h6>
                     </div>
                     <div class="card-body">
-                        <div style="height: 300px;">
+                        <div class="chart-container">
                             <canvas id="anosChart"></canvas>
                         </div>
                     </div>
@@ -139,7 +154,7 @@
                         <h6 class="m-0 font-weight-bold text-primary">Desempenho por Disciplina</h6>
                     </div>
                     <div class="card-body">
-                        <div style="height: 300px;">
+                        <div class="chart-container">
                             <canvas id="disciplinasChart"></canvas>
                         </div>
                     </div>
@@ -153,7 +168,7 @@
                         <h6 class="m-0 font-weight-bold text-primary">Desempenho por Turma</h6>
                     </div>
                     <div class="card-body">
-                        <div style="height: 300px;">
+                        <div class="chart-container">
                             <canvas id="turmasChart"></canvas>
                         </div>
                     </div>
@@ -167,8 +182,25 @@
                         <h6 class="m-0 font-weight-bold text-primary">Taxa de Participação</h6>
                     </div>
                     <div class="card-body">
-                        <div style="height: 300px;">
+                        <div class="chart-container">
                             <canvas id="participacaoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para exibir gráficos -->
+        <div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="chartModalLabel">Visualização Detalhada</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="chart-container-modal" style="position: relative; height:80vh; width:100%;">
+                            <canvas id="modalChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -304,60 +336,83 @@ document.addEventListener('DOMContentLoaded', function() {
         const colors = {
             blue: {
                 primary: '#4e73df',
-                light: '#4e73df80'
+                light: 'rgba(78, 115, 223, 0.2)'
             },
             green: {
                 primary: '#1cc88a',
-                light: '#1cc88a80'
+                light: 'rgba(28, 200, 138, 0.2)'
             },
             red: {
                 primary: '#e74a3b',
-                light: '#e74a3b80'
+                light: 'rgba(231, 74, 59, 0.2)'
             },
             yellow: {
                 primary: '#f6c23e',
-                light: '#f6c23e80'
+                light: 'rgba(246, 194, 62, 0.2)'
             }
         };
 
-        // Dados para os gráficos
-        const anosData = {
-            labels: {{ Ano_escolar|map(attribute='Ano_escolar_nome')|list|tojson }},
-            data: {{ Ano_escolar|map(attribute='media')|list|tojson }}
-        };
+        let modalChart = null;
 
-        const disciplinasData = {
-            labels: {{ disciplinas|map(attribute='disciplina')|list|tojson }},
-            data: {{ disciplinas|map(attribute='media_acertos')|list|tojson }}
-        };
+        // Função para criar gráfico no modal
+        function createModalChart(originalCanvas, title) {
+            const originalChart = Chart.getChart(originalCanvas);
+            const modalCanvas = document.getElementById('modalChart');
+            
+            if (modalChart) {
+                modalChart.destroy();
+            }
 
-        const turmasData = {
-            labels: {{ turmas|map(attribute='turma')|list|tojson }},
-            data: {{ turmas|map(attribute='media')|list|tojson }}
-        };
+            modalChart = new Chart(modalCanvas, {
+                type: originalChart.config.type,
+                data: {
+                    labels: [...originalChart.data.labels],
+                    datasets: originalChart.data.datasets.map(dataset => ({
+                        ...dataset,
+                        data: [...dataset.data]
+                    }))
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title,
+                            font: { size: 18, weight: 'bold' }
+                        },
+                        legend: {
+                            labels: {
+                                font: { size: 14 }
+                            }
+                        }
+                    },
+                    scales: originalChart.config.type !== 'doughnut' ? {
+                        x: {
+                            ticks: {
+                                font: { size: 14 }
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                font: { size: 14 }
+                            }
+                        }
+                    } : {}
+                }
+            });
+        }
 
-        const participacaoData = {
-            labels: {{ turmas|map(attribute='turma')|list|tojson }},
-            data: {{ turmas|map(attribute='alunos_ativos')|list|tojson }}
-        };
-
-        console.log('Dados dos gráficos:', {
-            anos: anosData,
-            disciplinas: disciplinasData,
-            turmas: turmasData,
-            participacao: participacaoData
-        });
-
-        // Gráfico de Anos Escolares
-        new Chart(
+        // Configuração dos gráficos
+        const anosChart = new Chart(
             document.getElementById('anosChart'),
             {
                 type: 'bar',
                 data: {
-                    labels: anosData.labels,
+                    labels: {{ Ano_escolar|map(attribute='Ano_escolar_nome')|list|tojson }},
                     datasets: [{
                         label: 'Média (%)',
-                        data: anosData.data,
+                        data: {{ Ano_escolar|map(attribute='media')|list|tojson }},
                         backgroundColor: colors.blue.light,
                         borderColor: colors.blue.primary,
                         borderWidth: 2
@@ -389,16 +444,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         );
 
-        // Gráfico de Disciplinas
-        new Chart(
+        const disciplinasChart = new Chart(
             document.getElementById('disciplinasChart'),
             {
                 type: 'radar',
                 data: {
-                    labels: disciplinasData.labels,
+                    labels: {{ disciplinas|map(attribute='disciplina')|list|tojson }},
                     datasets: [{
                         label: 'Média (%)',
-                        data: disciplinasData.data,
+                        data: {{ disciplinas|map(attribute='media_acertos')|list|tojson }},
                         backgroundColor: colors.red.light,
                         borderColor: colors.red.primary,
                         borderWidth: 2,
@@ -433,16 +487,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         );
 
-        // Gráfico de Turmas
-        new Chart(
+        const turmasChart = new Chart(
             document.getElementById('turmasChart'),
             {
                 type: 'line',
                 data: {
-                    labels: turmasData.labels,
+                    labels: {{ turmas|map(attribute='turma')|list|tojson }},
                     datasets: [{
                         label: 'Média (%)',
-                        data: turmasData.data,
+                        data: {{ turmas|map(attribute='media')|list|tojson }},
                         borderColor: colors.green.primary,
                         backgroundColor: colors.green.light,
                         fill: true,
@@ -478,15 +531,14 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         );
 
-        // Gráfico de Taxa de Participação
-        new Chart(
+        const participacaoChart = new Chart(
             document.getElementById('participacaoChart'),
             {
                 type: 'doughnut',
                 data: {
-                    labels: participacaoData.labels,
+                    labels: {{ turmas|map(attribute='turma')|list|tojson }},
                     datasets: [{
-                        data: participacaoData.data,
+                        data: {{ turmas|map(attribute='alunos_ativos')|list|tojson }},
                         backgroundColor: [
                             colors.blue.primary,
                             colors.green.primary,
@@ -506,7 +558,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            position: 'top',
+                            position: 'right',
                             labels: {
                                 padding: 20
                             }
@@ -517,9 +569,27 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         );
 
-        console.log('Gráficos carregados com sucesso');
+        // Adicionar eventos de clique nos gráficos
+        const charts = {
+            'anosChart': 'Desempenho por Ano Escolar',
+            'disciplinasChart': 'Desempenho por Disciplina',
+            'turmasChart': 'Desempenho por Turma',
+            'participacaoChart': 'Taxa de Participação'
+        };
+
+        Object.entries(charts).forEach(([chartId, title]) => {
+            const chartElement = document.getElementById(chartId);
+            if (chartElement) {
+                chartElement.addEventListener('click', function() {
+                    const modal = new bootstrap.Modal(document.getElementById('chartModal'));
+                    modal.show();
+                    createModalChart(this, title);
+                });
+            }
+        });
+
     } catch (error) {
-        console.error('Erro ao carregar gráfico:', error);
+        console.error('Erro ao carregar gráficos:', error);
     }
 });
 </script>

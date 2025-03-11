@@ -12,16 +12,16 @@ class ProfessorTurmaEscola(db.Model):
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=False)
     turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=False)
     tipo_ensino_id = db.Column(db.Integer, db.ForeignKey('tipos_ensino.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
 
 class Assuntos(db.Model):
     __tablename__ = 'assuntos'
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(200), nullable=False)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     professor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
-    __table_args__ = (db.UniqueConstraint('nome', 'disciplina_id', 'Ano_escolar_id', 'professor_id'),)
+    __table_args__ = (db.UniqueConstraint('nome', 'disciplina_id', 'ano_escolar_id', 'professor_id'),)
 
 class BancoQuestoes(db.Model):
     __tablename__ = 'banco_questoes'
@@ -35,14 +35,14 @@ class BancoQuestoes(db.Model):
     questao_correta = db.Column(db.String(1), nullable=False)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=False)
     assunto = db.Column(db.Text, nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
     mes_id = db.Column(db.Integer, db.ForeignKey('meses.id'), nullable=True)
     data_criacao = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
 
 class SimuladosGerados(db.Model):
     __tablename__ = 'simulados_gerados'
     id = db.Column(db.Integer, primary_key=True)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     mes_id = db.Column(db.Integer, db.ForeignKey('meses.id'), nullable=False)
     status = db.Column(db.String(20), nullable=True, default='gerado')
     data_envio = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
@@ -53,7 +53,7 @@ class SimuladosGeradosProfessor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     professor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     data_criacao = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
     mes_id = db.Column(db.Integer, db.ForeignKey('meses.id'), nullable=True)
     status = db.Column(db.String(20), nullable=True, default='gerado')
@@ -93,7 +93,7 @@ class DesempenhoSimulado(db.Model):
     aluno_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     simulado_id = db.Column(db.Integer, db.ForeignKey('simulados_enviados.id'), nullable=False)
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     codigo_ibge = db.Column(db.Integer, nullable=False)
     respostas_aluno = db.Column(db.JSON, nullable=False)
     respostas_corretas = db.Column(db.JSON, nullable=False)

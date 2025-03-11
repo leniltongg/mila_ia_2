@@ -27,8 +27,8 @@ column_mappings = {
         'new_columns': ['id', 'codigo_ibge', 'nome', 'estado', 'codigo_inep']
     },
     'usuarios': {
-        'old_columns': ['id', 'tipo_registro', 'codigo_inep_escola', 'cpf', 'email', 'senha', 'nome', 'data_nascimento', 'mae', 'pai', 'sexo', 'codigo_ibge', 'cep', 'escola_id', 'tipo_ensino_id', 'Ano_escolar_id', 'turma_id', 'tipo_usuario_id', 'cidade_id'],
-        'new_columns': ['id', 'tipo_registro', 'codigo_inep_escola', 'cpf', 'email', 'senha', 'nome', 'data_nascimento', 'mae', 'pai', 'sexo', 'codigo_ibge', 'cep', 'escola_id', 'tipo_ensino_id', 'Ano_escolar_id', 'turma_id', 'tipo_usuario_id', 'cidade_id'],
+        'old_columns': ['id', 'tipo_registro', 'codigo_inep_escola', 'cpf', 'email', 'senha', 'nome', 'data_nascimento', 'mae', 'pai', 'sexo', 'codigo_ibge', 'cep', 'escola_id', 'tipo_ensino_id', 'ano_escolar_id', 'turma_id', 'tipo_usuario_id', 'cidade_id'],
+        'new_columns': ['id', 'tipo_registro', 'codigo_inep_escola', 'cpf', 'email', 'senha', 'nome', 'data_nascimento', 'mae', 'pai', 'sexo', 'codigo_ibge', 'cep', 'escola_id', 'tipo_ensino_id', 'ano_escolar_id', 'turma_id', 'tipo_usuario_id', 'cidade_id'],
         'required_columns': ['id', 'tipo_registro', 'nome', 'tipo_usuario_id', 'cidade_id']  # Apenas estas colunas não podem ser nulas
     },
     'escolas': {
@@ -40,8 +40,8 @@ column_mappings = {
         'new_columns': ['id', 'nome']
     },
     'turmas': {
-        'old_columns': ['id', 'tipo_de_registro', 'codigo_inep', 'escola_id', 'tipo_ensino_id', 'Ano_escolar_id', 'turma'],
-        'new_columns': ['id', 'tipo_de_registro', 'codigo_inep', 'escola_id', 'tipo_ensino_id', 'Ano_escolar_id', 'turma']
+        'old_columns': ['id', 'tipo_de_registro', 'codigo_inep', 'escola_id', 'tipo_ensino_id', 'ano_escolar_id', 'turma'],
+        'new_columns': ['id', 'tipo_de_registro', 'codigo_inep', 'escola_id', 'tipo_ensino_id', 'ano_escolar_id', 'turma']
     },
     'simulado_questoes': {
         'old_columns': ['id', 'simulado_id', 'questao_id'],

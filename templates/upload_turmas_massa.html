@@ -27,13 +27,13 @@
                 <tr>
                     <td>{{ turma['escola_id'] }}</td>
                     <td>{{ turma['tipo_ensino'] }}</td>
-                    <td>{{ turma['Ano_escolar_id'] }}</td>
+                    <td>{{ turma['ano_escolar_id'] }}</td>
                     <td>{{ turma['turma'] }}</td>
                     <td>
                         <input type="checkbox" name="confirm_{{ loop.index }}" value="1" checked>
                         <input type="hidden" name="escola_id_{{ loop.index }}" value="{{ turma['escola_id'] }}">
                         <input type="hidden" name="tipo_ensino_{{ loop.index }}" value="{{ turma['tipo_ensino'] }}">
-                        <input type="hidden" name="Ano_escolar_id_{{ loop.index }}" value="{{ turma['Ano_escolar_id'] }}">
+                        <input type="hidden" name="ano_escolar_id_{{ loop.index }}" value="{{ turma['ano_escolar_id'] }}">
                         <input type="hidden" name="turma_{{ loop.index }}" value="{{ turma['turma'] }}">
                     </td>
                 </tr>

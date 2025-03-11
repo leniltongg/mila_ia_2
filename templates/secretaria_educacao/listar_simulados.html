@@ -127,7 +127,7 @@ async function buscarSimulados() {
     const mes = document.getElementById('filtro-mes').value;
     
     try {
-        const response = await fetch(`/secretaria_educacao/filtrar-simulados?Ano_escolar_id=${Ano_escolar}&disciplina_id=${Componente Curricular}&mes_id=${mes}`);
+        const response = await fetch(`/secretaria_educacao/filtrar-simulados?ano_escolar_id=${Ano_escolar}&disciplina_id=${Componente Curricular}&mes_id=${mes}`);
         const data = await response.json();
         
         window.location.reload();

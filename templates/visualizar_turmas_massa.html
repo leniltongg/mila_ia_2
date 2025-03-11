@@ -28,7 +28,7 @@
                     <input type="hidden" name="escola_id_{{ loop.index }}" value="{{ turma['escola_id'] }}">
                     <input type="hidden" name="codigo_inep_{{ loop.index }}" value="{{ turma['codigo_inep'] }}">
                     <input type="hidden" name="tipo_ensino_id_{{ loop.index }}" value="{{ turma['tipo_ensino_id'] }}">
-                    <input type="hidden" name="Ano_escolar_id_{{ loop.index }}" value="{{ turma['Ano_escolar_id'] }}">
+                    <input type="hidden" name="ano_escolar_id_{{ loop.index }}" value="{{ turma['ano_escolar_id'] }}">
                     <input type="hidden" name="turma_{{ loop.index }}" value="{{ turma['turma'] }}">
                 </td>
             </tr>
@@ -50,14 +50,14 @@
             var escola_id = row.find('input[name^="escola_id"]').val();
             var codigo_inep = row.find('input[name^="codigo_inep"]').val();
             var tipo_ensino_id = row.find('input[name^="tipo_ensino_id"]').val();
-            var Ano_escolar_id = row.find('input[name^="Ano_escolar_id"]').val();
+            var ano_escolar_id = row.find('input[name^="ano_escolar_id"]').val();
             var turma = row.find('input[name^="turma"]').val();
 
             var turmaData = {
                 escola_id: escola_id,
                 codigo_inep: codigo_inep,
                 tipo_ensino_id: tipo_ensino_id,
-                Ano_escolar_id: Ano_escolar_id,
+                ano_escolar_id: ano_escolar_id,
                 turma: turma
             };
 

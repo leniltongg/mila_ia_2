@@ -30,7 +30,7 @@ def portal_professores():
             Ano_escolar,
             Escolas
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, Turmas.escola_id == Escolas.id
         ).order_by(
@@ -45,7 +45,7 @@ def portal_professores():
         ).join(
             ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, Turmas.escola_id == Escolas.id
         ).filter(
@@ -65,18 +65,18 @@ def listar_turmas():
 
     if current_user.tipo_usuario_id == 6:
         turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, Turmas.escola_id == Escolas.id
-        ).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
+        ).order_by(Turmas.ano_escolar_id, Turmas.turma).all()
     else:
         turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
             ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, ProfessorTurmaEscola.escola_id == Escolas.id
-        ).filter(ProfessorTurmaEscola.professor_id == current_user.id).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
+        ).filter(ProfessorTurmaEscola.professor_id == current_user.id).order_by(Turmas.ano_escolar_id, Turmas.turma).all()
     return render_template('professores/listar_turmas.html', turmas=turmas)
 
 @professores_bp.route('/api/turmas', methods=['GET'])
@@ -88,18 +88,18 @@ def api_listar_turmas():
 
     if current_user.tipo_usuario_id == 6:
         turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, Turmas.escola_id == Escolas.id
-        ).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
+        ).order_by(Turmas.ano_escolar_id, Turmas.turma).all()
     else:
         turmas = db.session.query(Turmas, Ano_escolar, Escolas).join(
             ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, ProfessorTurmaEscola.escola_id == Escolas.id
-        ).filter(ProfessorTurmaEscola.professor_id == current_user.id).order_by(Turmas.Ano_escolar_id, Turmas.turma).all()
+        ).filter(ProfessorTurmaEscola.professor_id == current_user.id).order_by(Turmas.ano_escolar_id, Turmas.turma).all()
     return jsonify([{
         'id': turma[0].id,
         'Ano_escolar': turma[1].id,
@@ -117,7 +117,7 @@ def relatorio_turma(turma_id):
         
     if current_user.tipo_usuario_id == 6:
         turma_info = db.session.query(Turmas, Ano_escolar, Escolas).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, Turmas.escola_id == Escolas.id
         ).filter(Turmas.id == turma_id).first()
@@ -125,7 +125,7 @@ def relatorio_turma(turma_id):
         turma_info = db.session.query(Turmas, Ano_escolar, Escolas).join(
             ProfessorTurmaEscola, Turmas.id == ProfessorTurmaEscola.turma_id
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, ProfessorTurmaEscola.escola_id == Escolas.id
         ).filter(Turmas.id == turma_id, ProfessorTurmaEscola.professor_id == current_user.id).first()
@@ -382,7 +382,7 @@ def relatorio_aluno(aluno_id):
         aluno = db.session.query(Usuarios, Turmas, Ano_escolar, Escolas).join(
             Turmas, Usuarios.turma_id == Turmas.id
         ).join(
-            Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+            Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
         ).join(
             Escolas, Turmas.escola_id == Escolas.id
         ).filter(Usuarios.id == aluno_id, Usuarios.tipo_usuario_id == 4).first()
@@ -438,7 +438,7 @@ def api_alunos_turma(turma_id):
 
             alunos = db.session.query(Usuarios).filter(Usuarios.escola_id == turma_prof[0].escola_id,
                                                        Usuarios.tipo_ensino_id == turma_prof[0].tipo_ensino_id,
-                                                       Usuarios.Ano_escolar_id == turma_prof[0].Ano_escolar_id,
+                                                       Usuarios.ano_escolar_id == turma_prof[0].ano_escolar_id,
                                                        Usuarios.turma_id == turma_id,
                                                        Usuarios.tipo_usuario_id == 4,
                                                        Usuarios.nome.isnot(None),
@@ -463,7 +463,7 @@ def relatorio_aluno_novo(aluno_id):
     aluno_info = db.session.query(Usuarios, Turmas, Ano_escolar, Escolas).join(
         Turmas, Usuarios.turma_id == Turmas.id
     ).join(
-        Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
     ).join(
         Escolas, Turmas.escola_id == Escolas.id
     ).filter(Usuarios.id == aluno_id, Usuarios.tipo_usuario_id == 4).first()
@@ -650,7 +650,7 @@ def relatorio_aluno_pdf(aluno_id):
     aluno_info = db.session.query(Usuarios, Turmas, Ano_escolar, Escolas).join(
         Turmas, Usuarios.turma_id == Turmas.id
     ).join(
-        Ano_escolar, Turmas.Ano_escolar_id == Ano_escolar.id
+        Ano_escolar, Turmas.ano_escolar_id == Ano_escolar.id
     ).join(
         Escolas, Turmas.escola_id == Escolas.id
     ).filter(Usuarios.id == aluno_id, Usuarios.tipo_usuario_id == 4).first()

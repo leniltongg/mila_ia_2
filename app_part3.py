@@ -95,19 +95,19 @@ def gerar_perguntas(disciplina, assunto, quantidade, nivel, alternativas):
         print(f"Erro ao gerar questões: {str(e)}")
         return None
 
-def enviar_questoes_automaticamente(Ano_escolar_id, codigo_ibge):
+def enviar_questoes_automaticamente(ano_escolar_id, codigo_ibge):
     try:
         db = get_db()
         
         # Buscar questões disponíveis para a série
-        questoes = BancoQuestoes.query.filter_by(Ano_escolar_id=Ano_escolar_id).all()
+        questoes = BancoQuestoes.query.filter_by(ano_escolar_id=ano_escolar_id).all()
         if not questoes:
             return False, "Nenhuma questão disponível para esta série"
         
         # Buscar turmas da série na cidade
         turmas = (Turmas.query
                  .join(Escolas)
-                 .filter(Turmas.Ano_escolar_id == Ano_escolar_id)
+                 .filter(Turmas.ano_escolar_id == ano_escolar_id)
                  .filter(Escolas.codigo_ibge == codigo_ibge)
                  .all())
         
@@ -116,7 +116,7 @@ def enviar_questoes_automaticamente(Ano_escolar_id, codigo_ibge):
         
         # Criar simulado
         simulado = SimuladosGerados(
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             mes_id=datetime.now().month,
             status='enviado',
             data_envio=datetime.now()
@@ -293,7 +293,7 @@ def criar_simulado_diario():
         
         # Criar simulado
         simulado = SimuladosGerados(
-            Ano_escolar_id=1,  # Definir série apropriada
+            ano_escolar_id=1,  # Definir série apropriada
             mes_id=datetime.now().month,
             status='gerado',
             data_envio=datetime.now()
@@ -313,7 +313,7 @@ def criar_simulado_diario():
                 questao_correta=q['resposta_correta'],
                 disciplina_id=1,  # Definir disciplina apropriada
                 assunto='Conhecimentos Gerais',
-                Ano_escolar_id=1,  # Definir série apropriada
+                ano_escolar_id=1,  # Definir série apropriada
                 mes_id=datetime.now().month
             )
             db.session.add(questao)

@@ -75,6 +75,28 @@
     <div class="card">
         <div class="card-body">
             <h5 class="card-title">Acessar Portais</h5>
+            <div class="row g-4 mb-4">
+                <!-- Botões de Cadastro em Massa -->
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Cadastro em Massa de Usuários</h5>
+                            <p class="card-text">Faça upload de planilha para cadastrar múltiplos usuários, escolas e turmas de uma vez.</p>
+                            <a href="{{ url_for('administrador.upload_usuarios_escolas_massa') }}" class="btn btn-primary">Cadastrar em Massa</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">Cadastro em Massa de Escolas e Turmas</h5>
+                            <p class="card-text">Faça upload de planilha para cadastrar múltiplas escolas e turmas de uma vez.</p>
+                            <a href="{{ url_for('administrador.upload_usuarios_escolas_massa') }}" class="btn btn-primary">Cadastrar Escolas e Turmas</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row g-4">
                 <div class="col-md-4">
                     <div class="card h-100">

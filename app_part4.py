@@ -56,7 +56,7 @@ def cadastrar_questao():
         questao_correta = request.form.get('questao_correta')
         disciplina_id = request.form.get('disciplina_id')
         assunto = request.form.get('assunto')
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         
         nova_questao = BancoQuestoes(
             questao=questao,
@@ -68,7 +68,7 @@ def cadastrar_questao():
             questao_correta=questao_correta,
             disciplina_id=disciplina_id,
             assunto=assunto,
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             mes_id=datetime.now().month
         )
         
@@ -103,14 +103,14 @@ def gerar_simulado():
         return redirect(url_for('home'))
     
     if request.method == 'POST':
-        Ano_escolar_id = request.form.get('Ano_escolar_id')
+        ano_escolar_id = request.form.get('ano_escolar_id')
         disciplina_id = request.form.get('disciplina_id')
         
         # Criar simulado
         simulado = SimuladosGeradosProfessor(
             professor_id=current_user.id,
             disciplina_id=disciplina_id,
-            Ano_escolar_id=Ano_escolar_id,
+            ano_escolar_id=ano_escolar_id,
             mes_id=datetime.now().month,
             status='gerado'
         )
@@ -121,7 +121,7 @@ def gerar_simulado():
             
             # Buscar questões disponíveis
             questoes = BancoQuestoes.query.filter_by(
-                Ano_escolar_id=Ano_escolar_id,
+                ano_escolar_id=ano_escolar_id,
                 disciplina_id=disciplina_id
             ).all()
             
@@ -210,7 +210,7 @@ def enviar_simulado(simulado_id):
     turmas = (Turmas.query
              .join(ProfessorTurmaEscola)
              .filter(ProfessorTurmaEscola.professor_id == current_user.id)
-             .filter(Turmas.Ano_escolar_id == simulado.Ano_escolar_id)
+             .filter(Turmas.ano_escolar_id == simulado.ano_escolar_id)
              .all())
     
     return render_template('simulados/enviar.html', simulado=simulado, turmas=turmas)
@@ -262,7 +262,7 @@ def responder_simulado(simulado_id):
             aluno_id=current_user.id,
             simulado_id=simulado_id,
             escola_id=current_user.escola_id,
-            Ano_escolar_id=current_user.Ano_escolar_id,
+            ano_escolar_id=current_user.ano_escolar_id,
             codigo_ibge=current_user.codigo_ibge,
             respostas_aluno=json.dumps(respostas),
             respostas_corretas=json.dumps(respostas_corretas),
@@ -292,15 +292,15 @@ def relatorio_desempenho():
     
     # Filtros
     escola_id = request.args.get('escola_id', type=int)
-    Ano_escolar_id = request.args.get('Ano_escolar_id', type=int)
+    ano_escolar_id = request.args.get('ano_escolar_id', type=int)
     turma_id = request.args.get('turma_id', type=int)
     
     query = DesempenhoSimulado.query
     
     if escola_id:
         query = query.filter_by(escola_id=escola_id)
-    if Ano_escolar_id:
-        query = query.filter_by(Ano_escolar_id=Ano_escolar_id)
+    if ano_escolar_id:
+        query = query.filter_by(ano_escolar_id=ano_escolar_id)
     if turma_id:
         query = query.filter_by(turma_id=turma_id)
     

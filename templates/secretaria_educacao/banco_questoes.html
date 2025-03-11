@@ -284,8 +284,8 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label for="Ano_escolar_id">Ano Escolar</label>
-                                <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id">
+                                <label for="ano_escolar_id">Ano Escolar</label>
+                                <select class="form-select" id="ano_escolar_id" name="ano_escolar_id">
                                     <option value="">Selecione um ano escolar</option>
                                     {% for Ano_escolar in Ano_escolar %}
                                     <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
@@ -425,7 +425,7 @@
 
                     <div class="mb-3">
                         <label for="edit_Ano_escolar" class="form-label">Ano Escolar</label>
-                        <select class="form-select" id="edit_Ano_escolar" name="Ano_escolar_id">
+                        <select class="form-select" id="edit_Ano_escolar" name="ano_escolar_id">
                             <option value="">Selecione um ano escolar</option>
                             {% for Ano_escolar in Ano_escolar %}
                             <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>

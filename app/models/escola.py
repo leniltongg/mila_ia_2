@@ -23,7 +23,7 @@ class Turma(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(50), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'))
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'))
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'))
     turno = db.Column(db.String(20))
 
@@ -40,4 +40,4 @@ class Disciplina(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(50), nullable=False)
     descricao = db.Column(db.String(200))
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'))
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'))

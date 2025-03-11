@@ -11,7 +11,7 @@
         <option value="">Selecione...</option>
         <option value="geral">Relatório Geral da Escola</option>
         <option value="tipo_ensino">Relatório por Tipo de Ensino</option>
-        <option value="Ano_escolar_id">Relatório por Ano Escolar</option>
+        <option value="ano_escolar_id">Relatório por Ano Escolar</option>
         <option value="turma">Relatório por Turma</option>
         <option value="aluno">Relatório por Aluno</option>
     </select>
@@ -19,7 +19,7 @@
     <!-- Campos para tipo de ensino -->
     <div id="campo_tipo_ensino" style="display: none;">
         <label for="tipo_ensino">Tipo de Ensino:</label>
-        <select id="tipo_ensino" name="tipo_ensino" onchange="carregarAno_escolar_ids()">
+        <select id="tipo_ensino" name="tipo_ensino" onchange="carregarano_escolar_ids()">
             <option value="">Selecione...</option>
             {% for tipo in tipos_ensino %}
             <option value="{{ tipo }}">{{ tipo }}</option>
@@ -28,9 +28,9 @@
     </div>
 
     <!-- Campos para série -->
-    <div id="campo_Ano_escolar_id" style="display: none;">
-        <label for="Ano_escolar_id">Ano Escolar:</label>
-        <select id="Ano_escolar_id" name="Ano_escolar_id" onchange="carregarTurmas()">
+    <div id="campo_ano_escolar_id" style="display: none;">
+        <label for="ano_escolar_id">Ano Escolar:</label>
+        <select id="ano_escolar_id" name="ano_escolar_id" onchange="carregarTurmas()">
             <option value="">Selecione o tipo de ensino primeiro</option>
         </select>
     </div>
@@ -60,77 +60,77 @@ function exibirCamposRelatorio() {
 
     // Resetar campos
     document.getElementById("campo_tipo_ensino").style.display = "none";
-    document.getElementById("campo_Ano_escolar_id").style.display = "none";
+    document.getElementById("campo_ano_escolar_id").style.display = "none";
     document.getElementById("campo_turma").style.display = "none";
     document.getElementById("campo_aluno").style.display = "none";
 
     if (tipoRelatorio === "tipo_ensino") {
         document.getElementById("campo_tipo_ensino").style.display = "block";
-    } else if (tipoRelatorio === "Ano_escolar_id") {
+    } else if (tipoRelatorio === "ano_escolar_id") {
         document.getElementById("campo_tipo_ensino").style.display = "block";
-        document.getElementById("campo_Ano_escolar_id").style.display = "block";
+        document.getElementById("campo_ano_escolar_id").style.display = "block";
     } else if (tipoRelatorio === "turma") {
         document.getElementById("campo_tipo_ensino").style.display = "block";
-        document.getElementById("campo_Ano_escolar_id").style.display = "block";
+        document.getElementById("campo_ano_escolar_id").style.display = "block";
         document.getElementById("campo_turma").style.display = "block";
     } else if (tipoRelatorio === "aluno") {
         document.getElementById("campo_tipo_ensino").style.display = "block";
-        document.getElementById("campo_Ano_escolar_id").style.display = "block";
+        document.getElementById("campo_ano_escolar_id").style.display = "block";
         document.getElementById("campo_turma").style.display = "block";
         document.getElementById("campo_aluno").style.display = "block";
     }
 }
 
-async function carregarAno_escolar_ids() {
+async function carregarano_escolar_ids() {
     const tipoEnsino = document.getElementById("tipo_ensino").value;
-    const Ano_escolar_idSelect = document.getElementById("Ano_escolar_id");
+    const ano_escolar_idSelect = document.getElementById("ano_escolar_id");
     const turmaSelect = document.getElementById("turma");
     const alunoSelect = document.getElementById("aluno");
 
-    Ano_escolar_idSelect.innerHTML = '<option value="">Carregando...</option>';
+    ano_escolar_idSelect.innerHTML = '<option value="">Carregando...</option>';
     turmaSelect.innerHTML = '<option value="">Selecione a série primeiro</option>';
     alunoSelect.innerHTML = '<option value="">Selecione a turma primeiro</option>';
 
     if (!tipoEnsino) {
-        Ano_escolar_idSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
+        ano_escolar_idSelect.innerHTML = '<option value="">Selecione o tipo de ensino primeiro</option>';
         return;
     }
 
     try {
-        const response = await fetch(`/get_Ano_escolar_ids?tipo_ensino=${encodeURIComponent(tipoEnsino)}`);
-        const Ano_escolar_ids = await response.json();
+        const response = await fetch(`/get_ano_escolar_ids?tipo_ensino=${encodeURIComponent(tipoEnsino)}`);
+        const ano_escolar_ids = await response.json();
 
-        Ano_escolar_idSelect.innerHTML = '<option value="">Selecione...</option>';
-        Ano_escolar_ids.forEach(Ano_escolar_id => {
-            Ano_escolar_idSelect.innerHTML += `<option value="${Ano_escolar_id}">${Ano_escolar_id}</option>`;
+        ano_escolar_idSelect.innerHTML = '<option value="">Selecione...</option>';
+        ano_escolar_ids.forEach(ano_escolar_id => {
+            ano_escolar_idSelect.innerHTML += `<option value="${ano_escolar_id}">${ano_escolar_id}</option>`;
         });
     } catch (error) {
         console.error("Erro ao carregar séries:", error);
-        Ano_escolar_idSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        ano_escolar_idSelect.innerHTML = '<option value="">Erro ao carregar</option>';
     }
 }
 
 async function carregarTurmas() {
     const tipoEnsino = document.getElementById("tipo_ensino").value;
-    const Ano_escolar_id = document.getElementById("Ano_escolar_id").value;
+    const ano_escolar_id = document.getElementById("ano_escolar_id").value;
     const turmaSelect = document.getElementById("turma");
     const alunoSelect = document.getElementById("aluno");
 
     turmaSelect.innerHTML = '<option value="">Carregando...</option>';
     alunoSelect.innerHTML = '<option value="">Selecione a turma primeiro</option>';
 
-    if (!tipoEnsino || !Ano_escolar_id) {
+    if (!tipoEnsino || !ano_escolar_id) {
         turmaSelect.innerHTML = '<option value="">Selecione todos os campos primeiro</option>';
         return;
     }
 
     try {
-        const response = await fetch(`/get_turmas?escola_id={{ escola_alocada.id }}&tipo_ensino=${encodeURIComponent(tipoEnsino)}&Ano_escolar_id=${encodeURIComponent(Ano_escolar_id)}`);
+        const response = await fetch(`/get_turmas?escola_id={{ escola_alocada.id }}&tipo_ensino=${encodeURIComponent(tipoEnsino)}&ano_escolar_id=${encodeURIComponent(ano_escolar_id)}`);
         const turmas = await response.json();
 
         turmaSelect.innerHTML = '<option value="">Selecione...</option>';
         turmas.forEach(turma => {
-            turmaSelect.innerHTML += `<option value="${turma.id}">${turma.Ano_escolar_id} - ${turma.turma}</option>`;
+            turmaSelect.innerHTML += `<option value="${turma.id}">${turma.ano_escolar_id} - ${turma.turma}</option>`;
         });
     } catch (error) {
         console.error("Erro ao carregar turmas:", error);

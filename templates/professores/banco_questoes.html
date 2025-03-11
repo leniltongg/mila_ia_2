@@ -108,8 +108,8 @@
                     <!-- Ano Escolar e Disciplina -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
-                            <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id" required>
+                            <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="ano_escolar_id" name="ano_escolar_id" required>
                                 <option value="">Selecione...</option>
                                 {% for Ano_escolar in Ano_escolar %}
                                 <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>
@@ -218,7 +218,7 @@ async function buscarQuestoes() {
     const assunto = document.getElementById('filtro-assunto').value;
     
     try {
-        const response = await fetch(`/professores/buscar-questoes?Ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&assunto=${assunto}`);
+        const response = await fetch(`/professores/buscar-questoes?ano_escolar_id=${Ano_escolar}&disciplina_id=${disciplina}&assunto=${assunto}`);
         const questoes = await response.json();
         
         const questoesLista = document.getElementById('questoes-lista');
@@ -249,7 +249,7 @@ async function buscarQuestoes() {
 
 async function salvarQuestao() {
     const formData = {
-        Ano_escolar_id: parseInt(document.getElementById('Ano_escolar_id').value),
+        ano_escolar_id: parseInt(document.getElementById('ano_escolar_id').value),
         disciplina_id: parseInt(document.getElementById('disciplina_id').value),
         assunto: document.getElementById('assunto').value,
         questao: document.getElementById('questao').value,

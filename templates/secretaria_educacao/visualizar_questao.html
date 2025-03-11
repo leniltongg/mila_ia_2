@@ -21,9 +21,9 @@
                                 <i class="bi bi-pencil"></i>
                             </button>
                         </div>
-                        <select class="form-select mt-2 d-none" id="Ano_escolar_id" name="Ano_escolar_id">
+                        <select class="form-select mt-2 d-none" id="ano_escolar_id" name="ano_escolar_id">
                             {% for Ano_escolar in Ano_escolar %}
-                            <option value="{{ Ano_escolar.id }}" {% if Ano_escolar.id == questao.Ano_escolar_id %}selected{% endif %}>
+                            <option value="{{ Ano_escolar.id }}" {% if Ano_escolar.id == questao.ano_escolar_id %}selected{% endif %}>
                                 {{ Ano_escolar.nome }}
                             </option>
                             {% endfor %}
@@ -195,7 +195,7 @@ function editarCampo(campo) {
 
     // Mostra/esconde os elementos do campo atual
     const elementos = {
-        'Ano_escolar': ['Ano_escolar_id'],
+        'Ano_escolar': ['ano_escolar_id'],
         'Componente Curricular': ['disciplina_id'],
         'assunto': ['assunto'],
         'questao': ['questao', 'questao_texto'],

@@ -1,7 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, g
 from flask_login import login_required, current_user
 from extensions import db
-from models import Usuarios, Escolas, Cidades, TiposUsuarios
+from models import Usuarios, Escolas, Cidades, TiposUsuarios, Turmas
+from werkzeug.security import generate_password_hash
+import pandas as pd
 
 # Registrando o Blueprint
 administrador_bp = Blueprint('administrador', __name__, url_prefix='/administrador')
@@ -80,3 +82,85 @@ def selecionar_cidade2():
         session.pop('codigo_ibge_selecionado', None)
         flash('Filtro de cidade removido!', 'info')
     return redirect(url_for('administrador.portal_administrador2'))
+
+@administrador_bp.route('/upload_usuarios_escolas_massa', methods=['GET', 'POST'])
+def upload_usuarios_escolas_massa():
+    """Página de upload em massa de usuários, escolas e turmas."""
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            flash('Nenhum arquivo foi enviado.', 'error')
+            return redirect(request.url)
+        
+        file = request.files['file']
+        if file.filename == '':
+            flash('Nenhum arquivo foi selecionado.', 'error')
+            return redirect(request.url)
+        
+        if not file.filename.endswith('.xlsx'):
+            flash('Por favor, envie um arquivo Excel (.xlsx)', 'error')
+            return redirect(request.url)
+        
+        # Ler o arquivo Excel
+        try:
+            df = pd.read_excel(file)
+            # Guardar os dados na sessão para confirmar depois
+            session['upload_data'] = df.to_dict('records')
+            return render_template('upload_usuarios_escolas_massa.html', preview_data=df.to_dict('records'))
+        except Exception as e:
+            flash(f'Erro ao ler o arquivo: {str(e)}', 'error')
+            return redirect(request.url)
+    
+    return render_template('upload_usuarios_escolas_massa.html')
+
+@administrador_bp.route('/confirmar_cadastro_massa', methods=['POST'])
+def confirmar_cadastro_massa():
+    """Confirma o cadastro em massa após a prévia."""
+    if 'upload_data' not in session:
+        flash('Nenhum dado para cadastrar. Faça o upload primeiro.', 'error')
+        return redirect(url_for('administrador.upload_usuarios_escolas_massa'))
+    
+    try:
+        data = session['upload_data']
+        
+        # Processar escolas
+        for escola in data:
+            nova_escola = Escolas(
+                nome=escola['nome'],
+                codigo_inep=escola['codigo_inep'],
+                codigo_ibge=escola['codigo_ibge']
+            )
+            db.session.add(nova_escola)
+        
+        # Processar turmas
+        for turma in data:
+            nova_turma = Turmas(
+                nome=turma['turma'],
+                escola_id=turma['escola_id'],
+                ano_escolar_id=turma['ano_escolar_id']
+            )
+            db.session.add(nova_turma)
+        
+        # Processar usuários
+        for usuario in data:
+            novo_usuario = Usuarios(
+                nome=usuario['nome'],
+                email=usuario['email'],
+                senha=generate_password_hash(usuario['senha']),
+                tipo_usuario_id=usuario['tipo_usuario_id'],
+                escola_id=usuario['escola_id'],
+                turma_id=usuario['turma_id'],
+                ano_escolar_id=usuario['ano_escolar_id'],
+                codigo_ibge=usuario['codigo_ibge']
+            )
+            db.session.add(novo_usuario)
+        
+        db.session.commit()
+        flash('Cadastro em massa realizado com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao realizar o cadastro: {str(e)}', 'error')
+    
+    # Limpar dados da sessão
+    session.pop('upload_data', None)
+    return redirect(url_for('administrador.upload_usuarios_escolas_massa'))

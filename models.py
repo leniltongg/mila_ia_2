@@ -14,20 +14,28 @@ class Usuarios(db.Model, UserMixin):
     __tablename__ = 'usuarios'
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    senha = db.Column(db.String(255), nullable=False)
+    nome = db.Column(db.String(200), nullable=False)
+    email = db.Column(db.String(100), unique=True, nullable=True)
+    senha = db.Column(db.String(255), nullable=True)
     tipo_usuario_id = db.Column(db.Integer, nullable=False)
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=True)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
     turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=True)
-    codigo_ibge = db.Column(db.String(7), nullable=True)
-    cep = db.Column(db.String(8), nullable=True)
+    codigo_ibge = db.Column(db.String(10), nullable=True)
+    cep_usuario = db.Column(db.String(10), nullable=True)
     cpf = db.Column(db.String(11), unique=True, nullable=True)
-    data_nascimento = db.Column(db.Date, nullable=True)
-    mae = db.Column(db.String(100), nullable=True)
-    pai = db.Column(db.String(100), nullable=True)
-    sexo = db.Column(db.String(1), nullable=True)
+    data_nascimento = db.Column(db.String(10), nullable=True)
+    mae = db.Column(db.String(200), nullable=True)
+    pai = db.Column(db.String(200), nullable=True)
+    sexo = db.Column(db.Integer, nullable=True)
+    cidade_id = db.Column(db.Integer, db.ForeignKey('cidades.id'), nullable=False)
+    tipo_ensino_id = db.Column(db.Integer, db.ForeignKey('tipos_ensino.id'), nullable=True)
+    codigo_inep_escola = db.Column(db.String(8), nullable=True)
+    turno = db.Column(db.String(20), nullable=True)
+    matricula_aluno = db.Column(db.String(50), nullable=True)
+    codigo_inep_aluno = db.Column(db.String(20), nullable=True)
+    cor = db.Column(db.String(20), nullable=True)
+    turma_institucional = db.Column(db.String(255), nullable=True)
 
     def get_id(self):
         return str(self.id)
@@ -36,10 +44,9 @@ class Escolas(db.Model):
     __tablename__ = 'escolas'
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    tipo_de_registro = db.Column(db.String(2), nullable=False, default='00')
     codigo_inep = db.Column(db.String(8), unique=True, nullable=False)
     nome_da_escola = db.Column(db.String(100), nullable=False)
-    cep = db.Column(db.String(8), nullable=False)
+    cep_escola = db.Column(db.String(8), nullable=False)
     codigo_ibge = db.Column(db.String(7), nullable=False)
     endereco = db.Column(db.String(100), nullable=False)
     numero = db.Column(db.String(10), nullable=False)
@@ -50,17 +57,20 @@ class Escolas(db.Model):
     telefone_2 = db.Column(db.String(9), nullable=True)
     email = db.Column(db.String(120), nullable=True)
     ensino_fundamental = db.Column(db.Boolean, nullable=False, default=True)
+    DEP_ADMINISTRATIVA = db.Column(db.String(100), nullable=True)
+    DC_LOCALIZACAO = db.Column(db.String(50), nullable=True)
 
 class Turmas(db.Model):
     __tablename__ = 'turmas'
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    tipo_de_registro = db.Column(db.String(2), nullable=False, default='20')
     codigo_inep = db.Column(db.String(8), nullable=False)
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=False)
     tipo_ensino_id = db.Column(db.Integer, db.ForeignKey('tipos_ensino.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
-    turma = db.Column(db.String(1), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    turma_institucional = db.Column(db.String(255), nullable=False)
+    turma = db.Column(db.String(100), nullable=False)
+    turno = db.Column(db.String(20), nullable=True)
 
 class TiposEnsino(db.Model):
     __tablename__ = 'tipos_ensino'
@@ -83,7 +93,7 @@ class ProfessorTurmaEscola(db.Model):
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=False)
     turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=False)
     tipo_ensino_id = db.Column(db.Integer, db.ForeignKey('tipos_ensino.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     
     # Relacionamentos
     turma = db.relationship('Turmas', backref='professor_turmas')
@@ -91,13 +101,13 @@ class ProfessorTurmaEscola(db.Model):
 class Assuntos(db.Model):
     __tablename__ = 'assuntos'
     __table_args__ = (
-        db.UniqueConstraint('nome', 'disciplina_id', 'Ano_escolar_id', 'professor_id'),
+        db.UniqueConstraint('nome', 'disciplina_id', 'ano_escolar_id', 'professor_id'),
         {'extend_existing': True}
     )
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(200), nullable=False)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     professor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
 
 class Disciplinas(db.Model):
@@ -114,7 +124,7 @@ class SimuladosGerados(db.Model):
     __tablename__ = 'simulados_gerados'
     __table_args__ = {'extend_existing': True}
     id = db.Column(db.Integer, primary_key=True)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     mes_id = db.Column(db.Integer, db.ForeignKey('meses.id'), nullable=False)
     status = db.Column(db.String(20), nullable=True, default='gerado')
     data_envio = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
@@ -146,7 +156,7 @@ class BancoQuestoes(db.Model):
     questao_correta = db.Column(db.String(1), nullable=False)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=False)
     assunto = db.Column(db.Text, nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
     mes_id = db.Column(db.Integer, db.ForeignKey('meses.id'), nullable=True)
     data_criacao = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
     codigo_ibge = db.Column(db.String(7), nullable=True)
@@ -178,7 +188,7 @@ class SimuladosGeradosProfessor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     professor_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     data_criacao = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
     mes_id = db.Column(db.Integer, db.ForeignKey('meses.id'), nullable=True)
     status = db.Column(db.String(20), nullable=True, default='gerado')
@@ -224,7 +234,7 @@ class DesempenhoSimulado(db.Model):
     aluno_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     simulado_id = db.Column(db.Integer, db.ForeignKey('simulados_enviados.id'), nullable=False)
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=False)
-    Ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
     codigo_ibge = db.Column(db.Integer, nullable=False)
     respostas_aluno = db.Column(db.JSON, nullable=False)
     respostas_corretas = db.Column(db.JSON, nullable=False)
@@ -274,7 +284,7 @@ def migrate_users_from_sqlite():
     
     # Get all users from old schema
     cursor.execute("""
-        SELECT id, nome, tipo_usuario_id, escola_id, Ano_escolar_id, turma_id, email, senha, codigo_ibge, cpf
+        SELECT id, nome, tipo_usuario_id, escola_id, ano_escolar_id, turma_id, email, senha, codigo_ibge, cpf
         FROM usuarios
         WHERE email IS NOT NULL AND email != ''
     """)
@@ -288,7 +298,7 @@ def migrate_users_from_sqlite():
                 nome=user_data[1] or '',
                 tipo_usuario_id=user_data[2] or TIPO_USUARIO_ALUNO,
                 escola_id=user_data[3],
-                Ano_escolar_id=user_data[4],
+                ano_escolar_id=user_data[4],
                 turma_id=user_data[5],
                 email=user_data[6],
                 senha=user_data[7] or '',
@@ -315,7 +325,7 @@ class User:
         self.nome = user_data.nome
         self.tipo_usuario_id = user_data.tipo_usuario_id
         self.escola_id = user_data.escola_id
-        self.Ano_escolar_id = user_data.Ano_escolar_id
+        self.ano_escolar_id = user_data.ano_escolar_id
         self.turma_id = user_data.turma_id
         self.email = user_data.email
         self.codigo_ibge = user_data.codigo_ibge

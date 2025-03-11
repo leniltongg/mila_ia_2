@@ -29,8 +29,8 @@
             {% endfor %}
         </select>
 
-        <label for="Ano_escolar_id">Ano Escolar:</label>
-        <select id="Ano_escolar_id" name="Ano_escolar_id">
+        <label for="ano_escolar_id">Ano Escolar:</label>
+        <select id="ano_escolar_id" name="ano_escolar_id">
             <option value="">Selecione o tipo de ensino primeiro</option>
         </select>
 
@@ -56,14 +56,14 @@ function exibirCamposEspecificos() {
 
 document.getElementById("tipo_ensino").addEventListener("change", async function () {
     const tipoEnsino = this.value;
-    const Ano_escolar_idSelect = document.getElementById("Ano_escolar_id");
+    const ano_escolar_idSelect = document.getElementById("ano_escolar_id");
     if (tipoEnsino) {
         try {
-            const response = await fetch(`/get_Ano_escolar_ids?tipo_ensino=${encodeURIComponent(tipoEnsino)}`);
-            const Ano_escolar_ids = await response.json();
-            Ano_escolar_idSelect.innerHTML = '<option value="">Selecione...</option>';
-            Ano_escolar_ids.forEach(Ano_escolar_id => {
-                Ano_escolar_idSelect.innerHTML += `<option value="${Ano_escolar_id}">${Ano_escolar_id}</option>`;
+            const response = await fetch(`/get_ano_escolar_ids?tipo_ensino=${encodeURIComponent(tipoEnsino)}`);
+            const ano_escolar_ids = await response.json();
+            ano_escolar_idSelect.innerHTML = '<option value="">Selecione...</option>';
+            ano_escolar_ids.forEach(ano_escolar_id => {
+                ano_escolar_idSelect.innerHTML += `<option value="${ano_escolar_id}">${ano_escolar_id}</option>`;
             });
         } catch (error) {
             console.error("Erro ao carregar séries:", error);
@@ -71,17 +71,17 @@ document.getElementById("tipo_ensino").addEventListener("change", async function
     }
 });
 
-document.getElementById("Ano_escolar_id").addEventListener("change", async function () {
+document.getElementById("ano_escolar_id").addEventListener("change", async function () {
     const tipoEnsino = document.getElementById("tipo_ensino").value;
-    const Ano_escolar_id = this.value;
+    const ano_escolar_id = this.value;
     const turmaSelect = document.getElementById("turma");
-    if (tipoEnsino && Ano_escolar_id) {
+    if (tipoEnsino && ano_escolar_id) {
         try {
-            const response = await fetch(`/get_turmas?escola_id={{ escola_alocada.id }}&tipo_ensino=${encodeURIComponent(tipoEnsino)}&Ano_escolar_id=${encodeURIComponent(Ano_escolar_id)}`);
+            const response = await fetch(`/get_turmas?escola_id={{ escola_alocada.id }}&tipo_ensino=${encodeURIComponent(tipoEnsino)}&ano_escolar_id=${encodeURIComponent(ano_escolar_id)}`);
             const turmas = await response.json();
             turmaSelect.innerHTML = '<option value="">Selecione...</option>';
             turmas.forEach(turma => {
-                turmaSelect.innerHTML += `<option value="${turma.id}">${turma.Ano_escolar_id} - ${turma.turma}</option>`;
+                turmaSelect.innerHTML += `<option value="${turma.id}">${turma.ano_escolar_id} - ${turma.turma}</option>`;
             });
         } catch (error) {
             console.error("Erro ao carregar turmas:", error);

@@ -10,11 +10,11 @@
             <form id="filtroForm" method="GET">
                 <div class="row">
                     <div class="col-md-3 mb-3">
-                        <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
-                        <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id">
+                        <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                        <select class="form-select" id="ano_escolar_id" name="ano_escolar_id">
                             <option value="">Todos</option>
                             {% for Ano_escolar in Ano_escolar %}
-                            <option value="{{ Ano_escolar.id }}" {% if Ano_escolar.id == request.args.get('Ano_escolar_id', '')|int %}selected{% endif %}>
+                            <option value="{{ Ano_escolar.id }}" {% if Ano_escolar.id == request.args.get('ano_escolar_id', '')|int %}selected{% endif %}>
                                 {{ Ano_escolar.nome }}
                             </option>
                             {% endfor %}
@@ -110,8 +110,8 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="Ano_escolar_id" class="form-label">Ano Escolar</label>
-                                <select class="form-select" id="Ano_escolar_id" name="Ano_escolar_id" required>
+                                <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                                <select class="form-select" id="ano_escolar_id" name="ano_escolar_id" required>
                                     <option value="">Selecione...</option>
                                     {% for Ano_escolar in Ano_escolar %}
                                     <option value="{{ Ano_escolar.id }}">{{ Ano_escolar.nome }}</option>

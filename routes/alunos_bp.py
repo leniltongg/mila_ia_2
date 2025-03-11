@@ -41,7 +41,7 @@ def portal_alunos():
     ).join(
         Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
     ).filter(
-        SimuladosGerados.Ano_escolar_id == current_user.Ano_escolar_id
+        SimuladosGerados.ano_escolar_id == current_user.ano_escolar_id
     ).order_by(
         case(
             (exists().where(
@@ -1200,7 +1200,7 @@ def download_feedback():
 def simulados():
     try:
         # Primeiro, pegar a série do aluno logado
-        Ano_escolar_id = current_user.Ano_escolar_id
+        ano_escolar_id = current_user.ano_escolar_id
 
         # Buscar apenas simulados da série do aluno
         simulados = db.session.query(
@@ -1215,7 +1215,7 @@ def simulados():
         ).join(
             MESES, MESES.id == SimuladosGerados.mes_id
         ).filter(
-            SimuladosGerados.Ano_escolar_id == Ano_escolar_id
+            SimuladosGerados.ano_escolar_id == ano_escolar_id
         ).filter(
             SimuladosGerados.status == 'enviado'
         ).order_by(
