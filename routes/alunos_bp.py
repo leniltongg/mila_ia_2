@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, g, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, make_response
 from flask_login import login_required, current_user
+from models import db, Usuarios, Escolas, Turmas, Ano_escolar, SimuladosGerados, DesempenhoSimulado, MESES, Disciplinas
 from extensions import db
-from models import Usuarios, SimuladosEnviados, AlunoSimulado, SimuladosGeradosProfessor, SimuladoQuestoesProfessor, BancoQuestoes, SimuladosGerados, Disciplinas, MESES, DesempenhoSimulado
 from sqlalchemy import func, case, exists, and_
 import openai
 import json
@@ -9,6 +9,7 @@ import os
 from dotenv import load_dotenv
 import re
 from weasyprint import HTML as WeasyHTML
+from datetime import datetime
 
 # Carregar variáveis de ambiente
 load_dotenv()
@@ -1206,8 +1207,7 @@ def simulados():
         simulados = db.session.query(
             SimuladosGerados.id,
             SimuladosGerados.mes_id,
-            SimuladosGerados.status,
-            func.date_format(SimuladosGerados.data_envio, '%d-%m-%Y').label('data_envio'),
+            SimuladosGerados.data_envio,
             Disciplinas.nome.label('disciplina_nome'),
             MESES.nome.label('mes_nome')
         ).join(
@@ -1216,31 +1216,95 @@ def simulados():
             MESES, MESES.id == SimuladosGerados.mes_id
         ).filter(
             SimuladosGerados.ano_escolar_id == ano_escolar_id
-        ).filter(
-            SimuladosGerados.status == 'enviado'
         ).order_by(
             SimuladosGerados.data_envio.desc()
         ).all()
 
-        # Buscar simulados já respondidos pelo aluno (tipo_usuario_id = 5 para secretaria)
-        desempenho_simulado = db.session.query(
-            DesempenhoSimulado.simulado_id,
-            DesempenhoSimulado.desempenho
-        ).filter(
-            DesempenhoSimulado.aluno_id == current_user.id
-        ).filter(
-            DesempenhoSimulado.tipo_usuario_id == 5
-        ).all()
+        # Formatar simulados
+        simulados_formatados = []
+        for simulado in simulados:
+            simulados_formatados.append({
+                'id': simulado.id,
+                'disciplina_nome': simulado.disciplina_nome,
+                'mes_nome': simulado.mes_nome,
+                'data_envio': simulado.data_envio.strftime('%d/%m/%Y %H:%M') if simulado.data_envio else 'Data não definida'
+            })
+
+        # Buscar simulados respondidos
+        desempenho_simulado = {}
+        desempenhos = db.session.query(DesempenhoSimulado).filter_by(aluno_id=current_user.id).all()
+        for d in desempenhos:
+            desempenho_simulado[d.simulado_id] = True
+            print(f"Adicionando simulado {d.simulado_id} ao dicionário")
         
-        # Criar um dicionário com os simulados respondidos
-        desempenho_simulado = {row[0]: {'desempenho': row[1]} for row in desempenho_simulado}
+        print("Debug - Current User ID:", current_user.id)
+        print("Debug - Simulados Respondidos Raw:", [(sr.simulado_id, sr.aluno_id) for sr in desempenhos])
+        print("Debug - Simulados IDs:", [s['id'] for s in simulados_formatados])
+        print("Debug - Desempenho Final:", desempenho_simulado)
         
         return render_template('alunos/simulados.html', 
-                             simulados=simulados,
+                             simulados=simulados_formatados, 
                              desempenho_simulado=desempenho_simulado)
     except Exception as e:
         print(f"Erro ao buscar simulados: {str(e)}")
         flash('Erro ao carregar simulados', 'danger')
+        return redirect(url_for('alunos_bp.portal_alunos'))
+
+@alunos_bp.route('/perfil')
+@login_required
+def perfil():
+    try:
+        # Buscar informações do aluno com todas as relações necessárias
+        usuario = db.session.query(Usuarios).filter(
+            Usuarios.id == current_user.id
+        ).first()
+
+        # Buscar informações da escola
+        escola = None
+        if usuario.escola_id:
+            escola = db.session.query(Escolas).filter(
+                Escolas.id == usuario.escola_id
+            ).first()
+
+        # Buscar informações da turma
+        turma = None
+        if usuario.turma_id:
+            turma = db.session.query(Turmas).filter(
+                Turmas.id == usuario.turma_id
+            ).first()
+
+        # Buscar informações do ano escolar
+        ano_escolar = None
+        if usuario.ano_escolar_id:
+            ano_escolar = db.session.query(Ano_escolar).filter(
+                Ano_escolar.id == usuario.ano_escolar_id
+            ).first()
+
+        # Formatação dos dados
+        if usuario.data_nascimento:
+            try:
+                # Tentar converter para o formato brasileiro
+                data = datetime.strptime(usuario.data_nascimento, '%Y-%m-%d')
+                usuario.data_nascimento = data.strftime('%d/%m/%Y')
+            except:
+                pass
+
+        # Formatar CPF se existir
+        if usuario.cpf:
+            cpf = usuario.cpf
+            if len(cpf) == 11:
+                usuario.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+
+        return render_template('alunos/perfil.html',
+                             usuario=usuario,
+                             escola=escola,
+                             turma=turma,
+                             ano_escolar=ano_escolar)
+    except Exception as e:
+        import traceback
+        print(f"Erro detalhado ao carregar perfil: {str(e)}")
+        print(traceback.format_exc())
+        flash('Erro ao carregar perfil', 'danger')
         return redirect(url_for('alunos_bp.portal_alunos'))
 
 def formatar_resumo_html(resumo, tipo):

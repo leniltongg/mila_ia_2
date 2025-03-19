@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Resultado do Simulado</h2>
+    
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4>Resumo</h4>
+            <p>Total de questões: {{ total_questoes }}</p>
+            <p>Acertos: {{ acertos }}</p>
+            <p>Porcentagem de acertos: {{ "%.2f"|format(porcentagem_acertos) }}%</p>
+        </div>
+    </div>
+
+    {% for disciplina, questoes in questoes_por_disciplina.items() %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h4>{{ disciplina }}</h4>
+        </div>
+        <div class="card-body">
+            {% for questao in questoes %}
+            <div class="questao mb-4 p-3 {% if questao.acertou %}border-success{% else %}border-danger{% endif %} border">
+                <p class="font-weight-bold">{{ loop.index }}. {{ questao.questao }}</p>
+                
+                <div class="alternativas">
+                    <div class="form-check {% if questao.resposta_correta == 'A' %}text-success font-weight-bold{% endif %} {% if questao.resposta_aluno == 'A' and not questao.acertou %}text-danger{% endif %}">
+                        <label>A) {{ questao.alternativa_a }}</label>
+                    </div>
+                    <div class="form-check {% if questao.resposta_correta == 'B' %}text-success font-weight-bold{% endif %} {% if questao.resposta_aluno == 'B' and not questao.acertou %}text-danger{% endif %}">
+                        <label>B) {{ questao.alternativa_b }}</label>
+                    </div>
+                    <div class="form-check {% if questao.resposta_correta == 'C' %}text-success font-weight-bold{% endif %} {% if questao.resposta_aluno == 'C' and not questao.acertou %}text-danger{% endif %}">
+                        <label>C) {{ questao.alternativa_c }}</label>
+                    </div>
+                    <div class="form-check {% if questao.resposta_correta == 'D' %}text-success font-weight-bold{% endif %} {% if questao.resposta_aluno == 'D' and not questao.acertou %}text-danger{% endif %}">
+                        <label>D) {{ questao.alternativa_d }}</label>
+                    </div>
+                    {% if questao.alternativa_e %}
+                    <div class="form-check {% if questao.resposta_correta == 'E' %}text-success font-weight-bold{% endif %} {% if questao.resposta_aluno == 'E' and not questao.acertou %}text-danger{% endif %}">
+                        <label>E) {{ questao.alternativa_e }}</label>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="mt-2">
+                    <p>
+                        Sua resposta: 
+                        <span class="{% if questao.acertou %}text-success{% else %}text-danger{% endif %}">
+                            {{ questao.resposta_aluno if questao.resposta_aluno else 'Não respondida' }}
+                        </span>
+                    </p>
+                    <p class="text-success">Resposta correta: {{ questao.resposta_correta }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+
+    <div class="mb-4">
+        <a href="{{ url_for('simulados.listar_simulados') }}" class="btn btn-primary">Voltar para Lista de Simulados</a>
+    </div>
+</div>
+
+<style>
+.questao {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.alternativas {
+    margin-left: 20px;
+}
+
+.form-check {
+    margin-bottom: 10px;
+}
+</style>
+{% endblock %}

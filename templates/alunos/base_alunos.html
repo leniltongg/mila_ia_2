@@ -71,6 +71,10 @@
         </div>
     </div>
 
+    <a class="nav-link {% if request.endpoint == 'alunos_bp.perfil' %}active{% endif %}" href="{{ url_for('alunos_bp.perfil') }}">
+        <i class="fas fa-user"></i> Meu Perfil
+    </a>
+
     <a class="nav-link {% if request.endpoint == 'alterar_senha' %}active{% endif %}" href="{{ url_for('alterar_senha') }}">
         <i class="bi bi-key"></i> Alterar Senha
     </a>

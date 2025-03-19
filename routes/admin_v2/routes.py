@@ -1,7 +1,6 @@
 from flask import render_template, request, redirect, url_for, flash, jsonify
 from flask_login import login_required, current_user
-from models import db, User, Escola, Disciplina, Turma, Cidade, TIPO_USUARIO_ADMIN, TIPO_USUARIO_SECRETARIA_EDUCACAO, TIPO_USUARIO_PROFESSOR
-from security import hash_password
+from models import db, User, Escolas, Disciplinas, Turmas, Cidades, TIPO_USUARIO_ADMIN, TIPO_USUARIO_SECRETARIA_EDUCACAO, TIPO_USUARIO_PROFESSOR
 import pandas as pd
 import requests
 from functools import wraps
@@ -20,9 +19,9 @@ def admin_required(f):
 def get_user_escolas():
     """Retorna as escolas que o usuário tem acesso"""
     if current_user.is_admin:
-        return Escola.query.all()
+        return Escolas.query.all()
     elif current_user.tipo_usuario_id == TIPO_USUARIO_SECRETARIA_EDUCACAO:
-        return Escola.query.filter_by(cidade_id=current_user.cidade_id).all()
+        return Escolas.query.filter_by(cidade_id=current_user.cidade_id).all()
     elif current_user.tipo_usuario_id == TIPO_USUARIO_PROFESSOR:
         return [current_user.escola_vinculada] if current_user.escola_vinculada else []
     return []
@@ -52,7 +51,7 @@ def buscar_cep(cep):
             return jsonify({'error': 'CEP não encontrado'}), 404
             
         # Busca a cidade no banco pelo IBGE
-        cidade = Cidade.query.filter_by(codigo_ibge=data['ibge']).first()
+        cidade = Cidades.query.filter_by(codigo_ibge=data['ibge']).first()
         
         return jsonify({
             'logradouro': data['logradouro'],
@@ -94,7 +93,7 @@ def escolas_create():
         tem_eja = 'tem_eja' in request.form
         tem_tecnico = 'tem_tecnico' in request.form
         
-        escola = Escola(
+        escola = Escolas(
             nome=nome,
             codigo_inep=codigo_inep,
             cep=cep,
@@ -118,7 +117,7 @@ def escolas_create():
     
     # Filtrar cidades baseado no tipo de usuário
     if current_user.is_admin:
-        cidades = Cidade.query.all()
+        cidades = Cidades.query.all()
     elif current_user.tipo_usuario_id == TIPO_USUARIO_SECRETARIA_EDUCACAO:
         cidades = [current_user.cidade]
     else:
@@ -130,7 +129,7 @@ def escolas_create():
 @login_required
 def escolas_edit(id):
     """Editar escola existente"""
-    escola = Escola.query.get_or_404(id)
+    escola = Escolas.query.get_or_404(id)
     
     # Verificar permissão
     if current_user.tipo_usuario_id == TIPO_USUARIO_SECRETARIA_EDUCACAO and escola.cidade_id != current_user.cidade_id:
@@ -160,7 +159,7 @@ def escolas_edit(id):
     
     # Filtrar cidades baseado no tipo de usuário
     if current_user.is_admin:
-        cidades = Cidade.query.all()
+        cidades = Cidades.query.all()
     elif current_user.tipo_usuario_id == TIPO_USUARIO_SECRETARIA_EDUCACAO:
         cidades = [current_user.cidade]
     else:
@@ -172,7 +171,7 @@ def escolas_edit(id):
 @login_required
 def escolas_delete(id):
     """Excluir escola"""
-    escola = Escola.query.get_or_404(id)
+    escola = Escolas.query.get_or_404(id)
     
     # Verificar permissão
     if current_user.tipo_usuario_id == TIPO_USUARIO_SECRETARIA_EDUCACAO and escola.cidade_id != current_user.cidade_id:
@@ -212,7 +211,7 @@ def cadastro_massa_escolas():
                 
                 # Processar cada linha
                 for _, row in df.iterrows():
-                    escola = Escola(
+                    escola = Escolas(
                         nome=row['nome'],
                         codigo_inep=row['codigo_inep'],
                         cep=row['cep'],
@@ -242,7 +241,7 @@ def cadastro_massa_escolas():
 @admin_required
 def disciplinas_list():
     """Lista todas as disciplinas"""
-    disciplinas = Disciplina.query.all()
+    disciplinas = Disciplinas.query.all()
     return render_template('admin_v2/disciplinas/list.html', disciplinas=disciplinas)
 
 @admin_v2.route('/disciplinas/create', methods=['GET', 'POST'])
@@ -259,7 +258,7 @@ def disciplina_create():
             return redirect(url_for('admin_v2.disciplina_create'))
         
         try:
-            disciplina = Disciplina(
+            disciplina = Disciplinas(
                 nome=nome,
                 descricao=descricao
             )
@@ -279,8 +278,8 @@ def disciplina_create():
 @admin_required
 def turmas_list():
     """Lista todas as turmas"""
-    turmas = Turma.query.all()
-    escolas = Escola.query.all()
+    turmas = Turmas.query.all()
+    escolas = Escolas.query.all()
     return render_template('admin_v2/turmas/list.html', turmas=turmas, escolas=escolas)
 
 @admin_v2.route('/turmas/create', methods=['GET', 'POST'])
@@ -299,7 +298,7 @@ def turma_create():
             return redirect(url_for('admin_v2.turma_create'))
         
         try:
-            turma = Turma(
+            turma = Turmas(
                 nome=nome,
                 escola_id=escola_id,
                 Ano_escolar=Ano_escolar,
@@ -313,7 +312,7 @@ def turma_create():
             db.session.rollback()
             flash('Erro ao criar turma.', 'error')
     
-    escolas = Escola.query.all()
+    escolas = Escolas.query.all()
     return render_template('admin_v2/turmas/create.html', escolas=escolas)
 
 # Rotas para cadastros em massa
@@ -345,7 +344,7 @@ def cadastro_massa_turmas():
                 
                 # Processar dados
                 for _, row in df.iterrows():
-                    turma = Turma(
+                    turma = Turmas(
                         nome=row['nome'],
                         escola_id=int(row['escola_id']),
                         Ano_escolar=row['Ano_escolar'],
@@ -484,7 +483,7 @@ def vincular_usuario():
             return redirect(url_for('admin_v2.vincular_usuario'))
         
         if tipo_vinculo == 'escola':
-            escola = Escola.query.get(vinculo_id)
+            escola = Escolas.query.get(vinculo_id)
             if not escola:
                 flash('Escola não encontrada.', 'error')
                 return redirect(url_for('admin_v2.vincular_usuario'))
@@ -493,7 +492,7 @@ def vincular_usuario():
             flash('Professor vinculado à escola com sucesso!', 'success')
             
         elif tipo_vinculo == 'cidade':
-            cidade = Cidade.query.get(vinculo_id)
+            cidade = Cidades.query.get(vinculo_id)
             if not cidade:
                 flash('Cidade não encontrada.', 'error')
                 return redirect(url_for('admin_v2.vincular_usuario'))
@@ -507,8 +506,8 @@ def vincular_usuario():
     # Carregar usuários, escolas e cidades para o formulário
     professores = User.query.filter_by(tipo_usuario_id=TIPO_USUARIO_PROFESSOR).all()
     secretarios = User.query.filter_by(tipo_usuario_id=TIPO_USUARIO_SECRETARIA_EDUCACAO).all()
-    escolas = Escola.query.all()
-    cidades = Cidade.query.all()
+    escolas = Escolas.query.all()
+    cidades = Cidades.query.all()
     
     return render_template('admin_v2/usuarios/vincular.html',
                          professores=professores,

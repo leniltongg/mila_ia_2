@@ -107,7 +107,13 @@
         {% for imagem in imagens %}
         <div class="col-md-3 mb-4">
             <div class="card h-100">
-                <img src="{{ url_for('static', filename=imagem.url) }}" class="card-img-top" alt="{{ imagem.descricao }}" style="height: 200px; object-fit: contain;">
+                <div class="card-img-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                    <img src="{{ url_for('static', filename=imagem.url) }}" 
+                         class="card-img-top" 
+                         alt="{{ imagem.descricao or imagem.nome }}" 
+                         style="max-height: 100%; max-width: 100%; object-fit: contain;"
+                         onerror="this.onerror=null; this.src='/static/img/image-not-found.png'">
+                </div>
                 <div class="card-body">
                     <h6 class="card-title">{{ imagem.nome }}</h6>
                     <p class="card-text small">{{ imagem.descricao }}</p>
@@ -178,6 +184,8 @@ function deletarImagem(id) {
 }
 
 function copiarUrl(url) {
+    // Remover o prefixo /static/ do início se existir
+    url = url.replace(/^\/static\//, '');
     navigator.clipboard.writeText(url).then(() => {
         alert('URL copiada para a área de transferência!');
     });
@@ -202,15 +210,21 @@ function atualizarGrid(imagens) {
     grid.innerHTML = imagens.map(imagem => `
         <div class="col-md-3 mb-4">
             <div class="card h-100">
-                <img src="/static/${imagem.url}" class="card-img-top" alt="${imagem.descricao}" style="height: 200px; object-fit: contain;">
+                <div class="card-img-container" style="height: 200px; display: flex; align-items: center; justify-content: center; background-color: #f8f9fa;">
+                    <img src="/static/${imagem.url}" 
+                         class="card-img-top" 
+                         alt="${imagem.descricao || imagem.nome}" 
+                         style="max-height: 100%; max-width: 100%; object-fit: contain;"
+                         onerror="this.onerror=null; this.src='/static/img/image-not-found.png'">
+                </div>
                 <div class="card-body">
                     <h6 class="card-title">${imagem.nome}</h6>
-                    <p class="card-text small">${imagem.descricao}</p>
+                    <p class="card-text small">${imagem.descricao || ''}</p>
                     <p class="card-text"><small class="text-muted">${imagem.disciplina_nome} - ${imagem.assunto}</small></p>
                 </div>
                 <div class="card-footer">
                     <button class="btn btn-sm btn-danger" onclick="deletarImagem('${imagem.id}')">Excluir</button>
-                    <button class="btn btn-sm btn-info" onclick="copiarUrl('/static/${imagem.url}')">Copiar URL</button>
+                    <button class="btn btn-sm btn-info" onclick="copiarUrl('${imagem.url}')">Copiar URL</button>
                 </div>
             </div>
         </div>

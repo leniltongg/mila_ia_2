@@ -2,7 +2,8 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 import json
-from models import db, Disciplinas, Ano_escolar as AnoEscolarModel, MESES, BancoQuestoes, SimuladosGeradosProfessor, SimuladoQuestoesProfessor, ProfessorTurmaEscola, DesempenhoSimulado, SimuladosEnviados, AlunoSimulado, Usuarios, Turmas
+from models import db, Disciplinas, Ano_escolar as AnoEscolarModel, MESES, BancoQuestoes, SimuladosGeradosProfessor, SimuladoQuestoesProfessor, ProfessorTurmaEscola, DesempenhoSimulado, SimuladosEnviados, AlunoSimulado, Usuarios, Turmas, SimuladosGerados, SimuladoQuestoes
+import re
 
 simulados_bp = Blueprint('simulados', __name__)
 
@@ -27,12 +28,12 @@ def banco_questoes():
             questao_correta = request.form.get('questao_correta')
             disciplina_id = request.form.get('disciplina_id')
             assunto = request.form.get('assunto')
-            ano_escolar_id = request.form.get('ano_escolar_id')
+            Ano_escolar_id = request.form.get('Ano_escolar_id')
             mes_id = request.form.get('mes_id')
             
             # Validar dados
             if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
-                       questao_correta, disciplina_id, ano_escolar_id]):
+                       questao_correta, disciplina_id, Ano_escolar_id]):
                 return jsonify({
                     'success': False,
                     'message': 'Por favor, preencha todos os campos obrigatórios'
@@ -49,7 +50,7 @@ def banco_questoes():
                 questao_correta=questao_correta,
                 disciplina_id=disciplina_id,
                 assunto=assunto,
-                ano_escolar_id=ano_escolar_id,
+                Ano_escolar_id=Ano_escolar_id,
                 mes_id=mes_id,
                 usuario_id=current_user.id
             )
@@ -82,7 +83,7 @@ def banco_questoes():
         ).join(
             Disciplinas, Disciplinas.id == BancoQuestoes.disciplina_id
         ).join(
-            AnoEscolarModel, AnoEscolarModel.id == BancoQuestoes.ano_escolar_id
+            AnoEscolarModel, AnoEscolarModel.id == BancoQuestoes.Ano_escolar_id
         ).filter(
             BancoQuestoes.usuario_id == current_user.id
         ).order_by(
@@ -115,7 +116,7 @@ def criar_simulado():
         # Se for professor normal, buscar apenas os anos escolares associados
         Ano_escolar = AnoEscolarModel.query.join(
             ProfessorTurmaEscola, 
-            AnoEscolarModel.id == ProfessorTurmaEscola.ano_escolar_id
+            AnoEscolarModel.id == ProfessorTurmaEscola.Ano_escolar_id
         ).filter_by(professor_id=current_user.id).distinct().all()
     
     # Buscar disciplinas
@@ -157,7 +158,7 @@ def criar_simulado():
                 'id': simulado.id,
                 'professor_id': simulado.professor_id,
                 'disciplina_id': simulado.disciplina_id,
-                'ano_escolar_id': simulado.ano_escolar_id,
+                'Ano_escolar_id': simulado.Ano_escolar_id,
                 'mes_id': simulado.mes_id,
                 'status': simulado.status,
                 'disciplina_nome': simulado.disciplina.nome,
@@ -181,7 +182,7 @@ def criar_simulado():
                 'resposta': q.questao.questao_correta,
                 'assunto': q.questao.assunto,
                 'disciplina_id': q.questao.disciplina_id,
-                'ano_escolar_id': q.questao.ano_escolar_id,
+                'Ano_escolar_id': q.questao.Ano_escolar_id,
                 'mes_id': q.questao.mes_id
             } for q in questoes]
 
@@ -203,12 +204,12 @@ def salvar_simulado(simulado_id=None):
         data = request.get_json()
         print("Dados recebidos:", data)  # Debug
         
-        ano_escolar_id = data.get('ano_escolar_id')
+        Ano_escolar_id = data.get('Ano_escolar_id')
         disciplina_id = data.get('disciplina_id')
         mes_id = data.get('mes_id')
         questoes = data.get('questoes', [])
         
-        if not all([ano_escolar_id, disciplina_id, mes_id]) or not questoes:
+        if not all([Ano_escolar_id, disciplina_id, mes_id]) or not questoes:
             return jsonify({'success': False, 'error': 'Dados incompletos'})
         
         if simulado_id:
@@ -224,7 +225,7 @@ def salvar_simulado(simulado_id=None):
             print(f"Atualizando simulado {simulado_id}")  # Debug
             
             # Atualizar simulado
-            simulado.ano_escolar_id = ano_escolar_id
+            simulado.Ano_escolar_id = Ano_escolar_id
             simulado.disciplina_id = disciplina_id
             simulado.mes_id = mes_id
             
@@ -239,7 +240,7 @@ def salvar_simulado(simulado_id=None):
             print(f"Inseridas {len(questoes)} questões")  # Debug
         else:
             # Criar novo simulado
-            simulado = SimuladosGeradosProfessor(professor_id=current_user.id, ano_escolar_id=ano_escolar_id, disciplina_id=disciplina_id, mes_id=mes_id, status='gerado')
+            simulado = SimuladosGeradosProfessor(professor_id=current_user.id, Ano_escolar_id=Ano_escolar_id, disciplina_id=disciplina_id, mes_id=mes_id, status='gerado')
             db.session.add(simulado)
             db.session.flush()  # Isso força o banco a gerar o ID
             
@@ -373,7 +374,7 @@ def listar_simulados_professor():
     ).join(
         Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
     ).join(
-        AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id
+        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
     ).outerjoin(
         MESES, SimuladosGeradosProfessor.mes_id == MESES.id
     ).outerjoin(
@@ -422,7 +423,7 @@ def visualizar_simulado_professor(simulado_id):
     ).join(
         Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
     ).join(
-        AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id
+        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
     ).outerjoin(
         MESES, SimuladosGeradosProfessor.mes_id == MESES.id
     ).filter(
@@ -552,17 +553,46 @@ def listar_simulados():
         return redirect(url_for("index"))
         
     # Buscar simulados do aluno, ordenando por status (não respondido primeiro) e data
-    simulados = []
+    simulados = db.session.query(
+        SimuladosGerados.id,
+        SimuladosGerados.data_criacao,
+        Disciplinas.nome.label('disciplina_nome'),
+        MESES.nome.label('mes_nome')
+    ).join(
+        Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id
+    ).join(
+        MESES, SimuladosGerados.mes_id == MESES.id
+    ).order_by(
+        SimuladosGerados.data_criacao.desc()
+    ).all()
+
+    # Formatar simulados
+    simulados_formatados = []
+    for simulado in simulados:
+        simulados_formatados.append({
+            'id': simulado.id,
+            'disciplina_nome': simulado.disciplina_nome,
+            'mes_nome': simulado.mes_nome,
+            'data_envio': simulado.data_criacao.strftime('%d/%m/%Y %H:%M') if simulado.data_criacao else 'Data não definida'
+        })
+
+    # Buscar simulados respondidos na tabela AlunoSimulado
+    desempenho_simulado = {}
+    simulados_respondidos = AlunoSimulado.query.filter_by(aluno_id=current_user.id).all()
     
-    # Lista de meses para exibição
-    meses = [
-        (1, "Janeiro"), (2, "Fevereiro"), (3, "Março"),
-        (4, "Abril"), (5, "Maio"), (6, "Junho"),
-        (7, "Julho"), (8, "Agosto"), (9, "Setembro"),
-        (10, "Outubro"), (11, "Novembro"), (12, "Dezembro")
-    ]
+    print("Debug - Current User ID:", current_user.id)
+    print("Debug - Simulados Respondidos Raw:", [(sr.simulado_id, sr.aluno_id) for sr in simulados_respondidos])
+    print("Debug - Simulados IDs:", [s['id'] for s in simulados_formatados])
     
-    return render_template('alunos/simulados.html', simulados=simulados, meses=meses)
+    for sr in simulados_respondidos:
+        desempenho_simulado[sr.simulado_id] = True
+        print(f"Debug - Adicionando simulado {sr.simulado_id} ao dicionário")
+    
+    print("Debug - Desempenho Final:", desempenho_simulado)
+    
+    return render_template('alunos/simulados.html', 
+                         simulados=simulados_formatados, 
+                         desempenho_simulado=desempenho_simulado)
 
 @simulados_bp.route('/alunos/iniciar-simulado/<int:simulado_id>', methods=['POST'])
 @login_required
@@ -579,7 +609,7 @@ def iniciar_simulado(simulado_id):
             simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id).first()
         else:
             simulado = SimuladosGerados.query.filter_by(id=simulado_id).first()
-        
+
         if not simulado:
             return 'Simulado não encontrado ou não atribuído ao aluno', 404
             
@@ -606,6 +636,7 @@ def fazer_simulado(simulado_id):
         
         # Buscar informações do simulado e status
         simulado = None
+        origem = request.args.get('origem')
         if origem == 'professor':
             simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id).first()
         else:
@@ -736,20 +767,12 @@ def responder_simulado(simulado_id):
 
     origem = request.args.get('origem', 'secretaria')
     
-    # Verificar se o aluno já iniciou o simulado
-    aluno_simulado = None
+    # Verificar se o aluno já respondeu este simulado
+    desempenho = DesempenhoSimulado.query.filter_by(
+        simulado_id=simulado_id,
+        aluno_id=current_user.id
+    ).first()
 
-    if not aluno_simulado:
-        try:
-            # Tenta iniciar o simulado automaticamente
-            pass  # Mantenha o código existente aqui
-        except Exception as e:
-            flash("Erro ao iniciar o simulado. Por favor, tente novamente.", "danger")
-            if origem == 'professor':
-                return redirect(url_for('simulados.listar_simulados_professores'))
-            else:
-                return redirect(url_for('simulados.listar_simulados'))
-    
     # Buscar informações do simulado
     if origem == 'professor':
         simulado = SimuladosGeradosProfessor.query.filter_by(id=simulado_id).first()
@@ -760,53 +783,108 @@ def responder_simulado(simulado_id):
         flash("Simulado não encontrado.", "danger")
         return redirect(url_for("simulados.listar_simulados"))
 
-    # Verificar se o aluno já respondeu este simulado
-    desempenho = None
-
     # Buscar questões do simulado com nome da disciplina
     if origem == 'professor':
-        questoes = []
+        questoes = db.session.query(
+            BancoQuestoes,
+            Disciplinas.nome.label('disciplina_nome')
+        ).join(
+            SimuladoQuestoesProfessor, BancoQuestoes.id == SimuladoQuestoesProfessor.questao_id
+        ).join(
+            Disciplinas, BancoQuestoes.disciplina_id == Disciplinas.id
+        ).filter(
+            SimuladoQuestoesProfessor.simulado_id == simulado_id
+        ).all()
     else:
-        questoes = []
+        questoes = db.session.query(
+            BancoQuestoes,
+            Disciplinas.nome.label('disciplina_nome')
+        ).join(
+            SimuladoQuestoes, BancoQuestoes.id == SimuladoQuestoes.questao_id
+        ).join(
+            Disciplinas, BancoQuestoes.disciplina_id == Disciplinas.id
+        ).filter(
+            SimuladoQuestoes.simulado_id == simulado_id
+        ).all()
     
     if not questoes:
         flash("Nenhuma questão encontrada para este simulado.", "danger")
         return redirect(url_for("simulados.listar_simulados"))
 
-    questoes_por_disciplina = {}
-    for q in questoes:
-        disciplina_nome = q['disciplina_nome']
-        if disciplina_nome not in questoes_por_disciplina:
-            questoes_por_disciplina[disciplina_nome] = []
-        questoes_por_disciplina[disciplina_nome].append(q)
+    # Formatar questões
+    questoes_formatadas = []
+    def tratar_imagens(texto):
+        if texto and '<img' in texto:
+            # Se já tem sintaxe Jinja2, extrai o filename e usa o caminho direto
+            if '{{ url_for' in texto:
+                import re
+                # Extrai o texto antes da tag img
+                pre_img = texto.split('<img')[0]
+                # Busca o filename
+                match = re.search(r"filename='([^']*)'?\s*", texto)
+                if match:
+                    filename = match.group(1).strip()
+                    # Reconstrói a questão com a nova tag img
+                    texto = f'{pre_img}<img src="/static/{filename}'
+            else:
+                # Se não tem sintaxe Jinja2, garante que o caminho começa com /static/
+                texto = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', texto)
+                texto = re.sub(r"src='(?!/static/)([^']+)'", r"src='/static/\1'", texto)
+            
+            # Remove espaços extras nas URLs
+            texto = re.sub(r'src="([^"]*)\s+([^"]*)"', r'src="\1\2"', texto)
+            texto = re.sub(r"src='([^']*)\s+([^']*)'", r"src='\1\2'", texto)
+        return texto
+    
+    for q, disciplina_nome in questoes:
+        # Tratar imagens em todos os campos
+        questao_texto = tratar_imagens(q.questao)
+        alternativa_a = tratar_imagens(q.alternativa_a)
+        alternativa_b = tratar_imagens(q.alternativa_b)
+        alternativa_c = tratar_imagens(q.alternativa_c)
+        alternativa_d = tratar_imagens(q.alternativa_d)
+        alternativa_e = tratar_imagens(q.alternativa_e)
 
-    if desempenho:  # Se já respondeu, mostrar resultados
-        respostas_aluno = json.loads(desempenho['respostas_aluno'])
-        respostas_corretas = json.loads(desempenho['respostas_corretas'])
+        questoes_formatadas.append({
+            'id': q.id,
+            'questao': questao_texto,
+            'alternativa_a': alternativa_a,
+            'alternativa_b': alternativa_b,
+            'alternativa_c': alternativa_c,
+            'alternativa_d': alternativa_d,
+            'alternativa_e': alternativa_e,
+            'questao_correta': q.questao_correta,
+            'disciplina_nome': disciplina_nome
+        })
+    
+    # Se já respondeu, mostrar resultados
+    if desempenho:
+        respostas_aluno = json.loads(desempenho.respostas_aluno)
+        respostas_corretas = json.loads(desempenho.respostas_corretas)
         
         # Preparar dados para visualização
         resultados = []
-        total_questoes = len(questoes)
+        total_questoes = len(questoes_formatadas)
         acertos = 0
         
-        for q in questoes:
+        for q in questoes_formatadas:
             questao_id = str(q['id'])
             resposta_aluno = respostas_aluno.get(questao_id, '')
-            resposta_correta = respostas_corretas[questao_id]
+            resposta_correta = q['questao_correta'].upper()
             
             resultado = {
                 'questao': q['questao'],
                 'disciplina': q['disciplina_nome'],
                 'alternativas': [
-                    q['alternativa_a'], 
-                    q['alternativa_b'], 
-                    q['alternativa_c'], 
-                    q['alternativa_d'], 
+                    q['alternativa_a'],
+                    q['alternativa_b'],
+                    q['alternativa_c'],
+                    q['alternativa_d'],
                     q['alternativa_e']
                 ],
                 'resposta_aluno': resposta_aluno,
                 'resposta_correta': resposta_correta,
-                'acertou': resposta_aluno == resposta_correta,
+                'acertou': resposta_aluno.upper() == resposta_correta,
                 'numero_questao': len(resultados) + 1
             }
             if resultado['acertou']:
@@ -818,9 +896,10 @@ def responder_simulado(simulado_id):
                              resultados=resultados,
                              total_questoes=total_questoes,
                              acertos=acertos,
-                             percentual_acertos=desempenho['desempenho'],
+                             percentual_acertos=desempenho.desempenho,
                              simulado=simulado)
     
+    # Se não respondeu ainda, mostrar simulado para responder
     if request.method == "POST":
         # Converte as respostas do aluno de números para letras (1->A, 2->B, etc)
         respostas = {}
@@ -835,7 +914,7 @@ def responder_simulado(simulado_id):
         # Pega as respostas corretas do banco (já estão em letra)
         respostas_corretas = {
             str(q['id']): q['questao_correta']
-            for q in questoes
+            for q in questoes_formatadas
         }
         
         # Calcula apenas para as questões que existem em respostas_corretas
@@ -843,28 +922,45 @@ def responder_simulado(simulado_id):
         if total_questoes > 0:
             respostas_certas = sum(
                 1 for key, value in respostas.items() 
-                if key in respostas_corretas and respostas_corretas[key] == value
+                if key in respostas_corretas and respostas_corretas[key].upper() == value.upper()
             )
-            desempenho = (respostas_certas / total_questoes) * 100
+            percentual = (respostas_certas / total_questoes) * 100
         else:
             respostas_certas = 0
-            desempenho = 0
+            percentual = 0
 
         # Inserir dados na tabela desempenho_simulado
-        # ...
-        
-        # Atualizar status do simulado
-        # ...
-        
+        novo_desempenho = DesempenhoSimulado(
+            simulado_id=simulado_id,
+            aluno_id=current_user.id,
+            escola_id=current_user.escola_id,
+            ano_escolar_id=current_user.ano_escolar_id,
+            codigo_ibge=current_user.codigo_ibge,
+            turma_id=current_user.turma_id,
+            tipo_usuario_id=current_user.tipo_usuario_id,
+            desempenho=percentual,
+            respostas_aluno=json.dumps(respostas),
+            respostas_corretas=json.dumps(respostas_corretas)
+        )
+        db.session.add(novo_desempenho)
         db.session.commit()
 
         flash(f"Simulado respondido com sucesso! Você acertou {respostas_certas} de {total_questoes} questões.", "success")
         return redirect(url_for('simulados.responder_simulado', simulado_id=simulado_id, origem=origem))
+
+    # Se não respondeu ainda e não é POST, mostrar simulado para responder
+    questoes_por_disciplina = {}
+    for q in questoes_formatadas:
+        disciplina_nome = q['disciplina_nome']
+        if disciplina_nome not in questoes_por_disciplina:
+            questoes_por_disciplina[disciplina_nome] = []
+        questoes_por_disciplina[disciplina_nome].append(q)
     
     return render_template('alunos/responder_simulado.html',
                          modo_visualizacao=False,
-                         questoes_por_disciplina=questoes_por_disciplina,
-                         simulado=simulado)
+                         questoes=questoes_por_disciplina,
+                         simulado=simulado,
+                         origem=origem)
 
 @simulados_bp.route('/alunos/simulados-professores')
 @login_required
@@ -942,20 +1038,20 @@ def buscar_questoes():
         
     try:
         print("Iniciando busca de questões...")
-        ano_escolar_id = request.args.get('ano_escolar_id')
+        Ano_escolar_id = request.args.get('Ano_escolar_id')
         disciplina_id = request.args.get('disciplina_id')
         assunto = request.args.get('assunto', '').strip()
         pagina = int(request.args.get('pagina', 1))
         por_pagina = 10
         
-        print(f"Parâmetros recebidos: ano_escolar_id={ano_escolar_id}, disciplina_id={disciplina_id}, assunto={assunto}, pagina={pagina}")
+        print(f"Parâmetros recebidos: Ano_escolar_id={Ano_escolar_id}, disciplina_id={disciplina_id}, assunto={assunto}, pagina={pagina}")
         
         # Construir query base
         query = BancoQuestoes.query
         
         # Aplicar filtros
-        if ano_escolar_id:
-            query = query.filter_by(ano_escolar_id=ano_escolar_id)
+        if Ano_escolar_id:
+            query = query.filter_by(Ano_escolar_id=Ano_escolar_id)
         if disciplina_id:
             query = query.filter_by(disciplina_id=disciplina_id)
         if assunto:
@@ -1134,7 +1230,7 @@ def relatorio_simulado(simulado_id):
     ).join(
         Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id
     ).join(
-        AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id
+        AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id
     ).outerjoin(
         MESES, SimuladosGeradosProfessor.mes_id == MESES.id
     ).filter(
@@ -1145,7 +1241,7 @@ def relatorio_simulado(simulado_id):
     if not simulado:
         flash("Simulado não encontrado.", "danger")
         return redirect(url_for("simulados.listar_simulados_professor"))
-    
+        
     # Formatar dados do simulado
     simulado_info = {
         'id': simulado[0].id,
@@ -1233,7 +1329,7 @@ def pagina_enviar_simulado(simulado_id):
         # Verificar se o simulado pertence ao professor
         simulado = SimuladosGeradosProfessor.query\
             .join(Disciplinas, SimuladosGeradosProfessor.disciplina_id == Disciplinas.id)\
-            .join(AnoEscolarModel, SimuladosGeradosProfessor.ano_escolar_id == AnoEscolarModel.id)\
+            .join(AnoEscolarModel, SimuladosGeradosProfessor.Ano_escolar_id == AnoEscolarModel.id)\
             .join(MESES, SimuladosGeradosProfessor.mes_id == MESES.id)\
             .add_columns(
                 Disciplinas.nome.label('disciplina_nome'),
@@ -1249,10 +1345,10 @@ def pagina_enviar_simulado(simulado_id):
         # Buscar turmas do professor
         turmas = ProfessorTurmaEscola.query\
             .join(Turmas, ProfessorTurmaEscola.turma_id == Turmas.id)\
-            .join(AnoEscolarModel, ProfessorTurmaEscola.ano_escolar_id == AnoEscolarModel.id)\
+            .join(AnoEscolarModel, ProfessorTurmaEscola.Ano_escolar_id == AnoEscolarModel.id)\
             .filter(
                 ProfessorTurmaEscola.professor_id == current_user.id,
-                ProfessorTurmaEscola.ano_escolar_id == simulado[0].ano_escolar_id
+                ProfessorTurmaEscola.Ano_escolar_id == simulado[0].Ano_escolar_id
             )\
             .all()
         

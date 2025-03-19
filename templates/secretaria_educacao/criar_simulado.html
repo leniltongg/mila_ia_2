@@ -43,6 +43,11 @@
                             </select>
                         </div>
 
+                        <div class="mb-3">
+                            <label for="pontuacao_total" class="form-label">Pontuação Total do Simulado</label>
+                            <input type="number" class="form-control" id="pontuacao_total" name="pontuacao_total" step="0.1" min="0" required>
+                        </div>
+
                         <button type="button" class="btn btn-primary w-100 mb-2" onclick="salvarSimulado()">
                             <i class="bi bi-save me-2"></i>Salvar Simulado
                         </button>
@@ -386,15 +391,19 @@ async function buscarQuestoes() {
 
 // Funções auxiliares
 function adicionarQuestao(questao) {
+    console.log('1. Iniciando adicionarQuestao com:', questao);
+    
     if (questoesSelecionadas.has(questao.id.toString())) {
+        console.log('2. Questão já adicionada');
         mostrarFeedback('Questão já adicionada', 'warning');
         return;
     }
     
-    const pontuacao = document.getElementById('pontuacao-questao').value;
+    const pontuacao = document.getElementById('pontuacao-questao').value || '1.0';
+    console.log('3. Pontuação definida:', pontuacao);
     questao.pontuacao = parseFloat(pontuacao);
     
-    questoesSelecionadas.add(questao.id.toString()); // Convertendo para string para garantir consistência
+    questoesSelecionadas.add(questao.id.toString());
     
     // Esconde o empty state
     const emptyState = document.getElementById('empty-state');
@@ -403,7 +412,9 @@ function adicionarQuestao(questao) {
     }
     
     const questaoElement = document.createElement('div');
-    questaoElement.className = 'questao-selecionada border-bottom p-3';
+    questaoElement.className = 'questao-item';
+    questaoElement.setAttribute('data-id', questao.id);
+    questaoElement.setAttribute('data-pontuacao', pontuacao);
     questaoElement.setAttribute('data-questao-id', questao.id);
     
     // Extrair apenas o texto antes da tag <img> se houver
@@ -415,31 +426,21 @@ function adicionarQuestao(questao) {
         }
     }
     
-    questaoElement.innerHTML = `
-        <div class="d-flex justify-content-between align-items-start">
-            <div class="flex-grow-1">
-                <strong class="d-block mb-1">Questão ${questao.id}</strong>
-                <p class="mb-1">${textoExibicao}</p>
-            </div>
-            <div class="ms-3 d-flex gap-2 align-items-center">
-                <div class="input-group input-group-sm" style="width: 100px;">
-                    <span class="input-group-text">Pts</span>
-                    <input type="number" class="form-control form-control-sm" 
-                           value="${questao.pontuacao || 1.0}" 
-                           min="0.1" 
-                           step="0.1"
-                           onchange="atualizarPontuacao(${questao.id}, this.value)">
-                </div>
-                <button class="btn btn-sm btn-outline-danger" onclick="removerQuestao(${questao.id})">
+        questaoElement.innerHTML = `
+            <div class="questao-header">
+                <span class="questao-numero">Questão ${questao.id}</span>
+                <span class="pontuacao-badge">Pontuação: <span class="pontuacao-valor">${pontuacao}</span></span>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removerQuestao('${questao.id}')">
                     <i class="bi bi-trash"></i>
                 </button>
             </div>
-        </div>
-    `;
+            <div class="questao-texto">${questao.questao}</div>
+        `;
     
-    document.getElementById('questoes-selecionadas').appendChild(questaoElement);
-    atualizarResumo(); // Atualiza o resumo quando adiciona questão
-    mostrarFeedback('Questão adicionada com sucesso!', 'success');
+        document.getElementById('questoes-selecionadas').appendChild(questaoElement);
+        atualizarPontuacaoTotal();
+        atualizarResumo();
+        mostrarFeedback('Questão adicionada com sucesso!', 'success');
 }
 
 function removerQuestao(questaoId) {
@@ -453,12 +454,13 @@ function removerQuestao(questaoId) {
     
     // Atualiza o estado do empty-state
     const emptyState = document.getElementById('empty-state');
-    if (questoesElement.children.length === 0) {
-        emptyState.style.display = 'block';
-    }
-    
-    atualizarResumo(); // Atualiza o resumo quando remove questão
-    mostrarFeedback('Questão removida com sucesso!', 'success');
+        if (questoesElement.children.length === 0) {
+            emptyState.style.display = 'block';
+        }
+        
+        atualizarPontuacaoTotal();
+        atualizarResumo();
+        mostrarFeedback('Questão removida com sucesso!', 'success');
 }
 
 async function salvarSimulado() {
@@ -739,6 +741,112 @@ function atualizarPontuacao(questaoId, novaPontuacao) {
     // Atualizar o resumo
     atualizarResumo();
 }
+
+// Função para atualizar pontuação total
+function atualizarPontuacaoTotal() {
+    let pontuacaoTotal = 0;
+    const questoesSelecionadas = document.querySelectorAll('#questoes-selecionadas .questao-item');
+    questoesSelecionadas.forEach(questao => {
+        const pontuacao = parseFloat(questao.getAttribute('data-pontuacao') || 0);
+        pontuacaoTotal += pontuacao;
+    });
+    document.getElementById('pontuacao-atual').textContent = pontuacaoTotal.toFixed(1);
+    return pontuacaoTotal;
+}
+
+// Função para atualizar pontuação total
+function atualizarPontuacaoTotal() {
+    console.log('1. Iniciando atualizarPontuacaoTotal');
+    let pontuacaoTotal = 0;
+    const questoesSelecionadas = document.querySelectorAll('#questoes-selecionadas .questao-item');
+    console.log('2. Questões encontradas:', questoesSelecionadas.length);
+    
+    questoesSelecionadas.forEach((questao, index) => {
+        const pontuacao = parseFloat(questao.getAttribute('data-pontuacao') || 0);
+        console.log(`3.${index + 1}. Questão ${questao.getAttribute('data-id')}: pontuacao = ${pontuacao}`);
+        pontuacaoTotal += pontuacao;
+    });
+    
+    console.log('4. Pontuação total calculada:', pontuacaoTotal);
+    const pontuacaoAtualElement = document.getElementById('pontuacao-atual');
+    if (pontuacaoAtualElement) {
+        pontuacaoAtualElement.textContent = pontuacaoTotal.toFixed(1);
+    }
+    return pontuacaoTotal;
+}
+
+// Modificar a função salvarSimulado para incluir a validação
+const salvarSimuladoOriginal = salvarSimulado;
+function salvarSimulado() {
+    console.log('1. Iniciando salvarSimulado');
+    const pontuacaoDesejada = parseFloat(document.getElementById('pontuacao_total').value);
+    const pontuacaoAtual = atualizarPontuacaoTotal();
+    console.log('2. Pontuações:', { desejada: pontuacaoDesejada, atual: pontuacaoAtual });
+
+    if (pontuacaoAtual !== pontuacaoDesejada) {
+        console.log('3. Erro: Pontuações não coincidem');
+        mostrarFeedback(`A soma das pontuações das questões (${pontuacaoAtual}) deve ser igual à pontuação total do simulado (${pontuacaoDesejada})`, 'danger');
+        return;
+    }
+
+    console.log('4. Coletando dados do formulário');
+    const formData = {
+        ano_escolar_id: document.getElementById('Ano_escolar').value,
+        mes_id: document.getElementById('mes').value,
+        disciplina_id: document.getElementById('disciplina').value,
+        simulado_id: document.getElementById('simulado_id').value,
+        pontuacao_total: pontuacaoDesejada,
+        questoes: []
+    };
+    console.log('5. Dados básicos:', formData);
+
+    console.log('6. Coletando questões selecionadas');
+    const questoesSelecionadas = document.querySelectorAll('#questoes-selecionadas .questao-item');
+    console.log(`7. Encontradas ${questoesSelecionadas.length} questões`);
+    
+    questoesSelecionadas.forEach((questao, index) => {
+        const id = questao.getAttribute('data-id');
+        const pontuacao = questao.getAttribute('data-pontuacao');
+        console.log(`8.${index + 1}. Questão:`, { id, pontuacao });
+        formData.questoes.push({ id, pontuacao });
+    });
+
+    console.log('9. Dados completos para envio:', formData);
+    console.log('10. Iniciando requisição para o servidor');
+    
+    // Enviar para o servidor
+    fetch('/secretaria_educacao/salvar_simulado', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => {
+        console.log('11. Resposta recebida:', response);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('12. Dados da resposta:', data);
+        if (data.success) {
+            console.log('13. Sucesso! Redirecionando...');
+            mostrarFeedback('Simulado salvo com sucesso!', 'success');
+            setTimeout(() => {
+                window.location.href = '/secretaria_educacao/meus_simulados';
+            }, 1500);
+        } else {
+            console.log('14. Erro retornado pelo servidor:', data.message);
+            mostrarFeedback(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('15. Erro na requisição:', error);
+        mostrarFeedback('Erro ao salvar simulado: ' + error.message, 'danger');
+    });
+}
 </script>
 <style>
 .questoes-container {
@@ -842,6 +950,14 @@ function atualizarPontuacao(questaoId, novaPontuacao) {
 .questoes-container.dragover {
     background-color: #f8f9fa;
     border-color: #0d6efd;
+}
+
+.pontuacao-badge {
+    background-color: #e9ecef;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    margin-right: 0.5rem;
+    font-size: 0.875rem;
 }
 
 #empty-state {

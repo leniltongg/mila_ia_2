@@ -1,6 +1,7 @@
 from flask_login import UserMixin
 from extensions import db
 from datetime import datetime
+import json
 
 
 # Constantes para tipos de usuário
@@ -129,7 +130,14 @@ class SimuladosGerados(db.Model):
     status = db.Column(db.String(20), nullable=True, default='gerado')
     data_envio = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
     disciplina_id = db.Column(db.Integer, db.ForeignKey('disciplinas.id'), nullable=True)
-    codigo_ibge = db.Column(db.String(10), nullable=True)  # Adicione esta linha
+    codigo_ibge = db.Column(db.String(10), nullable=True)
+    pontuacao_total = db.Column(db.Numeric(5,1), nullable=False, default=10.0)  # Novo campo
+
+    # Relacionamentos
+    questoes = db.relationship('BancoQuestoes', secondary='simulado_questoes',
+                             backref=db.backref('simulados_gerados', lazy='dynamic'),
+                             lazy='joined')
+    disciplina = db.relationship('Disciplinas', backref='simulados')
 
 class MESES(db.Model):
     __tablename__ = 'meses'

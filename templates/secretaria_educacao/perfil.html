@@ -1,0 +1,123 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient" style="background-color: #1cc88a;">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white p-3 me-3">
+                            <i class="fas fa-user-tie fa-2x text-success"></i>
+                        </div>
+                        <h3 class="text-white mb-0">Meu Perfil</h3>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informações Pessoais -->
+                        <div class="col-12 mb-4">
+                            <h5 class="border-bottom pb-2 text-success">
+                                <i class="fas fa-id-card me-2"></i>Informações Pessoais
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Nome Completo</label>
+                                        <p class="mb-3 fw-medium">{{ usuario.nome }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">E-mail</label>
+                                        <p class="mb-3">{{ usuario.email or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">CPF</label>
+                                        <p class="mb-3">{{ usuario.cpf or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Data de Nascimento</label>
+                                        <p class="mb-3">{{ usuario.data_nascimento or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informações Profissionais -->
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 text-success">
+                                <i class="fas fa-building me-2"></i>Informações Profissionais
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Cidade</label>
+                                        <p class="mb-3">{{ cidade.nome if cidade else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Estado</label>
+                                        <p class="mb-3">{{ cidade.estado if cidade else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Código IBGE</label>
+                                        <p class="mb-3">{{ cidade.codigo_ibge if cidade else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Código INEP</label>
+                                        <p class="mb-3">{{ cidade.codigo_inep if cidade else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-group label {
+    margin-bottom: 0.2rem;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.info-group p {
+    color: #2c3e50;
+    font-size: 1rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.card {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+
+.text-success {
+    color: #1cc88a !important;
+}
+
+.border-bottom {
+    border-color: #e3e6f0 !important;
+}
+</style>
+{% endblock %}

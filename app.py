@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, make_response, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash, make_response, send_file, send_from_directory
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 from flask_migrate import Migrate
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -27,7 +27,10 @@ import requests
 # Carrega variáveis do arquivo .env
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
+
+# Adicionar filtros personalizados ao Jinja2
+app.jinja_env.filters['chr'] = chr
 
 # Configurações básicas do Flask
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave-secreta-temporaria')
@@ -2045,6 +2048,10 @@ def clean_numeric(value):
         return str(int(float(value)))
     except:
         return str(value)
+
+@app.route('/static/questoes_imagens/<path:filename>')
+def serve_image(filename):
+    return send_from_directory('static/questoes_imagens', filename)
 
 if __name__ == "__main__":
     app.run(debug=True)

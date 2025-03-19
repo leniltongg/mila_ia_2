@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify, send_file
+from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify, send_file, current_app
 from flask_login import login_required, current_user
 import os
 from werkzeug.utils import secure_filename
@@ -8,11 +8,18 @@ import tempfile
 from io import BytesIO
 from datetime import datetime
 from extensions import db
-from models import Usuarios, Escolas, Ano_escolar, SimuladosGerados, Disciplinas, DesempenhoSimulado, MESES, BancoQuestoes, RespostasSimulado, SimuladosEnviados, Turmas, SimuladosGeradosProfessor
+from models import (
+    Usuarios, Escolas, Ano_escolar, SimuladosGerados, Disciplinas, 
+    DesempenhoSimulado, MESES, BancoQuestoes, RespostasSimulado, 
+    SimuladosEnviados, Turmas, SimuladosGeradosProfessor, Cidades
+)
 from sqlalchemy import text, func, extract, and_, case, exists, or_, literal
 from models import SimuladoQuestoes
 from utils import verificar_permissao
 from models import ImagemQuestao
+from PyPDF2 import PdfReader
+from models import db, BancoQuestoes, Assuntos
+import re
 
 # Dicionário de meses
 MESES_NOMES = {
@@ -174,15 +181,17 @@ def criar_simulado():
 @secretaria_educacao_bp.route('/salvar_simulado', methods=['POST'])
 @login_required
 def salvar_simulado():
-    print("1. Iniciando salvar_simulado")
+    print("\n1. Iniciando função salvar_simulado")
+    print(f"1.1 Tipo de usuário: {current_user.tipo_usuario_id}")
+    
     if current_user.tipo_usuario_id not in [5, 6]:
-        print("Usuário não autorizado")
+        print("1.2 Acesso não autorizado - usuário não é secretaria")
         return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
     
     try:
-        print("2. Obtendo dados do request")
+        print("2. Tentando obter dados do request")
         dados = request.get_json()
-        print(f"Dados recebidos: {dados}")
+        print(f"2.1 Dados recebidos: {dados}")
         
         # Extrair dados do JSON
         ano_escolar_id = dados.get('ano_escolar_id')
@@ -190,6 +199,7 @@ def salvar_simulado():
         disciplina_id = dados.get('disciplina_id')
         questoes = dados.get('questoes', [])
         simulado_id = dados.get('simulado_id')
+        pontuacao_total = float(dados.get('pontuacao_total', 0))
         
         print(f"3. Dados extraídos:")
         print(f"- ano_escolar_id: {ano_escolar_id}")
@@ -197,6 +207,7 @@ def salvar_simulado():
         print(f"- disciplina_id: {disciplina_id}")
         print(f"- Número de questões: {len(questoes)}")
         print(f"- simulado_id: {simulado_id}")
+        print(f"- pontuacao_total: {pontuacao_total}")
         
         # Validar dados obrigatórios
         if not all([ano_escolar_id, mes_id, disciplina_id]) or not questoes:
@@ -206,6 +217,14 @@ def salvar_simulado():
             print(f"- disciplina_id presente: {bool(disciplina_id)}")
             print(f"- questoes presentes: {bool(questoes)}")
             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
+        
+        # Validar a soma das pontuações
+        soma_pontuacoes = sum(float(q.get('pontuacao', 1.0)) for q in questoes)
+        if abs(soma_pontuacoes - pontuacao_total) > 0.01:  # Usando uma pequena margem para evitar problemas com ponto flutuante
+            return jsonify({
+                'success': False, 
+                'message': f'A soma das pontuações das questões ({soma_pontuacoes}) deve ser igual à pontuação total do simulado ({pontuacao_total})'
+            }), 400
         
         print("4. Verificando se é edição ou novo simulado")
         if simulado_id:  # Edição
@@ -220,6 +239,7 @@ def salvar_simulado():
             simulado.ano_escolar_id = ano_escolar_id
             simulado.mes_id = mes_id
             simulado.disciplina_id = disciplina_id
+            simulado.pontuacao_total = pontuacao_total
             
             # Remover questões antigas
             print("Removendo questões antigas")
@@ -232,7 +252,8 @@ def salvar_simulado():
                 disciplina_id=disciplina_id,
                 status='gerado',
                 data_envio=datetime.now(),
-                codigo_ibge=current_user.codigo_ibge  # Adicionar código IBGE
+                codigo_ibge=current_user.codigo_ibge,
+                pontuacao_total=pontuacao_total
             )
             db.session.add(simulado)
             db.session.flush()  # Para obter o ID do simulado
@@ -758,14 +779,68 @@ def portal_secretaria_educacao():
      .order_by(SimuladosGerados.data_envio.desc())\
      .all()
 
+    # Buscar disciplinas para o formulário de importação
+    disciplinas = Disciplinas.query.all()
+
     return render_template(
         "secretaria_educacao/portal_secretaria_educacao.html",
         simulados_gerados=simulados_gerados,
         total_escolas=total_escolas,
         total_alunos=numero_alunos,
         total_simulados=numero_simulados_gerados,
-        media_geral=media_geral
+        media_geral=media_geral,
+        disciplinas=disciplinas  # Adicionado disciplinas ao contexto
     )
+
+# @secretaria_educacao_bp.route('/portal_secretaria_educacao', methods=['GET'])
+# @login_required
+# def portal_secretaria_educacao():
+#     if current_user.tipo_usuario_id not in [5, 6]:  # Verifica se é uma Secretaria de Educação
+#         flash("Acesso não autorizado.", "danger")
+#         return redirect(url_for("index"))
+
+#     # Buscar simulados gerados
+#     simulados_gerados = Simulados.query.filter_by(
+#         codigo_ibge=current_user.codigo_ibge
+#     ).order_by(Simulados.data_criacao.desc()).all()
+
+#     # Buscar estatísticas
+#     total_escolas = Escolas.query.filter_by(codigo_ibge=current_user.codigo_ibge).count()
+    
+#     # Número de alunos
+#     numero_alunos = Usuarios.query.filter_by(
+#         codigo_ibge=current_user.codigo_ibge,
+#         tipo_usuario_id=4
+#     ).count()
+
+#     # Número de simulados gerados
+#     numero_simulados_gerados = Simulados.query.filter_by(
+#         codigo_ibge=current_user.codigo_ibge
+#     ).count()
+
+#     # Média geral dos alunos
+#     media_geral = 0
+#     resultados = ResultadosSimulados.query.join(
+#         Simulados, ResultadosSimulados.simulado_id == Simulados.id
+#     ).filter(
+#         Simulados.codigo_ibge == current_user.codigo_ibge
+#     ).all()
+
+#     if resultados:
+#         media_geral = sum(r.nota for r in resultados) / len(resultados)
+
+#     # Buscar assuntos para o formulário de importação
+#     assuntos = Assuntos.query.all()
+
+#     return render_template(
+#         "secretaria_educacao/portal_secretaria_educacao.html",
+#         simulados_gerados=simulados_gerados,
+#         total_escolas=total_escolas,
+#         total_alunos=numero_alunos,
+#         total_simulados=numero_simulados_gerados,
+#         media_geral=media_geral,
+#         assuntos=assuntos
+#     )
 
 @secretaria_educacao_bp.route('/importar_questoes', methods=['POST'])
 @login_required
@@ -783,28 +858,106 @@ def importar_questoes():
         flash('Nenhum arquivo selecionado', 'danger')
         return redirect(url_for('secretaria_educacao.portal_secretaria_educacao'))
 
+    filepath = None  # Inicializa filepath como None
+    
     if arquivo and arquivo.filename.endswith('.pdf'):
-        # Aqui você pode implementar a lógica para processar o arquivo PDF
-        # Por exemplo, extrair texto, identificar questões, etc.
         try:
             # Salvar o arquivo temporariamente
             filename = secure_filename(arquivo.filename)
             filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             arquivo.save(filepath)
 
-            # Processar o arquivo (implementar lógica específica)
-            # ...
-
-            flash('Arquivo processado com sucesso!', 'success')
+            # Processar o arquivo PDF
+            reader = PdfReader(filepath)
+            questoes_importadas = 0
+                
+            # Extrair texto de cada página
+            texto_completo = ""
+            for pagina in reader.pages:
+                texto_completo += pagina.extract_text()
+            
+            print("Texto completo:", texto_completo)  # Debug
+                
+            # Dividir o texto em questões
+            import re
+            questoes = re.split(r'Questão\s+\d+\s+', texto_completo)[1:]  # Ajustado o padrão para incluir espaços extras
+            print(f"Número de questões encontradas: {len(questoes)}")  # Debug
+            
+            for texto_questao in questoes:
+                if len(texto_questao.strip()) > 10:
+                    print("\n\nProcessando questão:", texto_questao)  # Debug
+                    
+                    # Extrair alternativas usando um padrão mais preciso
+                    padrao_alternativas = r'\(([A-E])\)(.*?)(?=\([A-E]\)|Resposta Correta:|$)'
+                    alternativas_match = re.findall(padrao_alternativas, texto_questao, re.DOTALL)
+                    alternativas = {}
+                    for letra, texto in alternativas_match:
+                        alternativas[letra] = texto.strip()
+                    
+                    print("Alternativas encontradas:", alternativas)  # Debug
+                    
+                    # Extrair resposta correta
+                    resposta_match = re.search(r'Resposta Correta:\s*([A-E])', texto_questao)
+                    resposta_correta = resposta_match.group(1) if resposta_match else 'A'
+                    print("Resposta correta:", resposta_correta)  # Debug
+                    
+                    # Extrair disciplina
+                    disciplina_match = re.search(r'Disciplina:\s*(\w+)', texto_questao)
+                    disciplina = disciplina_match.group(1) if disciplina_match else None
+                    print("Disciplina:", disciplina)  # Debug
+                    
+                    # Extrair assunto
+                    assunto_match = re.search(r'Assunto:\s*([^\n]+)', texto_questao)
+                    assunto = assunto_match.group(1).strip() if assunto_match else None
+                    print("Assunto:", assunto)  # Debug
+                    
+                    # Extrair série
+                    serie_match = re.search(r'Ano_escolar_id\s*:\s*(\d+)', texto_questao)
+                    serie_id = int(serie_match.group(1)) if serie_match else None
+                    print("Série ID:", serie_id)  # Debug
+                    
+                    # Extrair mês
+                    mes_match = re.search(r'Mes_id:\s*(\d+)', texto_questao)
+                    mes_id = int(mes_match.group(1)) if mes_match else None
+                    print("Mês ID:", mes_id)  # Debug
+                    
+                    # Buscar a disciplina no banco pelo nome
+                    disciplina_obj = Disciplinas.query.filter(Disciplinas.nome.ilike(f"%{disciplina}%")).first()
+                    disciplina_id = disciplina_obj.id if disciplina_obj else None
+                    print("Disciplina ID:", disciplina_id)  # Debug
+                    
+                    # Criar nova questão no banco
+                    nova_questao = BancoQuestoes(
+                        questao=texto_questao.split('(A)')[0].strip(),  # Texto até a primeira alternativa
+                        alternativa_a=alternativas.get('A', ''),
+                        alternativa_b=alternativas.get('B', ''),
+                        alternativa_c=alternativas.get('C', ''),
+                        alternativa_d=alternativas.get('D', ''),
+                        alternativa_e=alternativas.get('E', ''),
+                        questao_correta=resposta_correta,
+                        disciplina_id=disciplina_id,
+                        assunto=assunto,
+                        ano_escolar_id=serie_id,
+                        mes_id=mes_id,
+                        codigo_ibge=current_user.codigo_ibge,
+                        usuario_id=current_user.id
+                    )
+                    db.session.add(nova_questao)
+                    questoes_importadas += 1
+            
+            db.session.commit()
+            flash(f'Arquivo processado com sucesso! {questoes_importadas} questões importadas.', 'success')
+            
+        except ValueError as ve:
+            flash(str(ve), 'danger')
         except Exception as e:
+            db.session.rollback()
             flash(f'Erro ao processar arquivo: {str(e)}', 'danger')
         finally:
-            # Limpar arquivo temporário se existir
-            if os.path.exists(filepath):
+            # Remover o arquivo temporário se ele foi criado
+            if filepath and os.path.exists(filepath):
                 os.remove(filepath)
-    else:
-        flash('Formato de arquivo inválido. Por favor, envie um arquivo PDF.', 'danger')
-
+                
     return redirect(url_for('secretaria_educacao.portal_secretaria_educacao'))
 
 @secretaria_educacao_bp.route('/meus_simulados', methods=['GET'])
@@ -1035,7 +1188,8 @@ def visualizar_simulado(simulado_id):
             BancoQuestoes.questao_correta,
             BancoQuestoes.assunto
         ).join(
-            SimuladoQuestoes, SimuladoQuestoes.questao_id == BancoQuestoes.id
+            SimuladoQuestoes,
+            SimuladoQuestoes.questao_id == BancoQuestoes.id
         ).filter(
             SimuladoQuestoes.simulado_id == simulado_id
         ).order_by(
@@ -1251,6 +1405,23 @@ def atualizar_questao(questao_id):
         disciplina_id = request.form.get('disciplina_id')
         assunto = request.form.get('assunto')
         
+        # Processar URLs das imagens - remover sintaxe Jinja2 e adicionar /static/
+        def process_image_urls(text):
+            if text:
+                # Remove sintaxe Jinja2
+                text = re.sub(r"{{\s*url_for\('static',\s*filename='([^']+)'\)\s*}}", r"/static/\1", text)
+                # Garante que todas as URLs de imagem começam com /static/
+                text = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', text)
+            return text
+        
+        # Processar URLs em todos os campos
+        questao = process_image_urls(questao)
+        alternativa_a = process_image_urls(alternativa_a)
+        alternativa_b = process_image_urls(alternativa_b)
+        alternativa_c = process_image_urls(alternativa_c)
+        alternativa_d = process_image_urls(alternativa_d)
+        alternativa_e = process_image_urls(alternativa_e)
+        
         # Trata campos opcionais
         ano_escolar_id = request.form.get('ano_escolar_id')
         mes_id = request.form.get('mes_id')
@@ -1366,18 +1537,20 @@ def upload_imagem():
             
         if file:
             filename = secure_filename(file.filename)
-            filepath = os.path.join('static', 'uploads', 'imagens_questoes', filename)
+            # Usar o caminho absoluto para salvar a imagem
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'imagens_questoes')
+            os.makedirs(upload_folder, exist_ok=True)
             
-            # Cria o diretório se não existir
-            os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            
-            # Salva o arquivo
+            filepath = os.path.join(upload_folder, filename)
             file.save(filepath)
+            
+            # Salvar apenas o caminho relativo ao diretório static no banco
+            url_path = os.path.join('uploads', 'imagens_questoes', filename).replace('\\', '/')
             
             # Cria o registro no banco
             imagem = ImagemQuestao(
-                nome=request.form.get('nome', filename),
-                url=filepath,
+                nome=filename,  # Usar o nome do arquivo como nome
+                url=url_path,  # Caminho relativo à pasta static
                 disciplina_id=request.form.get('disciplina_id'),
                 assunto=request.form.get('assunto'),
                 descricao=request.form.get('descricao'),
@@ -1484,9 +1657,27 @@ def adicionar_questao():
         mes_id = request.form.get('mes_id')
         codigo_ibge = current_user.codigo_ibge
         
+        # Processar URLs das imagens - remover sintaxe Jinja2 e adicionar /static/
+        def process_image_urls(text):
+            if text:
+                # Remove sintaxe Jinja2
+                text = re.sub(r"{{\s*url_for\('static',\s*filename='([^']+)'\)\s*}}", r"/static/\1", text)
+                # Garante que todas as URLs de imagem começam com /static/
+                text = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', text)
+            return text
+        
+        # Processar URLs em todos os campos
+        questao = process_image_urls(questao)
+        alternativa_a = process_image_urls(alternativa_a)
+        alternativa_b = process_image_urls(alternativa_b)
+        alternativa_c = process_image_urls(alternativa_c)
+        alternativa_d = process_image_urls(alternativa_d)
+        alternativa_e = process_image_urls(alternativa_e)
+        
         # Validação básica
-        if not all([questao, disciplina_id, questao_correta]):
-            return jsonify({'success': False, 'message': 'Todos os campos obrigatórios devem ser preenchidos'}), 400
+        if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d, 
+                   questao_correta, disciplina_id, assunto]):
+            return jsonify({'success': False, 'message': 'Por favor, preencha todos os campos obrigatórios'}), 400
             
         # Cria nova questão
         nova_questao = BancoQuestoes(
@@ -1512,3 +1703,44 @@ def adicionar_questao():
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro ao cadastrar questão: {str(e)}'}), 500
+
+@secretaria_educacao_bp.route('/perfil')
+@login_required
+def perfil():
+    try:
+        # Buscar informações do usuário
+        usuario = db.session.query(Usuarios).filter(
+            Usuarios.id == current_user.id
+        ).first()
+
+        # Buscar informações da cidade
+        cidade = None
+        if usuario.cidade_id:
+            cidade = db.session.query(Cidades).filter(
+                Cidades.id == usuario.cidade_id
+            ).first()
+
+        # Formatação dos dados
+        if usuario.data_nascimento:
+            try:
+                # Tentar converter para o formato brasileiro
+                data = datetime.strptime(usuario.data_nascimento, '%Y-%m-%d')
+                usuario.data_nascimento = data.strftime('%d/%m/%Y')
+            except:
+                pass
+
+        # Formatar CPF se existir
+        if usuario.cpf:
+            cpf = usuario.cpf
+            if len(cpf) == 11:
+                usuario.cpf = f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+
+        return render_template('secretaria_educacao/perfil.html',
+                             usuario=usuario,
+                             cidade=cidade)
+    except Exception as e:
+        import traceback
+        print(f"Erro detalhado ao carregar perfil: {str(e)}")
+        print(traceback.format_exc())
+        flash('Erro ao carregar perfil', 'danger')
+        return redirect(url_for('secretaria_educacao.portal_secretaria_educacao'))

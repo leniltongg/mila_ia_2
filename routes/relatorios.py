@@ -63,7 +63,7 @@ def relatorios_dashboard():
     ).all()
 
     # Converter números dos meses para nomes
-    desempenho_mensal = [(MESES[int(mes)], media) for mes, media in desempenho_mensal]
+    desempenho_mensal = [(get_nome_mes(int(mes)), media) for mes, media in desempenho_mensal]
 
     # Ranking de escolas
     ranking_escolas = db.session.query(
@@ -439,9 +439,9 @@ def export_excel_relatorio():
         Escolas.id, Escolas.nome_da_escola
     ).order_by(
         db.desc('media')
-    )
-    
-    escolas = [dict(zip(['id', 'nome', 'total_alunos', 'alunos_ativos', 'media'], escola)) 
+    ).all()
+
+    escolas = [dict(zip(['id', 'nome', 'total_alunos', 'alunos_ativos', 'media'], escola))
                for escola in escolas_query.all()]
     
     df_escolas = pd.DataFrame(escolas)
@@ -478,7 +478,7 @@ def export_excel_relatorio():
         db.desc('media_acertos')
     )
     
-    disciplinas = [dict(zip(['disciplina', 'total_alunos', 'total_questoes', 'media_acertos'], disc)) 
+    disciplinas = [dict(zip(['disciplina', 'total_alunos', 'total_questoes', 'media_acertos'], disc))
                   for disc in disciplinas_query.all()]
     
     df_disciplinas = pd.DataFrame(disciplinas)
@@ -524,9 +524,9 @@ def export_excel_relatorio():
             )
         ).outerjoin(
             DesempenhoSimulado, and_(
-                DesempenhoSimulado.aluno_id == Usuarios.id,
-                *data_condition
-            )
+            DesempenhoSimulado.aluno_id == Usuarios.id,
+            *data_condition
+        )
         ).outerjoin(
             SimuladosGerados, SimuladosGerados.id == DesempenhoSimulado.simulado_id
         ).outerjoin(
@@ -547,7 +547,7 @@ def export_excel_relatorio():
             # Converter para DataFrame
             df_Ano_escolar = pd.DataFrame([
                 dict(zip(
-                    ['escola_id', 'nome_da_escola', 'total_alunos', 'alunos_responderam', 
+                    ['escola_id', 'nome_da_escola', 'total_alunos', 'alunos_responderam',
                      'media_geral', 'disciplina', 'media_disciplina'],
                     row
                 )) for row in rows
@@ -661,7 +661,7 @@ def get_relatorio_data():
         db.desc('media')
     )
     
-    escolas = [dict(zip(['id', 'nome', 'total_alunos', 'alunos_ativos', 'media'], escola)) 
+    escolas = [dict(zip(['id', 'nome', 'total_alunos', 'alunos_ativos', 'media'], escola))
                for escola in escolas_query.all()]
     
     # Calcular média geral ponderada
@@ -692,7 +692,7 @@ def get_relatorio_data():
         db.desc('media_acertos')
     )
     
-    disciplinas = [dict(zip(['id', 'disciplina', 'total_alunos', 'total_questoes', 'media_acertos'], disc)) 
+    disciplinas = [dict(zip(['id', 'disciplina', 'total_alunos', 'total_questoes', 'media_acertos'], disc))
                   for disc in disciplinas_query.all()]
     
     # Preparar dados para o gráfico
@@ -794,7 +794,7 @@ def relatorio_escola():
             Ano_escolar.id
         ).all()
         
-        anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'alunos_ativos', 'media'], ano)) 
+        anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'alunos_ativos', 'media'], ano))
                        for ano in anos_escolares_query]
         
         # Buscar dados por disciplina
@@ -1031,7 +1031,7 @@ def export_pdf_escola():
         Ano_escolar.id
     ).all()
     
-    anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'alunos_ativos', 'media'], ano)) 
+    anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'alunos_ativos', 'media'], ano))
                    for ano in anos_escolares_query]
     
     # Buscar dados por disciplina
@@ -1169,7 +1169,7 @@ def export_excel_escola():
     ).all()
     
     df_anos_escolares = pd.DataFrame([{
-        'Ano_escolar': s.Ano_escolar_nome,
+        'Ano Escolar': s.Ano_escolar_nome,
         'total_alunos': s.total_alunos,
         'alunos_ativos': s.alunos_ativos,
         'media': s.media
@@ -1177,15 +1177,15 @@ def export_excel_escola():
     
     if not df_anos_escolares.empty:
         df_anos_escolares = df_anos_escolares.rename(columns={
-            'Ano_escolar': 'Ano Escolar',
+            'Ano Escolar': 'Ano Escolar',
             'total_alunos': 'Total de Alunos',
             'alunos_ativos': 'Alunos Ativos',
             'media': 'Média (%)'
         })
         df_anos_escolares['Média (%)'] = df_anos_escolares['Média (%)'].round(1)
     df_anos_escolares.to_excel(writer, sheet_name='Desempenho por Ano Escolar', index=False)
-    
-    # Aba Desempenho por Disciplina
+
+    # Buscar dados por disciplina
     disciplinas = db.session.query(
         Disciplinas.nome.label('disciplina'),
         func.count(func.distinct(DesempenhoSimulado.aluno_id)).label('total_alunos'),
@@ -1328,7 +1328,7 @@ def relatorio_disciplina():
             Ano_escolar.id
         ).all()
         
-        anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'total_questoes', 'media'], ano)) 
+        anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'total_questoes', 'media'], ano))
                        for ano in anos_escolares_query]
         
         # Buscar dados por escola
@@ -1453,7 +1453,7 @@ def export_pdf_disciplina():
         Ano_escolar.id
     ).all()
     
-    anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'total_questoes', 'media'], ano)) 
+    anos_escolares = [dict(zip(['id', 'Ano_escolar_nome', 'total_alunos', 'total_questoes', 'media'], ano))
                    for ano in anos_escolares_query]
     
     # Buscar dados por escola

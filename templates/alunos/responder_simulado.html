@@ -50,6 +50,29 @@ Responder Simulado
         align-items: center;
         margin-bottom: 20px;
     }
+
+    .alternativa-correta {
+        background-color: #d4edda !important;
+        border-color: #c3e6cb !important;
+    }
+
+    .alternativa-incorreta {
+        background-color: #f8d7da !important;
+        border-color: #f5c6cb !important;
+    }
+
+    .resposta-info {
+        font-size: 0.9em;
+        margin-top: 10px;
+    }
+
+    .resposta-correta {
+        color: #28a745;
+    }
+
+    .resposta-incorreta {
+        color: #dc3545;
+    }
 </style>
 {% endblock %}
 
@@ -79,43 +102,45 @@ Responder Simulado
                 </div>
 
                 {% for resultado in resultados %}
-                <div class="card mb-3 {% if resultado.acertou %}border-success{% else %}border-danger{% endif %}">
-                    <div class="card-header">
+                <div class="card mb-3">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <strong>Questão {{ resultado.numero_questao }} - {{ resultado.disciplina }}</strong>
-                        <span class="float-end">
-                            {% if resultado.acertou %}
-                                <span class="badge bg-success">Correta</span>
-                            {% else %}
-                                <span class="badge bg-danger">Incorreta</span>
-                            {% endif %}
-                        </span>
+                        {% if resultado.acertou %}
+                            <span class="badge bg-success">Correta</span>
+                        {% else %}
+                            <span class="badge bg-danger">Incorreta</span>
+                        {% endif %}
                     </div>
                     <div class="card-body">
-                        <h5 class="card-title">{{ resultado.questao }}</h5>
-                        <div class="list-group">
+                        <h5 class="card-title">{{ resultado.questao | safe }}</h5>
+                        <div class="list-group mt-3">
                             {% for alternativa in resultado.alternativas %}
-                                <div class="list-group-item {% if (loop.index + 64)|chr == resultado.resposta_correta %}bg-success text-white{% endif %}
-                                    {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}bg-danger text-white{% endif %}
-                                    {% if (loop.index + 64)|chr == resultado.resposta_aluno %}fw-bold{% endif %}">
-                                    {{ (loop.index + 64)|chr }}) {{ alternativa }}
-                                    {% if (loop.index + 64)|chr == resultado.resposta_correta %}
-                                        <span class="float-end"><i class="fas fa-check-circle"></i> Resposta Correta</span>
-                                    {% endif %}
-                                    {% if (loop.index + 64)|chr == resultado.resposta_aluno and resultado.resposta_aluno != resultado.resposta_correta %}
-                                        <span class="float-end"><i class="fas fa-times-circle"></i> Sua Resposta</span>
-                                    {% endif %}
-                                </div>
+                                {% if alternativa %}
+                                    {% set letra = (loop.index0 + 65)|chr %}
+                                    <div class="list-group-item {% if letra == resultado.resposta_correta %}alternativa-correta{% elif letra == resultado.resposta_aluno and not resultado.acertou %}alternativa-incorreta{% endif %}">
+                                        {{ letra }}) {{ alternativa | safe }}
+                                        {% if letra == resultado.resposta_correta %}
+                                            <span class="float-end text-success"><i class="fas fa-check-circle"></i> Resposta Correta</span>
+                                        {% elif letra == resultado.resposta_aluno and not resultado.acertou %}
+                                            <span class="float-end text-danger"><i class="fas fa-times-circle"></i> Sua Resposta</span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
                             {% endfor %}
                         </div>
-                        <div class="mt-2">
-                            <strong>Sua resposta:</strong> {{ resultado.resposta_aluno }}
-                            <strong class="ms-3">Resposta correta:</strong> {{ resultado.resposta_correta }}
+                        <div class="resposta-info mt-3">
+                            <span class="{% if resultado.acertou %}resposta-correta{% else %}resposta-incorreta{% endif %}">
+                                <strong>Sua resposta:</strong> {{ resultado.resposta_aluno }}
+                                {% if not resultado.acertou %}
+                                    <strong class="ms-3">Resposta correta:</strong> {{ resultado.resposta_correta }}
+                                {% endif %}
+                            </span>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
 
-                <div class="d-flex justify-content-end mb-3">
+                <div class="d-flex justify-content-end mt-4">
                     {% if request.args.get('origem') == 'professor' %}
                     <a href="{{ url_for('simulados.listar_simulados_professores') }}" class="btn btn-secondary">
                         Voltar para Simulados
@@ -126,25 +151,24 @@ Responder Simulado
                     </a>
                     {% endif %}
                 </div>
-
             </div>
         </div>
     {% else %}
-        <h2 class="text-center mb-4">Responder Simulado</h2>
-        <div class="card {% if request.args.get('origem') == 'professor' %}simulado-professor{% else %}simulado-institucional{% endif %}">
+        <div class="card {% if origem == 'professor' %}simulado-professor{% else %}simulado-institucional{% endif %}">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>{{ simulado.disciplina_nome }}</h2>
+                    <h2>{{ simulado.disciplina.nome }}</h2>
                     <div class="tipo-simulado">
-                        {% if request.args.get('origem') == 'professor' %}
+                        {% if origem == 'professor' %}
                         <i class="fas fa-chalkboard-teacher"></i> Simulado do Professor
                         {% else %}
                         <i class="fas fa-university"></i> Simulado Institucional
                         {% endif %}
                     </div>
                 </div>
+
                 <form method="POST">
-                    {% for disciplina, questoes in questoes_por_disciplina.items() %}
+                    {% for disciplina, questoes in questoes.items() %}
                         <div class="card mb-4">
                             <div class="card-header bg-primary text-white">
                                 {{ disciplina }}
@@ -152,13 +176,15 @@ Responder Simulado
                             <div class="card-body">
                                 {% for questao in questoes %}
                                     <div class="mb-4">
-                                        <p class="fw-bold">{{ loop.index }}. {{ questao.questao }}</p>
+                                        <p class="fw-bold">{{ loop.index }}. {{ questao.questao | safe }}</p>
                                         <div class="list-group">
                                             {% for alternativa in [questao.alternativa_a, questao.alternativa_b, questao.alternativa_c, questao.alternativa_d, questao.alternativa_e] %}
-                                                <label class="list-group-item">
-                                                    <input type="radio" name="resposta_{{ questao.id }}" value="{{ loop.index }}" required>
-                                                    {{ (loop.index + 64)|chr }}) {{ alternativa }}
-                                                </label>
+                                                {% if alternativa %}
+                                                    <label class="list-group-item">
+                                                        <input type="radio" name="resposta_{{ questao.id }}" value="{{ loop.index }}" required>
+                                                        {{ (loop.index + 64)|chr }}) {{ alternativa | safe }}
+                                                    </label>
+                                                {% endif %}
                                             {% endfor %}
                                         </div>
                                     </div>
@@ -167,8 +193,8 @@ Responder Simulado
                         </div>
                     {% endfor %}
                     
-                    <div class="d-flex justify-content-end mb-3">
-                        {% if request.args.get('origem') == 'professor' %}
+                    <div class="d-flex justify-content-between mt-4">
+                        {% if origem == 'professor' %}
                         <a href="{{ url_for('simulados.listar_simulados_professores') }}" class="btn btn-secondary">
                             Voltar para Simulados
                         </a>
@@ -177,8 +203,6 @@ Responder Simulado
                             Voltar para Simulados
                         </a>
                         {% endif %}
-                    </div>
-                    <div class="text-center mt-4 mb-4">
                         <button type="submit" class="btn btn-primary">Enviar Respostas</button>
                     </div>
                 </form>

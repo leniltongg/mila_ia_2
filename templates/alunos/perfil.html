@@ -1,0 +1,141 @@
+{% extends "alunos/base_alunos.html" %}
+
+{% block title %}Meu Perfil{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card shadow-sm">
+                <div class="card-header bg-gradient" style="background-color: #4e73df;">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-white p-3 me-3">
+                            <i class="fas fa-user-circle fa-2x text-primary"></i>
+                        </div>
+                        <h3 class="text-white mb-0">Meu Perfil</h3>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Informações Pessoais -->
+                        <div class="col-12 mb-4">
+                            <h5 class="border-bottom pb-2 text-primary">
+                                <i class="fas fa-id-card me-2"></i>Informações Pessoais
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Nome Completo</label>
+                                        <p class="mb-3 fw-medium">{{ usuario.nome }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">E-mail</label>
+                                        <p class="mb-3">{{ usuario.email or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">CPF</label>
+                                        <p class="mb-3">{{ usuario.cpf or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Data de Nascimento</label>
+                                        <p class="mb-3">{{ usuario.data_nascimento or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Nome da Mãe</label>
+                                        <p class="mb-3">{{ usuario.mae or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Nome do Pai</label>
+                                        <p class="mb-3">{{ usuario.pai or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Informações Acadêmicas -->
+                        <div class="col-12">
+                            <h5 class="border-bottom pb-2 text-primary">
+                                <i class="fas fa-graduation-cap me-2"></i>Informações Acadêmicas
+                            </h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Matrícula</label>
+                                        <p class="mb-3">{{ usuario.matricula_aluno or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Escola</label>
+                                        <p class="mb-3">{{ escola.nome_da_escola if escola else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Turma</label>
+                                        <p class="mb-3">{{ turma.turma if turma else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Turno</label>
+                                        <p class="mb-3">{{ usuario.turno or 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="info-group">
+                                        <label class="text-muted small">Ano Escolar</label>
+                                        <p class="mb-3">{{ ano_escolar.nome if ano_escolar else 'Não informado' }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-group label {
+    margin-bottom: 0.2rem;
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.info-group p {
+    color: #2c3e50;
+    font-size: 1rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #eee;
+}
+
+.card {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+.card-header {
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+}
+
+.text-primary {
+    color: #4e73df !important;
+}
+
+.border-bottom {
+    border-color: #e3e6f0 !important;
+}
+</style>
+{% endblock %}
