@@ -81,10 +81,25 @@
         margin: 10px 0;
         text-align: center;
     }
+
+    #alertContainer {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+    }
+
+    .custom-alert {
+        min-width: 300px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Container para alertas -->
+<div id="alertContainer"></div>
+
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Banco de Questões</h1>
@@ -535,6 +550,25 @@
 <!-- Inicialização do DataTables -->
 <script>
 $(document).ready(function() {
+    // Função para mostrar alertas
+    function showAlert(message, type = 'success') {
+        const alertId = Date.now();
+        const alertHtml = `
+            <div id="alert-${alertId}" class="alert alert-${type} alert-dismissible fade show custom-alert" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        `;
+        $('#alertContainer').append(alertHtml);
+        
+        // Auto-remove após 5 segundos
+        setTimeout(() => {
+            $(`#alert-${alertId}`).fadeOut(500, function() {
+                $(this).remove();
+            });
+        }, 5000);
+    }
+
     console.log('Inicializando DataTables...');
     var table = $('#dataTable').DataTable({
         "language": {
@@ -551,6 +585,40 @@ $(document).ready(function() {
                 "visible": false
             }
         ]
+    });
+
+    // Adicionar handler para o formulário de adicionar questão
+    $('#formAddQuestao').on('submit', function(e) {
+        e.preventDefault();
+        const form = $(this);
+        const formData = new FormData(form[0]);
+
+        $.ajax({
+            url: '/secretaria_educacao/adicionar_questao',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                if (response.success) {
+                    // Esconde o modal
+                    $('#modalAddQuestao').modal('hide');
+                    // Limpa o formulário
+                    form[0].reset();
+                    // Mostra mensagem de sucesso
+                    showAlert('Questão cadastrada com sucesso!', 'success');
+                    // Recarrega a página após um pequeno delay
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showAlert(response.message || 'Erro ao cadastrar questão', 'danger');
+                }
+            },
+            error: function(xhr, status, error) {
+                showAlert('Erro ao cadastrar questão: ' + error, 'danger');
+            }
+        });
     });
 });
 </script>
