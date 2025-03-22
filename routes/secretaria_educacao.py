@@ -1527,6 +1527,7 @@ def ranking_alunos():
         Usuarios.nome,
         Ano_escolar.nome.label('ano_escolar'),
         Escolas.nome_da_escola.label('escola'),
+        Turmas.turma.label('turma'),
         func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
         func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
     ).join(
@@ -1535,13 +1536,16 @@ def ranking_alunos():
         Escolas, Escolas.id == Usuarios.escola_id
     ).join(
         Ano_escolar, Ano_escolar.id == Usuarios.ano_escolar_id
+    ).join(
+        Turmas, Turmas.id == Usuarios.turma_id
     ).filter(
         Usuarios.tipo_usuario_id == 4  # Tipo aluno
     ).group_by(
         Usuarios.id,
         Usuarios.nome,
         Ano_escolar.nome,
-        Escolas.nome_da_escola
+        Escolas.nome_da_escola,
+        Turmas.turma
     ).order_by(
         desc('media_geral')
     ).all()
@@ -1555,6 +1559,7 @@ def ranking_alunos():
             Usuarios.nome,
             Ano_escolar.nome.label('ano_escolar'),
             Escolas.nome_da_escola.label('escola'),
+            Turmas.turma.label('turma'),
             func.avg(DesempenhoSimulado.desempenho).label('media_disciplina'),
             func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
         ).join(
@@ -1564,6 +1569,8 @@ def ranking_alunos():
         ).join(
             Ano_escolar, Ano_escolar.id == Usuarios.ano_escolar_id
         ).join(
+            Turmas, Turmas.id == Usuarios.turma_id
+        ).join(
             SimuladosGerados, SimuladosGerados.id == DesempenhoSimulado.simulado_id
         ).filter(
             Usuarios.tipo_usuario_id == 4,  # Tipo aluno
@@ -1572,7 +1579,8 @@ def ranking_alunos():
             Usuarios.id,
             Usuarios.nome,
             Ano_escolar.nome,
-            Escolas.nome_da_escola
+            Escolas.nome_da_escola,
+            Turmas.turma
         ).having(
             func.count(distinct(DesempenhoSimulado.simulado_id)) > 0  # Garante que o aluno fez pelo menos um simulado
         ).order_by(
@@ -1587,10 +1595,11 @@ def ranking_alunos():
                     'nome': nome,
                     'ano_escolar': ano_escolar,
                     'escola': escola,
+                    'turma': turma,
                     'media_disciplina': float(media_disciplina or 0),
                     'total_simulados': total_simulados
                 }
-                for id, nome, ano_escolar, escola, media_disciplina, total_simulados in ranking
+                for id, nome, ano_escolar, escola, turma, media_disciplina, total_simulados in ranking
             ]
 
             # Adiciona todos os alunos na chave 'todos'
@@ -1612,10 +1621,11 @@ def ranking_alunos():
             'nome': nome,
             'ano_escolar': ano_escolar,
             'escola': escola,
+            'turma': turma,
             'media_geral': float(media_geral or 0),
             'total_simulados': total_simulados
         }
-        for id, nome, ano_escolar, escola, media_geral, total_simulados in ranking_geral
+        for id, nome, ano_escolar, escola, turma, media_geral, total_simulados in ranking_geral
     ]
 
     return render_template(
@@ -1626,6 +1636,35 @@ def ranking_alunos():
         ranking_geral=ranking_geral,
         ranking_disciplinas=ranking_disciplinas
     )
+
+@bp.route('/buscar-turmas')
+@login_required
+def buscar_turmas():
+    """Retorna as turmas de uma escola e ano escolar específicos."""
+    if current_user.tipo_usuario_id not in [5, 6]:
+        return jsonify({'error': 'Acesso não autorizado'}), 403
+    
+    escola = request.args.get('escola')
+    ano_escolar = request.args.get('ano_escolar')
+    
+    if not escola or not ano_escolar:
+        return jsonify({'error': 'Escola e ano escolar são obrigatórios'}), 400
+        
+    turmas = db.session.query(
+        Turmas.turma
+    ).join(
+        Escolas, Escolas.id == Turmas.escola_id
+    ).join(
+        Ano_escolar, Ano_escolar.id == Turmas.ano_escolar_id
+    ).filter(
+        Escolas.nome_da_escola == escola,
+        Ano_escolar.nome == ano_escolar
+    ).order_by(
+        Turmas.turma
+    ).all()
+    
+    turmas = [turma[0] for turma in turmas]
+    return jsonify({'turmas': turmas})
 
 @bp.route('/visualizar_simulado/<int:simulado_id>')
 @login_required

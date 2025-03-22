@@ -2,14 +2,6 @@
 
 {% block content %}
 <div class="container mt-4">
-    <!-- Debug das escolas -->
-    <div style="display: none;">
-        Escolas disponíveis:
-        {% for escola in escolas %}
-            {{ escola }},
-        {% endfor %}
-    </div>
-
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>Ranking de Alunos</h2>
         <div class="col-md-4 position-relative">
@@ -51,6 +43,13 @@
         {% endfor %}
     </ul>
 
+    <!-- Filtro de Turma -->
+    <div class="mb-3">
+        <select class="form-select" id="turmaFilter" disabled>
+            <option value="">Selecione uma turma...</option>
+        </select>
+    </div>
+
     <!-- Conteúdo das Abas -->
     <div class="tab-content" id="rankingTabsContent">
         <!-- Ranking Geral -->
@@ -63,17 +62,19 @@
                             <th>Nome</th>
                             <th>Ano Escolar</th>
                             <th>Escola</th>
+                            <th>Turma</th>
                             <th>Média Geral</th>
                             <th>Total de Simulados</th>
                         </tr>
                     </thead>
                     <tbody id="rankingBodyGeral">
                         {% for aluno in ranking_geral %}
-                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}">
+                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}" data-turma="{{ aluno.turma }}">
                             <td>{{ loop.index }}º</td>
                             <td>{{ aluno.nome }}</td>
                             <td>{{ aluno.ano_escolar }}</td>
                             <td>{{ aluno.escola }}</td>
+                            <td>{{ aluno.turma }}</td>
                             <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
                             <td>{{ aluno.total_simulados }}</td>
                         </tr>
@@ -95,17 +96,19 @@
                             <th>Nome</th>
                             <th>Ano Escolar</th>
                             <th>Escola</th>
+                            <th>Turma</th>
                             <th>Média na Disciplina</th>
                             <th>Total de Simulados</th>
                         </tr>
                     </thead>
                     <tbody id="rankingBody-{{ loop.index }}">
                         {% for aluno in ranking_disciplinas[disciplina.nome]['todos'] %}
-                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}">
+                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}" data-turma="{{ aluno.turma }}">
                             <td>{{ loop.index }}º</td>
                             <td>{{ aluno.nome }}</td>
                             <td>{{ aluno.ano_escolar }}</td>
                             <td>{{ aluno.escola }}</td>
+                            <td>{{ aluno.turma }}</td>
                             <td>{{ "%.1f"|format(aluno.media_disciplina) }}%</td>
                             <td>{{ aluno.total_simulados }}</td>
                         </tr>
@@ -137,6 +140,17 @@ function filtrarPorAno(anoSelecionado) {
         }
     });
 
+    // Atualiza as turmas disponíveis se tiver escola selecionada
+    const escola = document.getElementById('escolaFilter').value;
+    if (escola && anoSelecionado !== 'todos') {
+        atualizarTurmas();
+    } else {
+        // Desabilita e limpa o select de turmas
+        const turmaSelect = document.getElementById('turmaFilter');
+        turmaSelect.disabled = true;
+        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+    }
+
     // Filtra todas as tabelas
     document.querySelectorAll('.tab-pane tbody').forEach(tbody => {
         const rows = tbody.getElementsByTagName('tr');
@@ -146,11 +160,14 @@ function filtrarPorAno(anoSelecionado) {
             const anoAluno = row.getAttribute('data-ano');
             const escolaValue = document.getElementById('escolaFilter').value.toLowerCase();
             const escolaAluno = row.getAttribute('data-escola').toLowerCase();
+            const turmaValue = document.getElementById('turmaFilter').value;
+            const turmaAluno = row.getAttribute('data-turma');
             
             const matchAno = anoSelecionado === 'todos' || anoSelecionado === anoAluno;
             const matchEscola = !escolaValue || escolaAluno.includes(escolaValue);
+            const matchTurma = !turmaValue || turmaValue === turmaAluno;
             
-            if (matchAno && matchEscola) {
+            if (matchAno && matchEscola && matchTurma) {
                 row.style.display = '';
                 row.getElementsByTagName('td')[0].textContent = posicao + 'º';
                 posicao++;
@@ -161,11 +178,9 @@ function filtrarPorAno(anoSelecionado) {
     });
 }
 
-// Função para buscar escolas que correspondem ao texto digitado
 function buscarEscolas(texto) {
     const dropdown = document.getElementById('escolasDropdown');
     console.log("Buscando escolas com texto:", texto);
-    console.log("Escolas disponíveis:", todasEscolas);
     
     if (!texto) {
         dropdown.style.display = 'none';
@@ -175,7 +190,6 @@ function buscarEscolas(texto) {
     const escolasFiltradas = todasEscolas.filter(escola => 
         escola.toLowerCase().includes(texto.toLowerCase())
     );
-    console.log("Escolas filtradas:", escolasFiltradas);
 
     if (escolasFiltradas.length > 0) {
         dropdown.innerHTML = escolasFiltradas
@@ -191,76 +205,88 @@ function selecionarEscola(escola) {
     document.getElementById('escolaFilter').value = escola;
     document.getElementById('escolasDropdown').style.display = 'none';
     const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
+    
+    // Só atualiza as turmas se não for "Todos os Anos"
+    if (anoSelecionado !== 'Todos os Anos') {
+        atualizarTurmas();
+    } else {
+        // Se for "Todos os Anos", desabilita o select de turmas
+        const turmaSelect = document.getElementById('turmaFilter');
+        turmaSelect.disabled = true;
+        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+    }
+    
     filtrarPorAno(anoSelecionado === 'Todos os Anos' ? 'todos' : anoSelecionado);
+}
+
+function atualizarTurmas() {
+    const escola = document.getElementById('escolaFilter').value;
+    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
+    const turmaSelect = document.getElementById('turmaFilter');
+    
+    if (!escola || anoSelecionado === 'Todos os Anos') {
+        turmaSelect.disabled = true;
+        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+        return;
+    }
+
+    console.log('Buscando turmas para:', escola, anoSelecionado);
+
+    // Buscar turmas da escola e ano selecionados
+    fetch(`/secretaria_educacao/buscar-turmas?escola=${encodeURIComponent(escola)}&ano_escolar=${encodeURIComponent(anoSelecionado)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Erro na resposta do servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Turmas recebidas:', data);
+            
+            if (data.error) {
+                console.error('Erro ao buscar turmas:', data.error);
+                return;
+            }
+
+            turmaSelect.innerHTML = '<option value="">Todas as turmas</option>';
+            data.turmas.forEach(turma => {
+                const option = document.createElement('option');
+                option.value = turma;
+                option.textContent = turma;
+                turmaSelect.appendChild(option);
+            });
+            turmaSelect.disabled = false;
+        })
+        .catch(error => {
+            console.error('Erro ao buscar turmas:', error);
+            turmaSelect.disabled = true;
+            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
+        });
 }
 
 // Event listeners
 document.getElementById('escolaFilter').addEventListener('input', function(e) {
     buscarEscolas(e.target.value);
-});
-
-// Fechar dropdown quando clicar fora
-document.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('escolasDropdown');
-    const input = document.getElementById('escolaFilter');
-    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
-        dropdown.style.display = 'none';
+    // Se o campo de escola for limpo, desabilita o select de turmas
+    if (!e.target.value) {
+        const turmaSelect = document.getElementById('turmaFilter');
+        turmaSelect.disabled = true;
+        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
     }
 });
 
-document.getElementById('escolaFilter').addEventListener('focus', function(e) {
-    if (e.target.value) {
-        buscarEscolas(e.target.value);
+document.getElementById('turmaFilter').addEventListener('change', function() {
+    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
+    filtrarPorAno(anoSelecionado === 'Todos os Anos' ? 'todos' : anoSelecionado);
+});
+
+// Inicialização
+document.addEventListener('DOMContentLoaded', function() {
+    const escolaFilter = document.getElementById('escolaFilter');
+    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
+    if (escolaFilter.value && anoSelecionado !== 'Todos os Anos') {
+        atualizarTurmas();
     }
 });
 </script>
-
-<style>
-.nav-tabs-secondary {
-    border-bottom: 1px solid #6610f2;
-}
-
-.nav-tabs-secondary .nav-link {
-    color: #6610f2;
-    border: 1px solid transparent;
-    margin-bottom: -1px;
-    border-radius: 0.375rem 0.375rem 0 0;
-}
-
-.nav-tabs-secondary .nav-link:hover {
-    border-color: #e9ecef #e9ecef #6610f2;
-}
-
-.nav-tabs-secondary .nav-link.active {
-    color: #6610f2;
-    background-color: #fff;
-    border-color: #6610f2 #6610f2 #fff;
-    font-weight: bold;
-}
-
-.nav-tabs .nav-link {
-    color: #0d6efd;
-}
-
-.nav-tabs .nav-link.active {
-    color: #0d6efd;
-    font-weight: bold;
-}
-
-.cursor-pointer {
-    cursor: pointer;
-}
-
-.hover-bg-light:hover {
-    background-color: #f8f9fa;
-}
-
-#escolasDropdown .dropdown-item {
-    border-bottom: 1px solid #dee2e6;
-}
-
-#escolasDropdown .dropdown-item:last-child {
-    border-bottom: none;
-}
-</style>
 {% endblock %}
