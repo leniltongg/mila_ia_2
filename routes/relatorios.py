@@ -104,17 +104,24 @@ def relatorios_dashboard():
 
     # Contagem de alunos por faixa de desempenho
     faixas = db.session.query(
-        func.count(case((DesempenhoSimulado.desempenho.between(0, 20), 1))).label('faixa_0_20'),
-        func.count(case((DesempenhoSimulado.desempenho.between(21, 40), 1))).label('faixa_21_40'),
-        func.count(case((DesempenhoSimulado.desempenho.between(41, 60), 1))).label('faixa_41_60'),
-        func.count(case((DesempenhoSimulado.desempenho.between(61, 80), 1))).label('faixa_61_80'),
-        func.count(case((DesempenhoSimulado.desempenho.between(81, 100), 1))).label('faixa_81_100')
+        func.sum(case([(DesempenhoSimulado.desempenho <= 20, 1)], else_=0)).label('faixa_0_20'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 20, DesempenhoSimulado.desempenho <= 40), 1)], else_=0)).label('faixa_21_40'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 40, DesempenhoSimulado.desempenho <= 60), 1)], else_=0)).label('faixa_41_60'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 60, DesempenhoSimulado.desempenho <= 80), 1)], else_=0)).label('faixa_61_80'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 80, DesempenhoSimulado.desempenho <= 100), 1)], else_=0)).label('faixa_81_100')
     ).join(
         Usuarios, DesempenhoSimulado.aluno_id == Usuarios.id
     ).filter(
         Usuarios.codigo_ibge == codigo_ibge,
         Usuarios.tipo_usuario_id == 4
     ).first()
+
+    # Garantir que todas as variáveis tenham valores padrão
+    faixa_0_20 = faixas[0] if faixas and faixas[0] is not None else 0
+    faixa_21_40 = faixas[1] if faixas and faixas[1] is not None else 0
+    faixa_41_60 = faixas[2] if faixas and faixas[2] is not None else 0
+    faixa_61_80 = faixas[3] if faixas and faixas[3] is not None else 0
+    faixa_81_100 = faixas[4] if faixas and faixas[4] is not None else 0
 
     return render_template(
         'secretaria_educacao/relatorios_dashboard.html',
@@ -123,11 +130,11 @@ def relatorios_dashboard():
         desempenho_mensal=desempenho_mensal,
         ranking_escolas=ranking_escolas,
         ranking_alunos=ranking_alunos,
-        faixa_0_20=faixas[0] if faixas else 0,
-        faixa_21_40=faixas[1] if faixas else 0,
-        faixa_41_60=faixas[2] if faixas else 0,
-        faixa_61_80=faixas[3] if faixas else 0,
-        faixa_81_100=faixas[4] if faixas else 0
+        faixa_0_20=faixa_0_20,
+        faixa_21_40=faixa_21_40,
+        faixa_41_60=faixa_41_60,
+        faixa_61_80=faixa_61_80,
+        faixa_81_100=faixa_81_100
     )
 
 @relatorios_bp.route('/relatorios_gerenciais')
@@ -201,6 +208,7 @@ def relatorio_rede_municipal():
         Disciplinas.id,
         Disciplinas.nome,
         func.count(func.distinct(DesempenhoSimulado.aluno_id)).label('alunos_ativos'),
+        func.count(func.distinct(DesempenhoSimulado.simulado_id)).label('total_questoes'),
         func.coalesce(func.avg(DesempenhoSimulado.desempenho), 0.0).label('media')
     ).outerjoin(
         SimuladosGerados, SimuladosGerados.disciplina_id == Disciplinas.id
@@ -2384,7 +2392,7 @@ def relatorio_individual():
     ano_escolar_id = request.args.get('ano_escolar_id', type=int)
     turma_id = request.args.get('turma_id', type=int)
     
-    # Condição para filtrar por data
+    # Condição de data para filtrar por mês
     data_condition = []
     if mes:
         data_condition.append(extract('month', DesempenhoSimulado.data_resposta) == mes)

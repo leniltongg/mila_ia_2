@@ -1,25 +1,20 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, g, jsonify, send_file, current_app
 from flask_login import login_required, current_user
-import os
-from werkzeug.utils import secure_filename
-import pandas as pd
-from weasyprint import HTML
-import tempfile
-from io import BytesIO
-from datetime import datetime
 from extensions import db
+from sqlalchemy import desc, func, distinct, and_, text, extract, exists, or_, literal, case
 from models import (
-    Usuarios, Escolas, Ano_escolar, SimuladosGerados, Disciplinas, 
-    DesempenhoSimulado, MESES, BancoQuestoes, RespostasSimulado, 
-    SimuladosEnviados, Turmas, SimuladosGeradosProfessor, Cidades
+    Escolas, Usuarios, SimuladosGerados, Disciplinas,
+    BancoQuestoes, SimuladoQuestoes, DesempenhoSimulado,
+    MESES, Turmas, Ano_escolar, TiposEnsino, ImagemQuestao,
+    TIPO_USUARIO_ADMIN, TIPO_USUARIO_SECRETARIA, TIPO_USUARIO_PROFESSOR,
+    TIPO_USUARIO_ALUNO, TIPO_USUARIO_SECRETARIA_EDUCACAO,
+    BancoQuestoes, SimuladoQuestoes
 )
-from sqlalchemy import text, func, extract, and_, case, exists, or_, literal
-from models import SimuladoQuestoes
-from utils import verificar_permissao
-from models import ImagemQuestao
-from PyPDF2 import PdfReader
-from models import db, BancoQuestoes, Assuntos
+from datetime import datetime
+import os
+import json
 import re
+from werkzeug.utils import secure_filename
 
 # Dicionário de meses
 MESES_NOMES = {
@@ -38,12 +33,12 @@ MESES_NOMES = {
 }
 
 # Registrando o Blueprint com url_prefix
-secretaria_educacao_bp = Blueprint('secretaria_educacao', __name__, url_prefix='/secretaria_educacao')
+bp = Blueprint('secretaria_educacao', __name__, url_prefix='/secretaria_educacao')
 
 def get_db():
     return db
 
-@secretaria_educacao_bp.teardown_app_request
+@bp.teardown_app_request
 def close_db(error):
     db = g.pop('db', None)
     if db is not None:
@@ -87,7 +82,7 @@ def get_nome_mes(mes_id):
 #                          Ano_escolar=Ano_escolar,
 #                          meses=meses)
 
-@secretaria_educacao_bp.route('/criar_simulado', methods=['GET'])
+@bp.route('/criar_simulado', methods=['GET'])
 @login_required
 def criar_simulado():
     """Cria um novo simulado ou edita um existente."""
@@ -178,7 +173,7 @@ def criar_simulado():
                          simulado=simulado_data,
                          questoes_selecionadas=questoes_selecionadas)
 
-@secretaria_educacao_bp.route('/salvar_simulado', methods=['POST'])
+@bp.route('/salvar_simulado', methods=['POST'])
 @login_required
 def salvar_simulado():
     print("\n1. Iniciando função salvar_simulado")
@@ -367,7 +362,7 @@ def salvar_simulado():
 #         print(f"Erro ao buscar questões: {str(e)}")
 #         return jsonify({'error': 'Erro ao buscar questões'}), 500
 
-@secretaria_educacao_bp.route('/buscar_questoes', methods=['GET'])
+@bp.route('/buscar_questoes', methods=['GET'])
 @login_required
 def buscar_questoes():
     """Buscar questões para o simulado."""
@@ -465,7 +460,7 @@ def buscar_questoes():
         print(f"Traceback: {traceback.format_exc()}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@secretaria_educacao_bp.route('/gerar_simulado_automatico', methods=['POST'])
+@bp.route('/gerar_simulado_automatico', methods=['POST'])
 @login_required
 def gerar_simulado_automatico():
     """Gera um simulado automaticamente com base nos parâmetros fornecidos."""
@@ -585,7 +580,7 @@ def gerar_simulado_automatico():
 #         print(f"Erro ao salvar simulado: {str(e)}")
 #         return jsonify({'success': False, 'message': 'Erro ao salvar simulado'}), 500
 
-@secretaria_educacao_bp.route('/banco_questoes', methods=['GET', 'POST'])
+@bp.route('/banco_questoes', methods=['GET', 'POST'])
 @login_required
 def banco_questoes():
     """Lista todas as questões do banco."""
@@ -621,7 +616,7 @@ def banco_questoes():
             def processar_conteudo(texto):
                 if texto:
                     # Garantir que as tags de imagem usem url_for
-                    return texto.replace('src="/static/', 'src="{{ url_for(\'static\', filename=\'')
+                    texto = texto.replace('src="/static/', 'src="{{ url_for(\'static\', filename=\'')
                 return texto
 
             questao = processar_conteudo(questao)
@@ -701,7 +696,8 @@ def banco_questoes():
             # Processar conteúdo para exibir imagens corretamente
             def processar_conteudo_exibicao(texto):
                 if texto:
-                    return texto.replace('src="{{ url_for(\'static\', filename=\'', 'src="/static/')
+                    # Garantir que as imagens usem o caminho correto
+                    texto = texto.replace('src="{{ url_for(\'static\', filename=\'', 'src="/static/')
                 return texto
 
             questao_dict = {
@@ -715,7 +711,7 @@ def banco_questoes():
                 'questao_correta': q.BancoQuestoes.questao_correta,
                 'assunto': q.BancoQuestoes.assunto,
                 'disciplina_nome': q.disciplina_nome,
-                'Ano_escolar_nome': q.ano_escolar_nome,
+                'ano_escolar_nome': q.ano_escolar_nome,
                 'mes_nome': q.mes_nome if q.mes_nome else '-',
                 'mes_id': q.BancoQuestoes.mes_id
             }
@@ -736,113 +732,142 @@ def banco_questoes():
         return redirect(url_for("index"))
 
 
-@secretaria_educacao_bp.route("/portal_secretaria_educacao", methods=["GET", "POST"])
+@bp.route("/portal_secretaria_educacao", methods=["GET", "POST"])
 @login_required
 def portal_secretaria_educacao():
     if current_user.tipo_usuario_id not in [5, 6]:  # Verifica se é uma Secretaria de Educação
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("index"))
 
-    # Buscar escolas que têm o mesmo codigo_ibge
-    escolas = Escolas.query.filter_by(codigo_ibge=current_user.codigo_ibge).all()
-    total_escolas = len(escolas)
-
-    # Buscar o número de alunos na mesma codigo_ibge
-    numero_alunos = Usuarios.query.filter_by(
-        tipo_usuario_id=4,
-        codigo_ibge=current_user.codigo_ibge
+    # Obtém estatísticas gerais
+    total_escolas = Escolas.query.count()
+    total_alunos = db.session.query(
+        Usuarios.id
+    ).filter(
+        Usuarios.tipo_usuario_id == 4  # Tipo aluno
     ).count()
+    total_simulados = SimuladosGerados.query.count()
+    
+    # Calcular média geral de todos os simulados do município
+    media_query = db.session.query(
+        func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
+        func.avg(DesempenhoSimulado.pontuacao).label('media_pontos')
+    ).join(
+        Usuarios, 
+        and_(
+            DesempenhoSimulado.aluno_id == Usuarios.id,
+            Usuarios.tipo_usuario_id == 4  # Tipo aluno
+        )
+    ).first()
+    
+    media_geral = float(media_query.media_geral or 0)
+    media_pontos = float(media_query.media_pontos or 0)
 
-    # Buscar o número de simulados gerados na mesma codigo_ibge
-    numero_simulados_gerados = db.session.query(SimuladosGerados)\
-        .join(Usuarios, SimuladosGerados.ano_escolar_id == Usuarios.ano_escolar_id)\
-        .filter(Usuarios.codigo_ibge == current_user.codigo_ibge)\
-        .count()
+    # Calcular distribuição de desempenho
+    faixas = db.session.query(
+        func.sum(case([(DesempenhoSimulado.desempenho <= 20, 1)], else_=0)).label('faixa_0_20'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 20, DesempenhoSimulado.desempenho <= 40), 1)], else_=0)).label('faixa_21_40'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 40, DesempenhoSimulado.desempenho <= 60), 1)], else_=0)).label('faixa_41_60'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 60, DesempenhoSimulado.desempenho <= 80), 1)], else_=0)).label('faixa_61_80'),
+        func.sum(case([(and_(DesempenhoSimulado.desempenho > 80, DesempenhoSimulado.desempenho <= 100), 1)], else_=0)).label('faixa_81_100')
+    ).join(
+        Usuarios,
+        and_(
+            DesempenhoSimulado.aluno_id == Usuarios.id,
+            Usuarios.tipo_usuario_id == 4  # Tipo aluno
+        )
+    ).first()
 
-    # Calcular a média geral de desempenho dos simulados respondidos na mesma codigo_ibge
-    media_query = db.session.query(db.func.avg(DesempenhoSimulado.desempenho))\
-        .join(Usuarios, DesempenhoSimulado.aluno_id == Usuarios.id)\
-        .filter(Usuarios.codigo_ibge == current_user.codigo_ibge)\
-        .scalar()
-    media_geral = media_query or 0
+    # Garantir que todas as variáveis tenham valores padrão
+    faixa_0_20 = faixas[0] if faixas and faixas[0] is not None else 0
+    faixa_21_40 = faixas[1] if faixas and faixas[1] is not None else 0
+    faixa_41_60 = faixas[2] if faixas and faixas[2] is not None else 0
+    faixa_61_80 = faixas[3] if faixas and faixas[3] is not None else 0
+    faixa_81_100 = faixas[4] if faixas and faixas[4] is not None else 0
 
-    # Buscar simulados já gerados
-    simulados_gerados = db.session.query(
-        SimuladosGerados.id,
-        Ano_escolar.nome.label('Ano_escolar_nome'),
-        SimuladosGerados.mes_id,
-        Disciplinas.nome.label('disciplina_nome'),
-        SimuladosGerados.data_envio,
-        SimuladosGerados.status
-    ).join(Ano_escolar, SimuladosGerados.ano_escolar_id == Ano_escolar.id)\
-     .join(Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id)\
-     .order_by(SimuladosGerados.data_envio.desc())\
-     .all()
+    # Buscar o ranking de escolas
+    ranking_escolas_query = db.session.query(
+        Escolas.nome_da_escola.label('nome'),
+        func.avg(DesempenhoSimulado.desempenho).label('media_geral')
+    ).join(
+        Usuarios,
+        and_(
+            Usuarios.escola_id == Escolas.id,
+            Usuarios.tipo_usuario_id == 4  # Tipo aluno
+        )
+    ).join(
+        DesempenhoSimulado,
+        DesempenhoSimulado.aluno_id == Usuarios.id
+    ).group_by(
+        Escolas.id,
+        Escolas.nome_da_escola
+    ).order_by(
+        func.avg(DesempenhoSimulado.desempenho).desc()
+    ).all()
 
-    # Buscar disciplinas para o formulário de importação
-    disciplinas = Disciplinas.query.all()
+    ranking_escolas = [
+        {
+            'nome': escola.nome,
+            'media_geral': float(escola.media_geral)
+        }
+        for escola in ranking_escolas_query
+    ]
+
+    # Buscar o ranking de alunos
+    ranking_alunos_query = db.session.query(
+        Usuarios.nome,
+        Usuarios.ano_escolar_id,
+        func.avg(DesempenhoSimulado.desempenho).label('media_geral')
+    ).join(
+        DesempenhoSimulado,
+        DesempenhoSimulado.aluno_id == Usuarios.id
+    ).filter(
+        Usuarios.tipo_usuario_id == 4  # Tipo aluno
+    ).group_by(
+        Usuarios.id,
+        Usuarios.nome,
+        Usuarios.ano_escolar_id
+    ).order_by(
+        func.avg(DesempenhoSimulado.desempenho).desc()
+    ).all()
+
+    ranking_alunos = [
+        {
+            'nome': aluno.nome,
+            'ano_escolar': f"{aluno.ano_escolar_id}º Ano",
+            'media_geral': float(aluno.media_geral)
+        }
+        for aluno in ranking_alunos_query
+    ]
+
+    # Preparar dados para os gráficos
+    escolas_labels = [escola['nome'] for escola in ranking_escolas[:5]]
+    escolas_data = [escola['media_geral'] for escola in ranking_escolas[:5]]
+    alunos_labels = [aluno['nome'] for aluno in ranking_alunos[:5]]
+    alunos_data = [aluno['media_geral'] for aluno in ranking_alunos[:5]]
 
     return render_template(
-        "secretaria_educacao/portal_secretaria_educacao.html",
-        simulados_gerados=simulados_gerados,
+        'secretaria_educacao/portal_secretaria_educacao.html',
         total_escolas=total_escolas,
-        total_alunos=numero_alunos,
-        total_simulados=numero_simulados_gerados,
+        total_alunos=total_alunos,
+        total_simulados=total_simulados,
         media_geral=media_geral,
-        disciplinas=disciplinas  # Adicionado disciplinas ao contexto
+        media_pontos=media_pontos,
+        faixa_0_20=faixa_0_20,
+        faixa_21_40=faixa_21_40,
+        faixa_41_60=faixa_41_60,
+        faixa_61_80=faixa_61_80,
+        faixa_81_100=faixa_81_100,
+        ranking_escolas=ranking_escolas,
+        ranking_alunos=ranking_alunos,
+        escolas_labels=escolas_labels,
+        escolas_data=escolas_data,
+        alunos_labels=alunos_labels,
+        alunos_data=alunos_data
     )
 
-# @secretaria_educacao_bp.route('/portal_secretaria_educacao', methods=['GET'])
-# @login_required
-# def portal_secretaria_educacao():
-#     if current_user.tipo_usuario_id not in [5, 6]:  # Verifica se é uma Secretaria de Educação
-#         flash("Acesso não autorizado.", "danger")
-#         return redirect(url_for("index"))
 
-#     # Buscar simulados gerados
-#     simulados_gerados = Simulados.query.filter_by(
-#         codigo_ibge=current_user.codigo_ibge
-#     ).order_by(Simulados.data_criacao.desc()).all()
-
-#     # Buscar estatísticas
-#     total_escolas = Escolas.query.filter_by(codigo_ibge=current_user.codigo_ibge).count()
-    
-#     # Número de alunos
-#     numero_alunos = Usuarios.query.filter_by(
-#         codigo_ibge=current_user.codigo_ibge,
-#         tipo_usuario_id=4
-#     ).count()
-
-#     # Número de simulados gerados
-#     numero_simulados_gerados = Simulados.query.filter_by(
-#         codigo_ibge=current_user.codigo_ibge
-#     ).count()
-
-#     # Média geral dos alunos
-#     media_geral = 0
-#     resultados = ResultadosSimulados.query.join(
-#         Simulados, ResultadosSimulados.simulado_id == Simulados.id
-#     ).filter(
-#         Simulados.codigo_ibge == current_user.codigo_ibge
-#     ).all()
-
-#     if resultados:
-#         media_geral = sum(r.nota for r in resultados) / len(resultados)
-
-#     # Buscar assuntos para o formulário de importação
-#     assuntos = Assuntos.query.all()
-
-#     return render_template(
-#         "secretaria_educacao/portal_secretaria_educacao.html",
-#         simulados_gerados=simulados_gerados,
-#         total_escolas=total_escolas,
-#         total_alunos=numero_alunos,
-#         total_simulados=numero_simulados_gerados,
-#         media_geral=media_geral,
-#         assuntos=assuntos
-#     )
-
-@secretaria_educacao_bp.route('/importar_questoes', methods=['POST'])
+@bp.route('/importar_questoes', methods=['POST'])
 @login_required
 def importar_questoes():
     if current_user.tipo_usuario_id not in [5, 6]:  # Verifica se é uma Secretaria de Educação
@@ -960,7 +985,7 @@ def importar_questoes():
                 
     return redirect(url_for('secretaria_educacao.portal_secretaria_educacao'))
 
-@secretaria_educacao_bp.route('/meus_simulados', methods=['GET'])
+@bp.route('/meus_simulados', methods=['GET'])
 @login_required
 def meus_simulados():
     """Lista todos os simulados gerados."""
@@ -974,13 +999,10 @@ def meus_simulados():
             SimuladosGerados.id,
             SimuladosGerados.status,
             SimuladosGerados.data_envio,
-            SimuladosGerados.disciplina_id,
-            SimuladosGerados.ano_escolar_id,
-            SimuladosGerados.mes_id,
             Disciplinas.nome.label('disciplina_nome'),
             Ano_escolar.nome.label('Ano_escolar_nome'),
             MESES.nome.label('mes_nome'),
-            func.count(SimuladoQuestoes.id).label('total_questoes')
+            func.count(SimuladoQuestoes.questao_id).label('total_questoes')
         ).join(
             Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
         ).join(
@@ -995,9 +1017,6 @@ def meus_simulados():
             SimuladosGerados.id,
             SimuladosGerados.status,
             SimuladosGerados.data_envio,
-            SimuladosGerados.disciplina_id,
-            SimuladosGerados.ano_escolar_id,
-            SimuladosGerados.mes_id,
             Disciplinas.nome,
             Ano_escolar.nome,
             MESES.nome
@@ -1027,9 +1046,9 @@ def meus_simulados():
     except Exception as e:
         print(f"Erro ao carregar simulados: {str(e)}")
         flash(f"Erro ao carregar simulados: {str(e)}", "danger")
-        return redirect(url_for("index"))@secretaria_educacao_bp.route('/meus_simulados', methods=['GET'])
+        return redirect(url_for("index"))
 
-@secretaria_educacao_bp.route('/enviar_simulado/<int:simulado_id>', methods=['POST'])
+@bp.route('/enviar_simulado/<int:simulado_id>', methods=['POST'])
 @login_required
 def enviar_simulado(simulado_id):
     """Envia um simulado para os alunos."""
@@ -1080,424 +1099,53 @@ def enviar_simulado(simulado_id):
             }), 404
         
         try:
-            # Primeiro, criar um registro em simulados_enviados para cada turma
+            # Criar simulados_enviados para cada turma
             turmas_ids = set(aluno.turma_id for aluno in alunos if aluno.turma_id is not None)
-            simulados_enviados = {}
+            simulados_enviados = []
             
             for turma_id in turmas_ids:
                 simulado_enviado = SimuladosEnviados(
-                    simulado_id=simulado_id,  # ID do simulado gerado
+                    simulado_id=simulado_id,
                     turma_id=turma_id,
                     data_envio=datetime.now(),
                     status='enviado'
                 )
                 db.session.add(simulado_enviado)
-                db.session.flush()  # Para obter o ID
-                simulados_enviados[turma_id] = simulado_enviado.id
+                simulados_enviados.append(simulado_enviado)
             
             # Atualizar status do simulado
             simulado.status = 'enviado'
             simulado.data_envio = datetime.now()
             print(f"Status do simulado atualizado para: {simulado.status}")
             
-            # Criar registros de desempenho para cada aluno
+            # Criar registros de aluno_simulado para cada aluno
+            alunos_simulados = []
             for aluno in alunos:
                 if aluno.turma_id is None:
-                    print(f"Pulando aluno {aluno.id} - sem turma definida")
                     continue
                     
-                print(f"\nCriando registro para aluno {aluno.id}:")
-                print(f"Escola: {aluno.escola_id}")
-                print(f"Ano Escolar: {simulado.ano_escolar_id}")
-                print(f"Turma: {aluno.turma_id}")
-                
-                try:
-                    desempenho = DesempenhoSimulado(
-                        aluno_id=aluno.id,
-                        simulado_id=simulados_enviados[aluno.turma_id],  # ID do simulado_enviado da turma
-                        escola_id=aluno.escola_id,
-                        ano_escolar_id=simulado.ano_escolar_id,
-                        codigo_ibge=int(current_user.codigo_ibge),
-                        respostas_aluno='{}',  # JSON vazio
-                        respostas_corretas='{}',  # JSON vazio
-                        desempenho=0.0,  # Inicialmente 0
-                        turma_id=aluno.turma_id
-                    )
-                    db.session.add(desempenho)
-                    print("Registro de desempenho criado com sucesso")
-                except Exception as e:
-                    print(f"Erro ao criar registro de desempenho: {str(e)}")
-                    raise e
+                aluno_simulado = AlunoSimulado(
+                    aluno_id=aluno.id,
+                    simulado_id=simulado_id,
+                    status='em_andamento',
+                    turma_id=aluno.turma_id
+                )
+                alunos_simulados.append(aluno_simulado)
             
-            # Commit dos registros
+            # Adicionar todos os registros de uma vez
+            db.session.bulk_save_objects(alunos_simulados)
+            
+            # Commit de tudo
             db.session.commit()
-            print("\nCommit realizado com sucesso!")
             return jsonify({'success': True, 'message': 'Simulado enviado com sucesso'})
             
         except Exception as e:
-            print(f"\nErro no commit: {str(e)}")
             db.session.rollback()
             return jsonify({'success': False, 'message': str(e)}), 500
             
     except Exception as e:
-        print(f"\nErro geral na função: {str(e)}")
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500
-
-@secretaria_educacao_bp.route('/visualizar_simulado/<int:simulado_id>')
-@login_required
-def visualizar_simulado(simulado_id):
-    """Visualiza os detalhes de um simulado."""
-    if current_user.tipo_usuario_id not in [5, 6]:
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("index"))
-    
-    try:
-        # Buscar informações do simulado
-        simulado = db.session.query(
-            SimuladosGerados.id,
-            SimuladosGerados.status,
-            SimuladosGerados.data_envio,
-            Disciplinas.nome.label('disciplina_nome'),
-            Ano_escolar.nome.label('Ano_escolar_nome'),
-            MESES.nome.label('mes_nome')
-        ).join(
-            Disciplinas, Disciplinas.id == SimuladosGerados.disciplina_id
-        ).join(
-            Ano_escolar, Ano_escolar.id == SimuladosGerados.ano_escolar_id
-        ).join(
-            MESES, MESES.id == SimuladosGerados.mes_id
-        ).filter(
-            SimuladosGerados.id == simulado_id,
-            SimuladosGerados.codigo_ibge == current_user.codigo_ibge
-        ).first()
-        
-        if not simulado:
-            flash("Simulado não encontrado.", "danger")
-            return redirect(url_for("secretaria_educacao.meus_simulados"))
-        
-        # Buscar questões do simulado
-        questoes = db.session.query(
-            BancoQuestoes.id,
-            BancoQuestoes.questao,
-            BancoQuestoes.alternativa_a,
-            BancoQuestoes.alternativa_b,
-            BancoQuestoes.alternativa_c,
-            BancoQuestoes.alternativa_d,
-            BancoQuestoes.alternativa_e,
-            BancoQuestoes.questao_correta,
-            BancoQuestoes.assunto
-        ).join(
-            SimuladoQuestoes,
-            SimuladoQuestoes.questao_id == BancoQuestoes.id
-        ).filter(
-            SimuladoQuestoes.simulado_id == simulado_id
-        ).order_by(
-            SimuladoQuestoes.id
-        ).all()
-
-        # Processar questões para garantir que as imagens sejam renderizadas corretamente
-        questoes_processadas = []
-        for q in questoes:
-            questao_dict = q._asdict()
-            # Garantir que as imagens usem o caminho correto
-            for campo in ['questao', 'alternativa_a', 'alternativa_b', 'alternativa_c', 'alternativa_d', 'alternativa_e']:
-                if questao_dict[campo] and '<img' in questao_dict[campo]:
-                    # Processar url_for no texto
-                    if '{{ url_for' in questao_dict[campo]:
-                        import re
-                        # Extrai o texto antes da tag img
-                        pre_img = questao_dict[campo].split('<img')[0]
-                        # Busca o filename
-                        match = re.search(r"filename='([^']*)'?\s*", questao_dict[campo])
-                        if match:
-                            filename = match.group(1).strip()
-                            # Reconstrói a questão com a nova tag img
-                            questao_dict[campo] = f'{pre_img}<img src="/static/{filename}'
-            questoes_processadas.append(questao_dict)
-        
-        return render_template(
-            'secretaria_educacao/visualizar_simulado.html',
-            simulado=simulado,
-            questoes=questoes_processadas
-        )
-        
-    except Exception as e:
-        flash(f"Erro ao carregar simulado: {str(e)}", "danger")
-        return redirect(url_for("secretaria_educacao.meus_simulados"))
-
-@secretaria_educacao_bp.route('/excluir_simulado/<int:simulado_id>', methods=['POST'])
-@login_required
-def excluir_simulado(simulado_id):
-    """Exclui um simulado e suas questões."""
-    if current_user.tipo_usuario_id not in [5, 6]:
-        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
-    
-    try:
-        # Verificar se o simulado existe e pode ser excluído
-        simulado = db.session.query(SimuladosGerados).filter(
-            SimuladosGerados.id == simulado_id,
-            SimuladosGerados.codigo_ibge == current_user.codigo_ibge,
-            SimuladosGerados.status == 'gerado'
-        ).first()
-        
-        if not simulado:
-            return jsonify({
-                'success': False,
-                'message': 'Simulado não encontrado ou não pode ser excluído'
-            }), 404
-        
-        # Excluir questões do simulado
-        db.session.query(SimuladoQuestoes).filter(
-            SimuladoQuestoes.simulado_id == simulado_id
-        ).delete()
-        
-        # Excluir simulado
-        db.session.delete(simulado)
-        db.session.commit()
-        
-        return jsonify({'success': True, 'message': 'Simulado excluído com sucesso'})
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@secretaria_educacao_bp.route('/salvar_edicao_simulado/<int:simulado_id>', methods=['POST'])
-@login_required
-def salvar_edicao_simulado(simulado_id):
-    """Salva as alterações feitas em um simulado."""
-    if current_user.tipo_usuario_id not in [5, 6]:
-        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
-    
-    try:
-        # Pegar dados do formulário
-        questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
-        
-        if not questoes:
-            return jsonify({'success': False, 'message': 'Nenhuma questão selecionada'}), 400
-        
-        # Buscar simulado e verificar se pode ser editado
-        simulado = db.session.query(SimuladosGerados).filter(
-            SimuladosGerados.id == simulado_id,
-            SimuladosGerados.codigo_ibge == current_user.codigo_ibge,
-            SimuladosGerados.status == 'gerado'
-        ).first()
-        
-        if not simulado:
-            return jsonify({
-                'success': False,
-                'message': 'Simulado não encontrado ou não pode ser editado'
-            }), 404
-        
-        # Remover questões antigas
-        db.session.query(SimuladoQuestoes).filter(
-            SimuladoQuestoes.simulado_id == simulado_id
-        ).delete()
-        
-        # Inserir novas questões
-        for questao_id in questoes:
-            questao = SimuladoQuestoes(
-                simulado_id=simulado_id,
-                questao_id=questao_id
-            )
-            db.session.add(questao)
-        
-        db.session.commit()
-        return jsonify({'success': True, 'message': 'Simulado atualizado com sucesso'})
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@secretaria_educacao_bp.route('/excluir_questao/<int:questao_id>', methods=['POST'])
-@login_required
-def excluir_questao(questao_id):
-    if current_user.tipo_usuario_id not in [5, 6]:  # Verifica se é uma Secretaria de Educação
-        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
-
-    try:
-        db = get_db()
-        
-        # Verifica se a questão existe
-        questao = db.execute('SELECT id FROM banco_questoes WHERE id = ?', (questao_id,)).fetchone()
-        if not questao:
-            return jsonify({'success': False, 'message': 'Questão não encontrada'}), 404
-            
-        # Exclui a questão
-        db.execute('DELETE FROM banco_questoes WHERE id = ?', (questao_id,))
-        db.commit()
-        
-        return jsonify({'success': True, 'message': 'Questão excluída com sucesso'})
-    except Exception as e:
-        db.rollback()  # Reverte a transação em caso de erro
-        print(f"Erro ao excluir questão: {str(e)}")  # Log do erro
-        return jsonify({'success': False, 'message': f'Erro ao excluir questão: {str(e)}'}), 500
-
-@secretaria_educacao_bp.route('/buscar_questao/<int:questao_id>', methods=['GET'])
-@login_required
-def buscar_questao(questao_id):
-    if current_user.tipo_usuario_id not in [5, 6]:
-        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
-    
-    try:
-        db = get_db()
-        cursor = db.cursor()
-        
-        # Buscar questão
-        cursor.execute("""
-            SELECT q.*, d.nome as disciplina_nome, s.nome Ano_escolar_nome
-            FROM banco_questoes q
-            LEFT JOIN disciplinas d ON q.disciplina_id = d.id
-            LEFT JOIN Ano_escolar s ON q.ano_escolar_id = s.id
-            WHERE q.id = ?
-        """, (questao_id,))
-        
-        questao = cursor.fetchone()
-        
-        if questao is None:
-            return jsonify({'success': False, 'message': 'Questão não encontrada'}), 404
-        
-        # Converter o número do mês para nome
-        mes_nome = MESES_NOMES.get(questao[11]) if questao[11] else None
-        
-        return jsonify({
-            'success': True,
-            'questao': {
-                'id': questao[0],
-                'questao': questao[1],
-                'alternativa_a': questao[2],
-                'alternativa_b': questao[3],
-                'alternativa_c': questao[4],
-                'alternativa_d': questao[5],
-                'alternativa_e': questao[6],
-                'questao_correta': questao[7],
-                'disciplina_id': questao[8],
-                'disciplina_nome': questao[12],  # Agora é o nome do componente
-                'assunto': questao[9],
-                'ano_escolar_id': questao[10],
-                'Ano_escolar_nome': questao[13],  # Agora é o nome do ano escolar
-                'mes_id': questao[11],
-                'mes_nome': mes_nome
-            }
-        })
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@secretaria_educacao_bp.route('/atualizar_questao/<int:questao_id>', methods=['POST'])
-@login_required
-def atualizar_questao(questao_id):
-    if current_user.tipo_usuario_id not in [5, 6]:
-        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
-    
-    try:
-        db = get_db()
-        cursor = db.cursor()
-        
-        # Pegar os dados do formulário
-        questao = request.form.get('questao')
-        alternativa_a = request.form.get('alternativa_a')
-        alternativa_b = request.form.get('alternativa_b')
-        alternativa_c = request.form.get('alternativa_c')
-        alternativa_d = request.form.get('alternativa_d')
-        alternativa_e = request.form.get('alternativa_e')
-        questao_correta = request.form.get('questao_correta')
-        disciplina_id = request.form.get('disciplina_id')
-        assunto = request.form.get('assunto')
-        
-        # Processar URLs das imagens - remover sintaxe Jinja2 e adicionar /static/
-        def process_image_urls(text):
-            if text:
-                # Remove sintaxe Jinja2
-                text = re.sub(r"{{\s*url_for\('static',\s*filename='([^']+)'\)\s*}}", r"/static/\1", text)
-                # Garante que todas as URLs de imagem começam com /static/
-                text = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', text)
-            return text
-        
-        # Processar URLs em todos os campos
-        questao = process_image_urls(questao)
-        alternativa_a = process_image_urls(alternativa_a)
-        alternativa_b = process_image_urls(alternativa_b)
-        alternativa_c = process_image_urls(alternativa_c)
-        alternativa_d = process_image_urls(alternativa_d)
-        alternativa_e = process_image_urls(alternativa_e)
-        
-        # Trata campos opcionais
-        ano_escolar_id = request.form.get('ano_escolar_id')
-        mes_id = request.form.get('mes_id')
-        
-        # Converte para None se vazio
-        ano_escolar_id = None if not ano_escolar_id else int(ano_escolar_id)
-        mes_id = None if not mes_id else int(mes_id)
-        
-        # Validate required fields
-        if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d, 
-                   questao_correta, disciplina_id, assunto]):
-            return jsonify({'success': False, 'message': 'Por favor, preencha todos os campos obrigatórios.'}), 400
-
-        # Validate that the correct answer exists
-        if questao_correta == 'E' and not alternativa_e:
-            return jsonify({'success': False, 'message': 'A alternativa E foi marcada como correta, mas não foi preenchida.'}), 400
-
-        # Atualizar questão
-        cursor.execute("""
-            UPDATE banco_questoes 
-            SET questao = ?,
-                alternativa_a = ?,
-                alternativa_b = ?,
-                alternativa_c = ?,
-                alternativa_d = ?,
-                alternativa_e = ?,
-                questao_correta = ?,
-                disciplina_id = ?,
-                assunto = ?,
-                ano_escolar_id = ?,
-                mes_id = ?
-            WHERE id = ?
-        """, (questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
-              alternativa_e, questao_correta, disciplina_id, assunto, ano_escolar_id, mes_id, questao_id))
-        
-        db.commit()
-        
-        return jsonify({
-            'success': True,
-            'message': 'Questão atualizada com sucesso!'
-        })
-    except Exception as e:
-        print(f"Erro ao atualizar questão: {str(e)}")  # Log do erro
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-
-@secretaria_educacao_bp.route('/cancelar_envio_simulado/<int:simulado_id>', methods=['POST'])
-@login_required
-def cancelar_envio_simulado(simulado_id):
-    """Cancelar o envio de um simulado."""
-    if current_user.tipo_usuario_id not in [5, 6]:
-        return jsonify({'success': False, 'error': 'Acesso não autorizado'}), 403
-    
-    try:
-        # Verificar se o simulado existe
-        simulado = db.session.query(SimuladosGerados).get(simulado_id)
-        
-        if not simulado:
-            return jsonify({'success': False, 'error': 'Simulado não encontrado'}), 404
-        
-        # Remover registros de aluno_simulado
-        db.session.query(AlunoSimulado).filter(
-            AlunoSimulado.simulado_id == simulado_id
-        ).delete()
-        
-        # Atualizar status para gerado
-        simulado.status = 'gerado'
-        simulado.data_envio = None
-        
-        db.session.commit()
-        
-        return jsonify({'success': True})
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
         
     except Exception as e:
         db.rollback()
@@ -1508,7 +1156,7 @@ def cancelar_envio_simulado(simulado_id):
 
 
 
-@secretaria_educacao_bp.route('/gerenciar_imagens')
+@bp.route('/gerenciar_imagens')
 @login_required
 def gerenciar_imagens():
     if current_user.tipo_usuario_id not in [5, 6]:
@@ -1521,7 +1169,7 @@ def gerenciar_imagens():
                          disciplinas=disciplinas,
                          imagens=imagens)
 
-@secretaria_educacao_bp.route('/upload_imagem', methods=['POST'])
+@bp.route('/upload_imagem', methods=['POST'])
 @login_required
 def upload_imagem():
     if current_user.tipo_usuario_id not in [5, 6]:
@@ -1538,12 +1186,12 @@ def upload_imagem():
         if file:
             filename = secure_filename(file.filename)
             # Usar o caminho absoluto para salvar a imagem
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'imagens_questoes')
+            upload_folder = os.path.join('static', 'uploads', 'imagens_questoes')
             os.makedirs(upload_folder, exist_ok=True)
             
             filepath = os.path.join(upload_folder, filename)
             file.save(filepath)
-            
+
             # Salvar apenas o caminho relativo ao diretório static no banco
             url_path = os.path.join('uploads', 'imagens_questoes', filename).replace('\\', '/')
             
@@ -1566,7 +1214,7 @@ def upload_imagem():
         print(f"Erro ao fazer upload: {str(e)}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
-@secretaria_educacao_bp.route('/filtrar_imagens')
+@bp.route('/filtrar_imagens')
 @login_required
 def filtrar_imagens():
     if current_user.tipo_usuario_id not in [5, 6]:
@@ -1606,7 +1254,7 @@ def filtrar_imagens():
         } for img in imagens]
     })
 
-@secretaria_educacao_bp.route('/deletar_imagem/<int:id>', methods=['DELETE'])
+@bp.route('/deletar_imagem/<int:id>', methods=['DELETE'])
 @login_required
 def deletar_imagem(id):
     if current_user.tipo_usuario_id not in [5, 6]:
@@ -1636,7 +1284,7 @@ def deletar_imagem(id):
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
-@secretaria_educacao_bp.route('/adicionar_questao', methods=['POST'])
+@bp.route('/adicionar_questao', methods=['POST'])
 @login_required
 def adicionar_questao():
     if current_user.tipo_usuario_id not in [5, 6]:
@@ -1658,25 +1306,25 @@ def adicionar_questao():
         codigo_ibge = current_user.codigo_ibge
         
         # Processar URLs das imagens - remover sintaxe Jinja2 e adicionar /static/
-        def process_image_urls(text):
-            if text:
+        def processar_conteudo(texto):
+            if texto:
                 # Remove sintaxe Jinja2
-                text = re.sub(r"{{\s*url_for\('static',\s*filename='([^']+)'\)\s*}}", r"/static/\1", text)
+                texto = re.sub(r"{{\s*url_for\('static',\s*filename='([^']+)'\)\s*}}", r"/static/\1", texto)
                 # Garante que todas as URLs de imagem começam com /static/
-                text = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', text)
-            return text
+                texto = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', texto)
+            return texto
         
         # Processar URLs em todos os campos
-        questao = process_image_urls(questao)
-        alternativa_a = process_image_urls(alternativa_a)
-        alternativa_b = process_image_urls(alternativa_b)
-        alternativa_c = process_image_urls(alternativa_c)
-        alternativa_d = process_image_urls(alternativa_d)
-        alternativa_e = process_image_urls(alternativa_e)
+        questao = processar_conteudo(questao)
+        alternativa_a = processar_conteudo(alternativa_a)
+        alternativa_b = processar_conteudo(alternativa_b)
+        alternativa_c = processar_conteudo(alternativa_c)
+        alternativa_d = processar_conteudo(alternativa_d)
+        alternativa_e = processar_conteudo(alternativa_e)
         
         # Validação básica
         if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d, 
-                   questao_correta, disciplina_id, assunto]):
+                   questao_correta, disciplina_id, ano_escolar_id]):
             return jsonify({'success': False, 'message': 'Por favor, preencha todos os campos obrigatórios'}), 400
             
         # Cria nova questão
@@ -1704,7 +1352,7 @@ def adicionar_questao():
         db.session.rollback()
         return jsonify({'success': False, 'message': f'Erro ao cadastrar questão: {str(e)}'}), 500
 
-@secretaria_educacao_bp.route('/perfil')
+@bp.route('/perfil')
 @login_required
 def perfil():
     try:
@@ -1744,3 +1392,283 @@ def perfil():
         print(traceback.format_exc())
         flash('Erro ao carregar perfil', 'danger')
         return redirect(url_for('secretaria_educacao.portal_secretaria_educacao'))
+
+@bp.route('/')
+@login_required
+def index():
+    if current_user.tipo_usuario_id not in [5, 6]:  # Apenas secretaria de educação
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+
+    return redirect(url_for('secretaria_educacao.portal_secretaria_educacao'))
+
+@bp.route('/ranking-escolas')
+@login_required
+def ranking_escolas():
+    """Página com o ranking completo das escolas."""
+    # Busca todas as disciplinas
+    disciplinas = Disciplinas.query.all()
+
+    # Ranking Geral
+    ranking_geral = db.session.query(
+        Escolas,
+        func.count(distinct(Usuarios.id)).label('total_alunos'),
+        func.avg(DesempenhoSimulado.pontuacao).label('media_pontos'),
+        func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
+        func.count(distinct(SimuladosGerados.id)).label('total_simulados')
+    ).join(Usuarios, Usuarios.escola_id == Escolas.id)\
+     .join(DesempenhoSimulado, DesempenhoSimulado.aluno_id == Usuarios.id)\
+     .join(SimuladosGerados, SimuladosGerados.id == DesempenhoSimulado.simulado_id)\
+     .filter(Usuarios.tipo_usuario_id == 4)\
+     .group_by(Escolas.id)\
+     .order_by(desc('media_pontos'))\
+     .all()
+
+    # Ranking por Disciplina
+    ranking_disciplinas = {}
+    for disciplina in disciplinas:
+        ranking = db.session.query(
+            Escolas,
+            func.count(distinct(Usuarios.id)).label('total_alunos'),
+            func.avg(DesempenhoSimulado.pontuacao).label('media_pontos'),
+            func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
+            func.count(distinct(SimuladosGerados.id)).label('total_simulados')
+        ).join(
+            Usuarios, 
+            and_(
+                Usuarios.escola_id == Escolas.id,
+                Usuarios.tipo_usuario_id == 4
+            )
+        ).join(
+            DesempenhoSimulado, 
+            DesempenhoSimulado.aluno_id == Usuarios.id
+        ).join(
+            SimuladosGerados, 
+            and_(
+                SimuladosGerados.id == DesempenhoSimulado.simulado_id,
+                SimuladosGerados.disciplina_id == disciplina.id
+            )
+        ).group_by(
+            Escolas.id
+        ).order_by(
+            func.avg(DesempenhoSimulado.pontuacao).desc()
+        ).all()
+        
+        ranking_disciplinas[disciplina.id] = [
+            {
+                'id': escola.id,
+                'nome': escola.nome_da_escola,
+                'codigo_ibge': escola.codigo_ibge,
+                'total_alunos': total_alunos,
+                'media_pontos': media_pontos,
+                'media_geral': media_geral,
+                'total_simulados': total_simulados
+            }
+            for escola, total_alunos, media_pontos, media_geral, total_simulados in ranking
+        ]
+
+    # Formata o ranking geral
+    ranking_geral = [
+        {
+            'id': escola.id,
+            'nome': escola.nome_da_escola,
+            'codigo_ibge': escola.codigo_ibge,
+            'total_alunos': total_alunos,
+            'media_pontos': media_pontos,
+            'media_geral': media_geral,
+            'total_simulados': total_simulados
+        }
+        for escola, total_alunos, media_pontos, media_geral, total_simulados in ranking_geral
+    ]
+
+    return render_template(
+        'secretaria_educacao/ranking_escolas.html',
+        disciplinas=disciplinas,
+        ranking_geral=ranking_geral,
+        ranking_disciplinas=ranking_disciplinas
+    )
+
+@bp.route('/ranking-alunos')
+@login_required
+def ranking_alunos():
+    """Página com o ranking completo dos alunos."""
+    if current_user.tipo_usuario_id not in [TIPO_USUARIO_SECRETARIA_EDUCACAO]:
+        flash('Acesso não autorizado.', 'danger')
+        return redirect(url_for('index'))
+
+    # Busca todas as disciplinas
+    disciplinas = Disciplinas.query.all()
+
+    # Ranking geral dos alunos
+    ranking_geral = db.session.query(
+        Usuarios.id,
+        Usuarios.nome,
+        Escolas.nome_da_escola.label('escola'),
+        func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
+        func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
+    ).join(
+        DesempenhoSimulado, DesempenhoSimulado.aluno_id == Usuarios.id
+    ).join(
+        Escolas, Escolas.id == Usuarios.escola_id
+    ).filter(
+        Usuarios.tipo_usuario_id == 4  # Tipo aluno
+    ).group_by(
+        Usuarios.id,
+        Usuarios.nome,
+        Escolas.nome_da_escola
+    ).order_by(
+        desc('media_geral')
+    ).all()
+
+    # Ranking por disciplina
+    ranking_disciplinas = {}
+    for disciplina in disciplinas:
+        ranking = db.session.query(
+            Usuarios.id,
+            Usuarios.nome,
+            Escolas.nome_da_escola.label('escola'),
+            func.avg(DesempenhoSimulado.desempenho).label('media_disciplina'),
+            func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
+        ).join(
+            DesempenhoSimulado, DesempenhoSimulado.aluno_id == Usuarios.id
+        ).join(
+            Escolas, Escolas.id == Usuarios.escola_id
+        ).join(
+            SimuladosGerados, SimuladosGerados.id == DesempenhoSimulado.simulado_id
+        ).filter(
+            Usuarios.tipo_usuario_id == 4,  # Tipo aluno
+            SimuladosGerados.disciplina_id == disciplina.id  # Filtra pela disciplina
+        ).group_by(
+            Usuarios.id,
+            Usuarios.nome,
+            Escolas.nome_da_escola
+        ).having(
+            func.count(distinct(DesempenhoSimulado.simulado_id)) > 0  # Garante que o aluno fez pelo menos um simulado
+        ).order_by(
+            desc('media_disciplina')
+        ).all()
+
+        if ranking:  # Só adiciona a disciplina se houver dados
+            ranking_disciplinas[disciplina.nome] = [
+                {
+                    'id': id,
+                    'nome': nome,
+                    'escola': escola,
+                    'media_disciplina': float(media_disciplina or 0),
+                    'total_simulados': total_simulados
+                }
+                for id, nome, escola, media_disciplina, total_simulados in ranking
+            ]
+
+    # Formata o ranking geral
+    ranking_geral = [
+        {
+            'id': id,
+            'nome': nome,
+            'escola': escola,
+            'media_geral': float(media_geral or 0),
+            'total_simulados': total_simulados
+        }
+        for id, nome, escola, media_geral, total_simulados in ranking_geral
+    ]
+
+    return render_template(
+        'secretaria_educacao/ranking_alunos.html',
+        disciplinas=disciplinas,
+        ranking_geral=ranking_geral,
+        ranking_disciplinas=ranking_disciplinas
+    )
+
+@bp.route('/visualizar_simulado/<int:simulado_id>')
+@login_required
+def visualizar_simulado(simulado_id):
+    """Visualiza um simulado específico."""
+    if current_user.tipo_usuario_id not in [5, 6]:
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("index"))
+    
+    try:
+        # Buscar informações do simulado
+        simulado = db.session.query(
+            SimuladosGerados,
+            Disciplinas.nome.label('disciplina_nome'),
+            Ano_escolar.nome.label('Ano_escolar_nome'),
+            MESES.nome.label('mes_nome')
+        ).join(
+            Disciplinas, SimuladosGerados.disciplina_id == Disciplinas.id
+        ).join(
+            Ano_escolar, SimuladosGerados.ano_escolar_id == Ano_escolar.id
+        ).join(
+            MESES, SimuladosGerados.mes_id == MESES.id
+        ).filter(
+            SimuladosGerados.id == simulado_id,
+            SimuladosGerados.codigo_ibge == current_user.codigo_ibge
+        ).first()
+
+        if not simulado:
+            flash("Simulado não encontrado.", "danger")
+            return redirect(url_for("secretaria_educacao.meus_simulados"))
+
+        # Buscar questões do simulado
+        questoes = db.session.query(
+            BancoQuestoes
+        ).join(
+            SimuladoQuestoes, BancoQuestoes.id == SimuladoQuestoes.questao_id
+        ).filter(
+            SimuladoQuestoes.simulado_id == simulado_id
+        ).all()
+
+        # Função para tratar imagens
+        def tratar_imagens(texto):
+            if texto and '<img' in texto:
+                import re
+                # Se já tem sintaxe Jinja2, extrai o filename e usa o caminho direto
+                if '{{ url_for' in texto:
+                    # Extrai o texto antes da tag img
+                    pre_img = texto.split('<img')[0]
+                    # Busca o filename
+                    match = re.search(r"filename='([^']*)'?\s*", texto)
+                    if match:
+                        filename = match.group(1).strip()
+                        # Reconstrói a questão com a nova tag img
+                        texto = f'{pre_img}<img src="/static/{filename}'
+                else:
+                    # Se não tem sintaxe Jinja2, garante que o caminho começa com /static/
+                    texto = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', texto)
+                    texto = re.sub(r"src='(?!/static/)([^']+)'", r"src='/static/\1'", texto)
+                
+                # Remove espaços extras nas URLs
+                texto = re.sub(r'src="([^"]*)\s+([^"]*)"', r'src="\1\2"', texto)
+                texto = re.sub(r"src='([^']*)\s+([^']*)'", r"src='\1\2'", texto)
+            return texto
+
+        # Formatar questões tratando as imagens
+        questoes_formatadas = []
+        for q in questoes:
+            questoes_formatadas.append({
+                'questao': tratar_imagens(q.questao),
+                'alternativa_a': tratar_imagens(q.alternativa_a),
+                'alternativa_b': tratar_imagens(q.alternativa_b),
+                'alternativa_c': tratar_imagens(q.alternativa_c),
+                'alternativa_d': tratar_imagens(q.alternativa_d),
+                'alternativa_e': tratar_imagens(q.alternativa_e),
+                'questao_correta': q.questao_correta
+            })
+
+        return render_template(
+            'secretaria_educacao/visualizar_simulado.html',
+            simulado={
+                'id': simulado.SimuladosGerados.id,
+                'status': simulado.SimuladosGerados.status,
+                'data_envio': simulado.SimuladosGerados.data_envio.strftime('%d/%m/%Y %H:%M') if simulado.SimuladosGerados.data_envio else '',
+                'disciplina_nome': simulado.disciplina_nome,
+                'Ano_escolar_nome': simulado.Ano_escolar_nome,
+                'mes_nome': simulado.mes_nome
+            },
+            questoes=questoes_formatadas
+        )
+
+    except Exception as e:
+        print(f"Erro ao visualizar simulado: {str(e)}")
+        flash(f"Erro ao visualizar simulado: {str(e)}", "danger")
+        return redirect(url_for("secretaria_educacao.meus_simulados"))

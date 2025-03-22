@@ -207,7 +207,11 @@ class SimuladoQuestoes(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     simulado_id = db.Column(db.Integer, db.ForeignKey('simulados_gerados.id'), nullable=False)
     questao_id = db.Column(db.Integer, db.ForeignKey('banco_questoes.id'), nullable=True)
-    pontuacao = db.Column(db.Float, nullable=False, default=1.0)  # Pontuação da questão no simulado
+    pontuacao = db.Column(db.Float, nullable=False, default=1.0)
+    
+    # Relacionamentos
+    simulado = db.relationship('SimuladosGerados', backref='questoes_simulado')
+    questao = db.relationship('BancoQuestoes', backref='simulados_questoes')
 
 class SimuladoQuestoesProfessor(db.Model):
     __tablename__ = 'simulado_questoes_professor'
@@ -242,13 +246,12 @@ class DesempenhoSimulado(db.Model):
     aluno_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=False)
     simulado_id = db.Column(db.Integer, db.ForeignKey('simulados_enviados.id'), nullable=False)
     escola_id = db.Column(db.Integer, db.ForeignKey('escolas.id'), nullable=False)
-    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
-    codigo_ibge = db.Column(db.Integer, nullable=False)
+    codigo_ibge = db.Column(db.String(10), nullable=False)
     respostas_aluno = db.Column(db.JSON, nullable=False)
     respostas_corretas = db.Column(db.JSON, nullable=False)
     desempenho = db.Column(db.Numeric(5, 2), nullable=False)
+    pontuacao = db.Column(db.Numeric(5, 2), nullable=False)
     data_resposta = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
-    tipo_usuario_id = db.Column(db.Integer, nullable=False, default=5)
     turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=True)
 
 class Cidades(db.Model):

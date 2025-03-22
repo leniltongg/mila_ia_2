@@ -718,41 +718,77 @@ def finalizar_simulado(simulado_id):
     
     try:
         # Verificar se o simulado existe e está em andamento
-        simulado = None
+        simulado = SimuladosGerados.query.get_or_404(simulado_id)
         
-        # Buscar questões e respostas corretas
-        questoes = []
+        # Buscar questões e respostas corretas com pontuação
+        questoes = db.session.query(
+            BancoQuestoes.id,
+            BancoQuestoes.questao_correta.label('resposta_correta'),
+            SimuladoQuestoes.pontuacao  # Pegando a pontuação da tabela SimuladoQuestoes
+        ).join(
+            SimuladoQuestoes,
+            SimuladoQuestoes.questao_id == BancoQuestoes.id
+        ).filter(
+            SimuladoQuestoes.simulado_id == simulado_id
+        ).all()
         
-        # Criar dicionário de respostas corretas
-        respostas_corretas = {str(q['id']): q['resposta_correta'] for q in questoes}
+        # Criar dicionário de respostas corretas e pontuações
+        respostas_corretas = {str(q.id): q.resposta_correta for q in questoes}
+        pontuacoes = {str(q.id): float(q.pontuacao or 1.0) for q in questoes}  # Default 1.0 se não tiver pontuação
         
         # Buscar respostas do aluno
-        resultado = []
+        resultado = db.session.query(
+            AlunoSimulado.respostas_aluno
+        ).filter_by(
+            simulado_id=simulado_id,
+            aluno_id=current_user.id
+        ).first()
         
-        if not resultado or not resultado['respostas_aluno']:
+        if not resultado or not resultado.respostas_aluno:
             return 'Nenhuma resposta encontrada', 400
             
-        respostas_aluno = json.loads(resultado['respostas_aluno'])
+        respostas_aluno = json.loads(resultado.respostas_aluno)
         
-        # Calcular desempenho
+        # Calcular desempenho e pontuação
         acertos = 0
+        pontos_obtidos = 0
+        pontos_totais = sum(pontuacoes.values())
         total_questoes = len(questoes)
         
         for questao_id, resposta_correta in respostas_corretas.items():
             if questao_id in respostas_aluno:
                 if respostas_aluno[questao_id].upper() == resposta_correta.upper():
                     acertos += 1
+                    pontos_obtidos += pontuacoes[questao_id]
         
         desempenho = (acertos / total_questoes) * 100 if total_questoes > 0 else 0
+        desempenho_pontos = (pontos_obtidos / pontos_totais) * 100 if pontos_totais > 0 else 0
         
         # Atualizar desempenho e marcar como respondido
-        # ...
+        desempenho_registro = DesempenhoSimulado(
+            aluno_id=current_user.id,
+            simulado_id=simulado_id,
+            escola_id=current_user.escola_id,  
+            codigo_ibge=current_user.codigo_ibge,  
+            respostas_aluno=json.dumps(respostas_aluno),
+            respostas_corretas=json.dumps(respostas_corretas),
+            desempenho=desempenho,
+            pontuacao=desempenho_pontos,  # Salvando o desempenho por pontos
+            data_resposta=datetime.now()
+        )
+        db.session.add(desempenho_registro)
         
         # Atualizar status do simulado
-        # ...
+        aluno_simulado = AlunoSimulado.query.filter_by(
+            simulado_id=simulado_id,
+            aluno_id=current_user.id
+        ).first()
+        
+        if aluno_simulado:
+            aluno_simulado.status = 'respondido'
         
         db.session.commit()
-        return jsonify({'success': True, 'desempenho': desempenho})
+        return jsonify({'success': True, 'desempenho': desempenho, 'pontuacao': desempenho_pontos})
         
     except Exception as e:
         db.session.rollback()
@@ -934,7 +970,6 @@ def responder_simulado(simulado_id):
             simulado_id=simulado_id,
             aluno_id=current_user.id,
             escola_id=current_user.escola_id,
-            ano_escolar_id=current_user.ano_escolar_id,
             codigo_ibge=current_user.codigo_ibge,
             turma_id=current_user.turma_id,
             tipo_usuario_id=current_user.tipo_usuario_id,
@@ -1362,3 +1397,25 @@ def pagina_enviar_simulado(simulado_id):
     except Exception as e:
         print(f"Erro ao carregar página de envio: {str(e)}")
         abort(500)
+
+@simulados_bp.route('/limpar-desempenho', methods=['GET'])
+@login_required
+def limpar_desempenho():
+    if current_user.tipo_usuario_id != 6:  # Apenas super usuário
+        abort(403)
+        
+    try:
+        # Deletar todos os registros
+        num_deleted = db.session.query(DesempenhoSimulado).delete()
+        
+        # Resetar status dos simulados para 'em_andamento'
+        db.session.query(AlunoSimulado).update({
+            'status': 'em_andamento'
+        })
+        
+        db.session.commit()
+        return f'Deletados {num_deleted} registros de desempenho com sucesso!'
+        
+    except Exception as e:
+        db.session.rollback()
+        return f'Erro ao limpar desempenho: {str(e)}', 500

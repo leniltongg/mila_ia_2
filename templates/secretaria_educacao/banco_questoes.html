@@ -12,6 +12,45 @@
 <!-- DataTables CSS -->
 <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 <link href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap5.min.css" rel="stylesheet">
+
+<style>
+    .custom-alert {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+    }
+    
+    /* Remover bloqueio de rolagem do modal */
+    .modal {
+        overflow-y: auto !important;
+    }
+    
+    .modal-open {
+        overflow: auto !important;
+        padding-right: 0 !important;
+    }
+    
+    /* Garantir que o backdrop não interfira */
+    .modal-backdrop {
+        pointer-events: none;
+    }
+    
+    /* Permitir rolagem mesmo com modal-open */
+    body.modal-open {
+        overflow: auto !important;
+        padding-right: 0 !important;
+    }
+    
+    /* Ajustar z-index do backdrop para não interferir com a rolagem */
+    .modal-backdrop {
+        z-index: 1040;
+    }
+    .modal {
+        z-index: 1050;
+    }
+</style>
 {% endblock %}
 
 {% block extra_css %}
@@ -103,9 +142,14 @@
 <div class="container-fluid">
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800">Banco de Questões</h1>
-        <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#modalAddQuestao">
-            <i class="fas fa-plus fa-sm text-white-50"></i> Adicionar Questão
-        </button>
+        <div>
+            <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm me-2" data-bs-toggle="modal" data-bs-target="#modalAddQuestao">
+                <i class="fas fa-plus fa-sm text-white-50"></i> Adicionar Questão
+            </button>
+            <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-success shadow-sm" data-bs-toggle="modal" data-bs-target="#modalUploadQuestoes">
+                <i class="fas fa-file-upload fa-sm text-white-50"></i> Upload de Questões
+            </button>
+        </div>
     </div>
 
     <!-- Filtros -->
@@ -535,6 +579,35 @@
     </div>
 </div>
 
+<!-- Modal Upload Questões -->
+<div class="modal fade" id="modalUploadQuestoes" tabindex="-1" aria-labelledby="modalUploadQuestoesLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalUploadQuestoesLabel">Upload de Questões</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('secretaria_educacao.importar_questoes') }}" method="post" enctype="multipart/form-data" id="formUploadQuestoes">
+                    <div class="form-group mb-3">
+                        <label for="arquivo" class="form-label">Selecione o arquivo PDF com as questões:</label>
+                        <input type="file" class="form-control" id="arquivo" name="arquivo" accept=".pdf" required>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> O arquivo deve estar no formato PDF e conter as questões formatadas corretamente.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" form="formUploadQuestoes" class="btn btn-success">
+                    <i class="fas fa-upload"></i> Importar Questões
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock content %}
 
 {% block scripts %}
@@ -587,6 +660,51 @@ $(document).ready(function() {
         ]
     });
 
+    // Função para remover o backdrop do modal
+    function removeModalBackdrop() {
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open');
+        $('body').css('padding-right', '');
+    }
+
+    // Permitir rolagem quando qualquer modal for aberto
+    $('.modal').on('shown.bs.modal', function() {
+        $('body').removeClass('modal-open').css('overflow', 'auto');
+    });
+
+    // Handler para exclusão de questão
+    $('.confirmar-exclusao').on('click', function() {
+        const questaoId = $(this).data('questao-id');
+        const modalElement = $(this).closest('.modal');
+        const modal = bootstrap.Modal.getInstance(modalElement);
+
+        $.ajax({
+            url: `/secretaria_educacao/excluir_questao/${questaoId}`,
+            type: 'POST',
+            success: function(response) {
+                modal.hide();
+                modalElement.on('hidden.bs.modal', function() {
+                    removeModalBackdrop();
+                });
+                
+                if (response.success) {
+                    // Remove a linha da tabela
+                    $(`tr[data-questao-id="${questaoId}"]`).remove();
+                    showAlert('Questão excluída com sucesso!', 'success');
+                } else {
+                    showAlert(response.message, 'danger');
+                }
+            },
+            error: function(xhr, status, error) {
+                modal.hide();
+                modalElement.on('hidden.bs.modal', function() {
+                    removeModalBackdrop();
+                });
+                showAlert('Erro ao excluir questão: ' + error, 'danger');
+            }
+        });
+    });
+
     // Adicionar handler para o formulário de adicionar questão
     $('#formAddQuestao').on('submit', function(e) {
         e.preventDefault();
@@ -602,7 +720,12 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     // Esconde o modal
-                    $('#modalAddQuestao').modal('hide');
+                    const modal = bootstrap.Modal.getInstance($('#modalAddQuestao'));
+                    modal.hide();
+                    $('#modalAddQuestao').on('hidden.bs.modal', function() {
+                        removeModalBackdrop();
+                    });
+                    
                     // Limpa o formulário
                     form[0].reset();
                     // Mostra mensagem de sucesso

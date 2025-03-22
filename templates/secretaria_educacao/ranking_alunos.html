@@ -1,0 +1,123 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block title %}Ranking de Alunos{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="bi bi-trophy me-2"></i>
+            Ranking de Alunos
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('secretaria_educacao.portal_secretaria_educacao') }}">Portal</a></li>
+                <li class="breadcrumb-item active" aria-current="page">Ranking de Alunos</li>
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Abas de Disciplinas -->
+    <div class="card shadow mb-4">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" id="geral-tab" data-bs-toggle="tab" href="#geral" role="tab">
+                        <i class="bi bi-graph-up me-1"></i>
+                        Geral
+                    </a>
+                </li>
+                {% for disciplina in disciplinas %}
+                <li class="nav-item">
+                    <a class="nav-link" id="{{ disciplina.nome }}-tab" data-bs-toggle="tab" href="#{{ disciplina.nome }}" role="tab">
+                        <i class="bi bi-book me-1"></i>
+                        {{ disciplina.nome }}
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- Ranking Geral -->
+                <div class="tab-pane fade show active" id="geral" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover ranking-table">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Aluno</th>
+                                    <th>Escola</th>
+                                    <th>Média Geral</th>
+                                    <th>Total de Simulados</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aluno in ranking_geral %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ aluno.nome }}</td>
+                                    <td>{{ aluno.escola }}</td>
+                                    <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
+                                    <td>{{ aluno.total_simulados }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Ranking por Disciplina -->
+                {% for disciplina in disciplinas %}
+                {% if disciplina.nome in ranking_disciplinas %}
+                <div class="tab-pane fade" id="{{ disciplina.nome }}" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover ranking-table">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Aluno</th>
+                                    <th>Escola</th>
+                                    <th>Média em {{ disciplina.nome }}</th>
+                                    <th>Total de Simulados</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for aluno in ranking_disciplinas[disciplina.nome] %}
+                                <tr>
+                                    <td>{{ loop.index }}</td>
+                                    <td>{{ aluno.nome }}</td>
+                                    <td>{{ aluno.escola }}</td>
+                                    <td>{{ "%.1f"|format(aluno.media_disciplina) }}%</td>
+                                    <td>{{ aluno.total_simulados }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Inicializa as DataTables
+    $(".ranking-table").each(function() {
+        $(this).DataTable({
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
+            },
+            order: [[3, "desc"]], // Ordenar pela média em ordem decrescente
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
+        });
+    });
+});
+</script>
+{% endblock %}

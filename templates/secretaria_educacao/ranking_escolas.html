@@ -1,0 +1,175 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="section-title">
+            <i class="bi bi-trophy me-2"></i>Ranking de Escolas
+        </h1>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('secretaria_educacao.portal_secretaria_educacao') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Ranking de Escolas</li>
+            </ol>
+        </nav>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <ul class="nav nav-tabs card-header-tabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
+                        <i class="bi bi-graph-up me-1"></i>Geral
+                    </button>
+                </li>
+                {% for disciplina in disciplinas %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="disciplina-{{ disciplina.id }}-tab" data-bs-toggle="tab" data-bs-target="#disciplina-{{ disciplina.id }}" type="button" role="tab">
+                        <i class="bi bi-book me-1"></i>{{ disciplina.nome }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content">
+                <!-- Ranking Geral -->
+                <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" style="width: 80px;">Posição</th>
+                                    <th>Escola</th>
+                                    <th class="text-center">Total de Alunos</th>
+                                    <th class="text-center">Média Geral</th>
+                                    <th class="text-center">Pontuação</th>
+                                    <th class="text-center">Simulados Realizados</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for escola in ranking_geral %}
+                                <tr>
+                                    <td class="text-center">
+                                        {% if loop.index == 1 %}
+                                            <div class="badge bg-warning"><i class="bi bi-trophy-fill"></i></div>
+                                        {% elif loop.index == 2 %}
+                                            <div class="badge bg-secondary"><i class="bi bi-trophy-fill"></i></div>
+                                        {% elif loop.index == 3 %}
+                                            <div class="badge bg-danger"><i class="bi bi-trophy-fill"></i></div>
+                                        {% else %}
+                                            {{ loop.index }}º
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">{{ escola.nome }}</div>
+                                        <small class="text-muted">Código IBGE: {{ escola.codigo_ibge }}</small>
+                                    </td>
+                                    <td class="text-center">{{ escola.total_alunos }}</td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div class="me-2">{{ "%.1f"|format(escola.media_geral|float) }}%</div>
+                                            <div class="progress" style="width: 60px; height: 6px;">
+                                                <div class="progress-bar bg-primary" style="width: {{ escola.media_geral|float }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div class="me-2">{{ "%.1f"|format(escola.media_pontos|float) }}%</div>
+                                            <div class="progress" style="width: 60px; height: 6px;">
+                                                <div class="progress-bar bg-success" style="width: {{ escola.media_pontos|float }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">{{ escola.total_simulados }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Ranking por Disciplina -->
+                {% for disciplina in disciplinas %}
+                <div class="tab-pane fade" id="disciplina-{{ disciplina.id }}" role="tabpanel">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" style="width: 80px;">Posição</th>
+                                    <th>Escola</th>
+                                    <th class="text-center">Total de Alunos</th>
+                                    <th class="text-center">Média em {{ disciplina.nome }}</th>
+                                    <th class="text-center">Pontuação em {{ disciplina.nome }}</th>
+                                    <th class="text-center">Simulados Realizados</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for escola in ranking_disciplinas[disciplina.id] %}
+                                <tr>
+                                    <td class="text-center">
+                                        {% if loop.index == 1 %}
+                                            <div class="badge bg-warning"><i class="bi bi-trophy-fill"></i></div>
+                                        {% elif loop.index == 2 %}
+                                            <div class="badge bg-secondary"><i class="bi bi-trophy-fill"></i></div>
+                                        {% elif loop.index == 3 %}
+                                            <div class="badge bg-danger"><i class="bi bi-trophy-fill"></i></div>
+                                        {% else %}
+                                            {{ loop.index }}º
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="fw-bold">{{ escola.nome }}</div>
+                                        <small class="text-muted">Código IBGE: {{ escola.codigo_ibge }}</small>
+                                    </td>
+                                    <td class="text-center">{{ escola.total_alunos }}</td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div class="me-2">{{ "%.1f"|format(escola.media_geral|float) }}%</div>
+                                            <div class="progress" style="width: 60px; height: 6px;">
+                                                <div class="progress-bar bg-primary" style="width: {{ escola.media_geral|float }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <div class="me-2">{{ "%.1f"|format(escola.media_pontos|float) }}%</div>
+                                            <div class="progress" style="width: 60px; height: 6px;">
+                                                <div class="progress-bar bg-success" style="width: {{ escola.media_pontos|float }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">{{ escola.total_simulados }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.section-title {
+    color: #2D1B69;
+    font-weight: 700;
+    position: relative;
+    padding-bottom: 10px;
+    margin-bottom: 25px;
+}
+.section-title:after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 4px;
+    background: linear-gradient(90deg, #2D1B69, #6C63FF);
+    border-radius: 4px;
+}
+</style>
+{% endblock %}
