@@ -1492,17 +1492,40 @@ def ranking_escolas():
 @login_required
 def ranking_alunos():
     """Página com o ranking completo dos alunos."""
-    if current_user.tipo_usuario_id not in [TIPO_USUARIO_SECRETARIA_EDUCACAO]:
+    if current_user.tipo_usuario_id not in [5, 6]:
         flash('Acesso não autorizado.', 'danger')
         return redirect(url_for('index'))
 
     # Busca todas as disciplinas
     disciplinas = Disciplinas.query.all()
 
+    # Busca todos os anos escolares
+    anos_escolares = db.session.query(
+        Ano_escolar.nome
+    ).join(
+        Usuarios, Usuarios.ano_escolar_id == Ano_escolar.id
+    ).filter(
+        Usuarios.tipo_usuario_id == 4  # Tipo aluno
+    ).distinct().order_by(
+        Ano_escolar.nome
+    ).all()
+    anos_escolares = [ano[0] for ano in anos_escolares]  # Converte de tupla para lista
+
+    # Busca todas as escolas que têm o mesmo código IBGE do usuário da secretaria
+    escolas = db.session.query(
+        Escolas.nome_da_escola
+    ).filter(
+        Escolas.codigo_ibge == current_user.codigo_ibge
+    ).order_by(
+        Escolas.nome_da_escola
+    ).all()
+    escolas = [escola[0] for escola in escolas]  # Converte de tupla para lista
+
     # Ranking geral dos alunos
     ranking_geral = db.session.query(
         Usuarios.id,
         Usuarios.nome,
+        Ano_escolar.nome.label('ano_escolar'),
         Escolas.nome_da_escola.label('escola'),
         func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
         func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
@@ -1510,22 +1533,27 @@ def ranking_alunos():
         DesempenhoSimulado, DesempenhoSimulado.aluno_id == Usuarios.id
     ).join(
         Escolas, Escolas.id == Usuarios.escola_id
+    ).join(
+        Ano_escolar, Ano_escolar.id == Usuarios.ano_escolar_id
     ).filter(
         Usuarios.tipo_usuario_id == 4  # Tipo aluno
     ).group_by(
         Usuarios.id,
         Usuarios.nome,
+        Ano_escolar.nome,
         Escolas.nome_da_escola
     ).order_by(
         desc('media_geral')
     ).all()
 
-    # Ranking por disciplina
+    # Ranking por disciplina e ano escolar
     ranking_disciplinas = {}
     for disciplina in disciplinas:
+        # Busque o desempenho dos alunos por disciplina
         ranking = db.session.query(
             Usuarios.id,
             Usuarios.nome,
+            Ano_escolar.nome.label('ano_escolar'),
             Escolas.nome_da_escola.label('escola'),
             func.avg(DesempenhoSimulado.desempenho).label('media_disciplina'),
             func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
@@ -1534,6 +1562,8 @@ def ranking_alunos():
         ).join(
             Escolas, Escolas.id == Usuarios.escola_id
         ).join(
+            Ano_escolar, Ano_escolar.id == Usuarios.ano_escolar_id
+        ).join(
             SimuladosGerados, SimuladosGerados.id == DesempenhoSimulado.simulado_id
         ).filter(
             Usuarios.tipo_usuario_id == 4,  # Tipo aluno
@@ -1541,6 +1571,7 @@ def ranking_alunos():
         ).group_by(
             Usuarios.id,
             Usuarios.nome,
+            Ano_escolar.nome,
             Escolas.nome_da_escola
         ).having(
             func.count(distinct(DesempenhoSimulado.simulado_id)) > 0  # Garante que o aluno fez pelo menos um simulado
@@ -1549,32 +1580,49 @@ def ranking_alunos():
         ).all()
 
         if ranking:  # Só adiciona a disciplina se houver dados
-            ranking_disciplinas[disciplina.nome] = [
+            # Converte os resultados para dicionário
+            alunos = [
                 {
                     'id': id,
                     'nome': nome,
+                    'ano_escolar': ano_escolar,
                     'escola': escola,
                     'media_disciplina': float(media_disciplina or 0),
                     'total_simulados': total_simulados
                 }
-                for id, nome, escola, media_disciplina, total_simulados in ranking
+                for id, nome, ano_escolar, escola, media_disciplina, total_simulados in ranking
             ]
+
+            # Adiciona todos os alunos na chave 'todos'
+            ranking_disciplinas[disciplina.nome] = {'todos': alunos}
+
+            # Agrupa os alunos por ano escolar
+            for ano in anos_escolares:
+                alunos_do_ano = [
+                    aluno for aluno in alunos
+                    if aluno['ano_escolar'] == ano
+                ]
+                if alunos_do_ano:  # Só adiciona o ano se houver alunos
+                    ranking_disciplinas[disciplina.nome][ano] = alunos_do_ano
 
     # Formata o ranking geral
     ranking_geral = [
         {
             'id': id,
             'nome': nome,
+            'ano_escolar': ano_escolar,
             'escola': escola,
             'media_geral': float(media_geral or 0),
             'total_simulados': total_simulados
         }
-        for id, nome, escola, media_geral, total_simulados in ranking_geral
+        for id, nome, ano_escolar, escola, media_geral, total_simulados in ranking_geral
     ]
 
     return render_template(
         'secretaria_educacao/ranking_alunos.html',
         disciplinas=disciplinas,
+        anos_escolares=anos_escolares,
+        escolas=escolas,
         ranking_geral=ranking_geral,
         ranking_disciplinas=ranking_disciplinas
     )
@@ -1621,16 +1669,12 @@ def visualizar_simulado(simulado_id):
         # Função para tratar imagens
         def tratar_imagens(texto):
             if texto and '<img' in texto:
-                import re
-                # Se já tem sintaxe Jinja2, extrai o filename e usa o caminho direto
                 if '{{ url_for' in texto:
-                    # Extrai o texto antes da tag img
+                    import re
                     pre_img = texto.split('<img')[0]
-                    # Busca o filename
                     match = re.search(r"filename='([^']*)'?\s*", texto)
                     if match:
                         filename = match.group(1).strip()
-                        # Reconstrói a questão com a nova tag img
                         texto = f'{pre_img}<img src="/static/{filename}'
                 else:
                     # Se não tem sintaxe Jinja2, garante que o caminho começa com /static/

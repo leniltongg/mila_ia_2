@@ -1,123 +1,266 @@
 {% extends "secretaria_educacao/base_secretaria_educacao.html" %}
 
-{% block title %}Ranking de Alunos{% endblock %}
-
 {% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="bi bi-trophy me-2"></i>
-            Ranking de Alunos
-        </h1>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{{ url_for('secretaria_educacao.portal_secretaria_educacao') }}">Portal</a></li>
-                <li class="breadcrumb-item active" aria-current="page">Ranking de Alunos</li>
-            </ol>
-        </nav>
+<div class="container mt-4">
+    <!-- Debug das escolas -->
+    <div style="display: none;">
+        Escolas disponíveis:
+        {% for escola in escolas %}
+            {{ escola }},
+        {% endfor %}
     </div>
 
-    <!-- Abas de Disciplinas -->
-    <div class="card shadow mb-4">
-        <div class="card-header">
-            <ul class="nav nav-tabs card-header-tabs">
-                <li class="nav-item">
-                    <a class="nav-link active" id="geral-tab" data-bs-toggle="tab" href="#geral" role="tab">
-                        <i class="bi bi-graph-up me-1"></i>
-                        Geral
-                    </a>
-                </li>
-                {% for disciplina in disciplinas %}
-                <li class="nav-item">
-                    <a class="nav-link" id="{{ disciplina.nome }}-tab" data-bs-toggle="tab" href="#{{ disciplina.nome }}" role="tab">
-                        <i class="bi bi-book me-1"></i>
-                        {{ disciplina.nome }}
-                    </a>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="card-body">
-            <div class="tab-content">
-                <!-- Ranking Geral -->
-                <div class="tab-pane fade show active" id="geral" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-hover ranking-table">
-                            <thead>
-                                <tr>
-                                    <th>Posição</th>
-                                    <th>Aluno</th>
-                                    <th>Escola</th>
-                                    <th>Média Geral</th>
-                                    <th>Total de Simulados</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for aluno in ranking_geral %}
-                                <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ aluno.nome }}</td>
-                                    <td>{{ aluno.escola }}</td>
-                                    <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
-                                    <td>{{ aluno.total_simulados }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Ranking por Disciplina -->
-                {% for disciplina in disciplinas %}
-                {% if disciplina.nome in ranking_disciplinas %}
-                <div class="tab-pane fade" id="{{ disciplina.nome }}" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-hover ranking-table">
-                            <thead>
-                                <tr>
-                                    <th>Posição</th>
-                                    <th>Aluno</th>
-                                    <th>Escola</th>
-                                    <th>Média em {{ disciplina.nome }}</th>
-                                    <th>Total de Simulados</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for aluno in ranking_disciplinas[disciplina.nome] %}
-                                <tr>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ aluno.nome }}</td>
-                                    <td>{{ aluno.escola }}</td>
-                                    <td>{{ "%.1f"|format(aluno.media_disciplina) }}%</td>
-                                    <td>{{ aluno.total_simulados }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endif %}
-                {% endfor %}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Ranking de Alunos</h2>
+        <div class="col-md-4 position-relative">
+            <input type="text" class="form-control" id="escolaFilter" placeholder="Buscar escola..." autocomplete="off">
+            <div id="escolasDropdown" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
 
-{% block extra_js %}
+    <!-- Abas para Ranking Geral e por Disciplina -->
+    <ul class="nav nav-tabs mb-3" id="rankingTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
+                Ranking Geral
+            </button>
+        </li>
+        {% for disciplina in disciplinas %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="disciplina-{{ loop.index }}-tab" data-bs-toggle="tab" data-bs-target="#disciplina-{{ loop.index }}" type="button" role="tab" aria-controls="disciplina-{{ loop.index }}" aria-selected="false">
+                {{ disciplina.nome }}
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Abas para Anos Escolares -->
+    <ul class="nav nav-tabs nav-tabs-secondary mb-3" id="anosEscolares" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" onclick="filtrarPorAno('todos')">
+                Todos os Anos
+            </button>
+        </li>
+        {% for ano in anos_escolares %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" onclick="filtrarPorAno('{{ ano }}')">
+                {{ ano }}
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content" id="rankingTabsContent">
+        <!-- Ranking Geral -->
+        <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Nome</th>
+                            <th>Ano Escolar</th>
+                            <th>Escola</th>
+                            <th>Média Geral</th>
+                            <th>Total de Simulados</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rankingBodyGeral">
+                        {% for aluno in ranking_geral %}
+                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}">
+                            <td>{{ loop.index }}º</td>
+                            <td>{{ aluno.nome }}</td>
+                            <td>{{ aluno.ano_escolar }}</td>
+                            <td>{{ aluno.escola }}</td>
+                            <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
+                            <td>{{ aluno.total_simulados }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Ranking por Disciplina -->
+        {% for disciplina in disciplinas %}
+        <div class="tab-pane fade" id="disciplina-{{ loop.index }}" role="tabpanel" aria-labelledby="disciplina-{{ loop.index }}-tab">
+            {% if disciplina.nome in ranking_disciplinas %}
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Posição</th>
+                            <th>Nome</th>
+                            <th>Ano Escolar</th>
+                            <th>Escola</th>
+                            <th>Média na Disciplina</th>
+                            <th>Total de Simulados</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rankingBody-{{ loop.index }}">
+                        {% for aluno in ranking_disciplinas[disciplina.nome]['todos'] %}
+                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}">
+                            <td>{{ loop.index }}º</td>
+                            <td>{{ aluno.nome }}</td>
+                            <td>{{ aluno.ano_escolar }}</td>
+                            <td>{{ aluno.escola }}</td>
+                            <td>{{ "%.1f"|format(aluno.media_disciplina) }}%</td>
+                            <td>{{ aluno.total_simulados }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mt-3">
+                Nenhum dado disponível para esta disciplina.
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Inicializa as DataTables
-    $(".ranking-table").each(function() {
-        $(this).DataTable({
-            language: {
-                url: "//cdn.datatables.net/plug-ins/1.10.24/i18n/Portuguese-Brasil.json"
-            },
-            order: [[3, "desc"]], // Ordenar pela média em ordem decrescente
-            pageLength: 25,
-            lengthMenu: [[10, 25, 50, -1], [10, 25, 50, "Todos"]]
-        });
+// Lista global de escolas
+const todasEscolas = {{ escolas|tojson|safe }};
+console.log("Escolas carregadas:", todasEscolas);
+
+function filtrarPorAno(anoSelecionado) {
+    // Atualiza os botões ativos
+    document.querySelectorAll('#anosEscolares .nav-link').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.textContent.trim() === (anoSelecionado === 'todos' ? 'Todos os Anos' : anoSelecionado)) {
+            btn.classList.add('active');
+        }
     });
+
+    // Filtra todas as tabelas
+    document.querySelectorAll('.tab-pane tbody').forEach(tbody => {
+        const rows = tbody.getElementsByTagName('tr');
+        let posicao = 1;
+
+        for (let row of rows) {
+            const anoAluno = row.getAttribute('data-ano');
+            const escolaValue = document.getElementById('escolaFilter').value.toLowerCase();
+            const escolaAluno = row.getAttribute('data-escola').toLowerCase();
+            
+            const matchAno = anoSelecionado === 'todos' || anoSelecionado === anoAluno;
+            const matchEscola = !escolaValue || escolaAluno.includes(escolaValue);
+            
+            if (matchAno && matchEscola) {
+                row.style.display = '';
+                row.getElementsByTagName('td')[0].textContent = posicao + 'º';
+                posicao++;
+            } else {
+                row.style.display = 'none';
+            }
+        }
+    });
+}
+
+// Função para buscar escolas que correspondem ao texto digitado
+function buscarEscolas(texto) {
+    const dropdown = document.getElementById('escolasDropdown');
+    console.log("Buscando escolas com texto:", texto);
+    console.log("Escolas disponíveis:", todasEscolas);
+    
+    if (!texto) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    const escolasFiltradas = todasEscolas.filter(escola => 
+        escola.toLowerCase().includes(texto.toLowerCase())
+    );
+    console.log("Escolas filtradas:", escolasFiltradas);
+
+    if (escolasFiltradas.length > 0) {
+        dropdown.innerHTML = escolasFiltradas
+            .map(escola => `<div class="dropdown-item p-2 cursor-pointer hover-bg-light" onclick="selecionarEscola('${escola}')">${escola}</div>`)
+            .join('');
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.style.display = 'none';
+    }
+}
+
+function selecionarEscola(escola) {
+    document.getElementById('escolaFilter').value = escola;
+    document.getElementById('escolasDropdown').style.display = 'none';
+    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
+    filtrarPorAno(anoSelecionado === 'Todos os Anos' ? 'todos' : anoSelecionado);
+}
+
+// Event listeners
+document.getElementById('escolaFilter').addEventListener('input', function(e) {
+    buscarEscolas(e.target.value);
+});
+
+// Fechar dropdown quando clicar fora
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('escolasDropdown');
+    const input = document.getElementById('escolaFilter');
+    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+document.getElementById('escolaFilter').addEventListener('focus', function(e) {
+    if (e.target.value) {
+        buscarEscolas(e.target.value);
+    }
 });
 </script>
+
+<style>
+.nav-tabs-secondary {
+    border-bottom: 1px solid #6610f2;
+}
+
+.nav-tabs-secondary .nav-link {
+    color: #6610f2;
+    border: 1px solid transparent;
+    margin-bottom: -1px;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.nav-tabs-secondary .nav-link:hover {
+    border-color: #e9ecef #e9ecef #6610f2;
+}
+
+.nav-tabs-secondary .nav-link.active {
+    color: #6610f2;
+    background-color: #fff;
+    border-color: #6610f2 #6610f2 #fff;
+    font-weight: bold;
+}
+
+.nav-tabs .nav-link {
+    color: #0d6efd;
+}
+
+.nav-tabs .nav-link.active {
+    color: #0d6efd;
+    font-weight: bold;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.hover-bg-light:hover {
+    background-color: #f8f9fa;
+}
+
+#escolasDropdown .dropdown-item {
+    border-bottom: 1px solid #dee2e6;
+}
+
+#escolasDropdown .dropdown-item:last-child {
+    border-bottom: none;
+}
+</style>
 {% endblock %}
