@@ -253,6 +253,8 @@ class DesempenhoSimulado(db.Model):
     pontuacao = db.Column(db.Numeric(5, 2), nullable=False)
     data_resposta = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
     turma_id = db.Column(db.Integer, db.ForeignKey('turmas.id'), nullable=True)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=False)
+    tipo_usuario_id = db.Column(db.Integer, db.ForeignKey('tipos_usuarios.id'), nullable=False)
 
 class Cidades(db.Model):
     __tablename__ = 'cidades'

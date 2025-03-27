@@ -731,7 +731,7 @@ def finalizar_simulado(simulado_id):
         ).filter(
             SimuladoQuestoes.simulado_id == simulado_id
         ).all()
-        
+
         # Criar dicionário de respostas corretas e pontuações
         respostas_corretas = {str(q.id): q.resposta_correta for q in questoes}
         pontuacoes = {str(q.id): float(q.pontuacao or 1.0) for q in questoes}  # Default 1.0 se não tiver pontuação
@@ -761,20 +761,26 @@ def finalizar_simulado(simulado_id):
                     acertos += 1
                     pontos_obtidos += pontuacoes[questao_id]
         
+        # Desempenho baseado em quantidade de acertos
         desempenho = (acertos / total_questoes) * 100 if total_questoes > 0 else 0
+        
+        # Pontuação baseada nos pontos de cada questão
         desempenho_pontos = (pontos_obtidos / pontos_totais) * 100 if pontos_totais > 0 else 0
         
-        # Atualizar desempenho e marcar como respondido
+        # Inserir dados na tabela desempenho_simulado
         desempenho_registro = DesempenhoSimulado(
-            aluno_id=current_user.id,
             simulado_id=simulado_id,
+            aluno_id=current_user.id,
             escola_id=current_user.escola_id,  
             codigo_ibge=current_user.codigo_ibge,  
             respostas_aluno=json.dumps(respostas_aluno),
             respostas_corretas=json.dumps(respostas_corretas),
-            desempenho=desempenho,
-            pontuacao=desempenho_pontos,  # Salvando o desempenho por pontos
-            data_resposta=datetime.now()
+            desempenho=desempenho,  # Percentual de acertos
+            pontuacao=desempenho_pontos,  # Percentual de pontos obtidos
+            data_resposta=datetime.now(),
+            turma_id=current_user.turma_id,
+            ano_escolar_id=current_user.ano_escolar_id,
+            tipo_usuario_id=4  # Aluno
         )
         db.session.add(desempenho_registro)
         
@@ -953,17 +959,39 @@ def responder_simulado(simulado_id):
             for q in questoes_formatadas
         }
         
-        # Calcula apenas para as questões que existem em respostas_corretas
-        total_questoes = len(respostas_corretas)
-        if total_questoes > 0:
-            respostas_certas = sum(
-                1 for key, value in respostas.items() 
-                if key in respostas_corretas and respostas_corretas[key].upper() == value.upper()
-            )
-            percentual = (respostas_certas / total_questoes) * 100
-        else:
-            respostas_certas = 0
-            percentual = 0
+        # Buscar questões do simulado com pontuação
+        questoes = db.session.query(
+            BancoQuestoes.id,
+            BancoQuestoes.questao_correta.label('resposta_correta'),
+            SimuladoQuestoes.pontuacao
+        ).join(
+            SimuladoQuestoes,
+            SimuladoQuestoes.questao_id == BancoQuestoes.id
+        ).filter(
+            SimuladoQuestoes.simulado_id == simulado_id
+        ).all()
+
+        # Criar dicionário de respostas corretas e pontuações
+        respostas_corretas = {str(q.id): q.resposta_correta for q in questoes}
+        pontuacoes = {str(q.id): float(q.pontuacao or 1.0) for q in questoes}
+
+        # Calcular desempenho e pontuação
+        acertos = 0
+        pontos_obtidos = 0
+        pontos_totais = sum(pontuacoes.values())
+        total_questoes = len(questoes)
+
+        for questao_id, resposta_correta in respostas_corretas.items():
+            if questao_id in respostas:
+                if respostas[questao_id].upper() == resposta_correta.upper():
+                    acertos += 1
+                    pontos_obtidos += pontuacoes[questao_id]
+
+        # Desempenho baseado em quantidade de acertos
+        percentual_acertos = (acertos / total_questoes) * 100 if total_questoes > 0 else 0
+        
+        # Pontuação baseada nos pontos de cada questão
+        percentual_pontos = (pontos_obtidos / pontos_totais) * 100 if pontos_totais > 0 else 0
 
         # Inserir dados na tabela desempenho_simulado
         novo_desempenho = DesempenhoSimulado(
@@ -971,16 +999,19 @@ def responder_simulado(simulado_id):
             aluno_id=current_user.id,
             escola_id=current_user.escola_id,
             codigo_ibge=current_user.codigo_ibge,
-            turma_id=current_user.turma_id,
-            tipo_usuario_id=current_user.tipo_usuario_id,
-            desempenho=percentual,
             respostas_aluno=json.dumps(respostas),
-            respostas_corretas=json.dumps(respostas_corretas)
+            respostas_corretas=json.dumps(respostas_corretas),
+            desempenho=percentual_acertos,  # Percentual de acertos
+            pontuacao=percentual_pontos,  # Percentual de pontos obtidos
+            data_resposta=datetime.now(),
+            turma_id=current_user.turma_id,
+            ano_escolar_id=current_user.ano_escolar_id,
+            tipo_usuario_id=4  # Aluno
         )
         db.session.add(novo_desempenho)
+        
         db.session.commit()
-
-        flash(f"Simulado respondido com sucesso! Você acertou {respostas_certas} de {total_questoes} questões.", "success")
+        flash(f"Simulado respondido com sucesso! Você acertou {acertos} de {total_questoes} questões.", "success")
         return redirect(url_for('simulados.responder_simulado', simulado_id=simulado_id, origem=origem))
 
     # Se não respondeu ainda e não é POST, mostrar simulado para responder
@@ -1409,9 +1440,7 @@ def limpar_desempenho():
         num_deleted = db.session.query(DesempenhoSimulado).delete()
         
         # Resetar status dos simulados para 'em_andamento'
-        db.session.query(AlunoSimulado).update({
-            'status': 'em_andamento'
-        })
+        # ...
         
         db.session.commit()
         return f'Deletados {num_deleted} registros de desempenho com sucesso!'

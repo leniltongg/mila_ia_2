@@ -15,6 +15,7 @@ import os
 import json
 import re
 from werkzeug.utils import secure_filename
+import calendar
 
 # Dicionário de meses
 MESES_NOMES = {
@@ -34,6 +35,25 @@ MESES_NOMES = {
 
 # Registrando o Blueprint com url_prefix
 bp = Blueprint('secretaria_educacao', __name__, url_prefix='/secretaria_educacao')
+
+# Filtro para nome do mês
+@bp.app_template_filter('mes_nome')
+def mes_nome(mes_id):
+    meses = {
+        1: 'Janeiro',
+        2: 'Fevereiro',
+        3: 'Março',
+        4: 'Abril',
+        5: 'Maio',
+        6: 'Junho',
+        7: 'Julho',
+        8: 'Agosto',
+        9: 'Setembro',
+        10: 'Outubro',
+        11: 'Novembro',
+        12: 'Dezembro'
+    }
+    return meses.get(int(mes_id), '-')
 
 def get_db():
     return db
@@ -386,10 +406,12 @@ def buscar_questoes():
             SELECT bq.id, bq.questao, bq.alternativa_a, bq.alternativa_b, bq.alternativa_c, 
                    bq.alternativa_d, bq.alternativa_e, bq.questao_correta, bq.assunto,
                    bq.disciplina_id, bq.ano_escolar_id, bq.mes_id,
-                   d.nome as disciplina_nome, ae.nome as Ano_escolar_nome
+                   d.nome as disciplina_nome, ae.nome as Ano_escolar_nome,
+                   m.nome as mes_nome
             FROM banco_questoes bq
             JOIN disciplinas d ON bq.disciplina_id = d.id
             JOIN Ano_escolar ae ON bq.ano_escolar_id = ae.id
+            LEFT JOIN meses m ON bq.mes_id = m.id
             WHERE bq.codigo_ibge = :codigo_ibge
         """
         params = {'codigo_ibge': current_user.codigo_ibge}
@@ -405,8 +427,8 @@ def buscar_questoes():
             sql += " AND bq.mes_id = :mes_id"
             params['mes_id'] = int(mes_id)
         if assunto and assunto.strip():
-            sql += " AND bq.assunto LIKE :assunto"
-            params['assunto'] = f"%{assunto}%"
+            sql += " AND LOWER(bq.assunto) LIKE :assunto"
+            params['assunto'] = f"%{assunto.lower()}%"
             
         sql += " ORDER BY bq.id DESC"
         
@@ -434,7 +456,8 @@ def buscar_questoes():
                 'ano_escolar_id': q.ano_escolar_id,
                 'mes_id': q.mes_id,
                 'disciplina_nome': q.disciplina_nome,
-                'Ano_escolar_nome': q.Ano_escolar_nome
+                'Ano_escolar_nome': q.Ano_escolar_nome,
+                'mes_nome': q.mes_nome if q.mes_nome else '-',
             }
             
             # Processar imagens nas questões e alternativas
@@ -553,7 +576,7 @@ def gerar_simulado_automatico():
 #         disciplina_id = request.form.get('disciplina_id')
 #         questoes = request.form.getlist('questoes[]')  # Lista de IDs das questões
         
-#         if not all([ano_escolar_id, mes_id, disciplina_id, questoes]):
+#         if not all([ano_escolar_id, mes_id, disciplina_id]) or not questoes:
 #             return jsonify({'success': False, 'message': 'Dados incompletos'}), 400
         
 #         # Criar novo simulado
@@ -605,13 +628,13 @@ def banco_questoes():
             codigo_ibge = current_user.codigo_ibge
 
             # Validar dados
-            if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d,
+            if not all([questao, alternativa_a, alternativa_b, alternativa_c, alternativa_d, 
                        questao_correta, disciplina_id, ano_escolar_id]):
                 return jsonify({
                     'success': False,
                     'message': 'Por favor, preencha todos os campos obrigatórios'
                 }), 400
-
+            
             # Processar questão e alternativas para garantir que as tags de imagem estejam corretas
             def processar_conteudo(texto):
                 if texto:
@@ -889,89 +912,30 @@ def importar_questoes():
         try:
             # Salvar o arquivo temporariamente
             filename = secure_filename(arquivo.filename)
-            filepath = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
+            # Usar o caminho absoluto para salvar a arquivo
+            upload_folder = os.path.join('static', 'uploads', 'imagens_questoes')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            filepath = os.path.join(upload_folder, filename)
             arquivo.save(filepath)
 
-            # Processar o arquivo PDF
-            reader = PdfReader(filepath)
-            questoes_importadas = 0
-                
-            # Extrair texto de cada página
-            texto_completo = ""
-            for pagina in reader.pages:
-                texto_completo += pagina.extract_text()
+            # Salvar apenas o caminho relativo ao diretório static no banco
+            url_path = os.path.join('uploads', 'imagens_questoes', filename).replace('\\', '/')
             
-            print("Texto completo:", texto_completo)  # Debug
-                
-            # Dividir o texto em questões
-            import re
-            questoes = re.split(r'Questão\s+\d+\s+', texto_completo)[1:]  # Ajustado o padrão para incluir espaços extras
-            print(f"Número de questões encontradas: {len(questoes)}")  # Debug
+            # Cria o registro no banco
+            imagem = ImagemQuestao(
+                nome=filename,  # Usar o nome do arquivo como nome
+                url=url_path,  # Caminho relativo à pasta static
+                disciplina_id=request.form.get('disciplina_id'),
+                assunto=request.form.get('assunto'),
+                descricao=request.form.get('descricao'),
+                tipo=request.form.get('tipo')
+            )
             
-            for texto_questao in questoes:
-                if len(texto_questao.strip()) > 10:
-                    print("\n\nProcessando questão:", texto_questao)  # Debug
-                    
-                    # Extrair alternativas usando um padrão mais preciso
-                    padrao_alternativas = r'\(([A-E])\)(.*?)(?=\([A-E]\)|Resposta Correta:|$)'
-                    alternativas_match = re.findall(padrao_alternativas, texto_questao, re.DOTALL)
-                    alternativas = {}
-                    for letra, texto in alternativas_match:
-                        alternativas[letra] = texto.strip()
-                    
-                    print("Alternativas encontradas:", alternativas)  # Debug
-                    
-                    # Extrair resposta correta
-                    resposta_match = re.search(r'Resposta Correta:\s*([A-E])', texto_questao)
-                    resposta_correta = resposta_match.group(1) if resposta_match else 'A'
-                    print("Resposta correta:", resposta_correta)  # Debug
-                    
-                    # Extrair disciplina
-                    disciplina_match = re.search(r'Disciplina:\s*(\w+)', texto_questao)
-                    disciplina = disciplina_match.group(1) if disciplina_match else None
-                    print("Disciplina:", disciplina)  # Debug
-                    
-                    # Extrair assunto
-                    assunto_match = re.search(r'Assunto:\s*([^\n]+)', texto_questao)
-                    assunto = assunto_match.group(1).strip() if assunto_match else None
-                    print("Assunto:", assunto)  # Debug
-                    
-                    # Extrair série
-                    serie_match = re.search(r'Ano_escolar_id\s*:\s*(\d+)', texto_questao)
-                    serie_id = int(serie_match.group(1)) if serie_match else None
-                    print("Série ID:", serie_id)  # Debug
-                    
-                    # Extrair mês
-                    mes_match = re.search(r'Mes_id:\s*(\d+)', texto_questao)
-                    mes_id = int(mes_match.group(1)) if mes_match else None
-                    print("Mês ID:", mes_id)  # Debug
-                    
-                    # Buscar a disciplina no banco pelo nome
-                    disciplina_obj = Disciplinas.query.filter(Disciplinas.nome.ilike(f"%{disciplina}%")).first()
-                    disciplina_id = disciplina_obj.id if disciplina_obj else None
-                    print("Disciplina ID:", disciplina_id)  # Debug
-                    
-                    # Criar nova questão no banco
-                    nova_questao = BancoQuestoes(
-                        questao=texto_questao.split('(A)')[0].strip(),  # Texto até a primeira alternativa
-                        alternativa_a=alternativas.get('A', ''),
-                        alternativa_b=alternativas.get('B', ''),
-                        alternativa_c=alternativas.get('C', ''),
-                        alternativa_d=alternativas.get('D', ''),
-                        alternativa_e=alternativas.get('E', ''),
-                        questao_correta=resposta_correta,
-                        disciplina_id=disciplina_id,
-                        assunto=assunto,
-                        ano_escolar_id=serie_id,
-                        mes_id=mes_id,
-                        codigo_ibge=current_user.codigo_ibge,
-                        usuario_id=current_user.id
-                    )
-                    db.session.add(nova_questao)
-                    questoes_importadas += 1
-            
+            db.session.add(imagem)
             db.session.commit()
-            flash(f'Arquivo processado com sucesso! {questoes_importadas} questões importadas.', 'success')
+            
+            return jsonify({'success': True, 'message': 'Imagem enviada com sucesso'})
             
         except ValueError as ve:
             flash(str(ve), 'danger')
@@ -1230,13 +1194,13 @@ def filtrar_imagens():
     if disciplina:
         query = query.filter_by(disciplina_id=disciplina)
     if assunto:
-        query = query.filter(ImagemQuestao.assunto.ilike(f'%{assunto}%'))
+        query = query.filter(ImagemQuestao.assunto.like(f'%{assunto}%'))
     if tipo:
         query = query.filter_by(tipo=tipo)
     if busca:
         query = query.filter(or_(
-            ImagemQuestao.nome.ilike(f'%{busca}%'),
-            ImagemQuestao.descricao.ilike(f'%{busca}%')
+            ImagemQuestao.nome.like(f'%{busca}%'),
+            ImagemQuestao.descricao.like(f'%{busca}%')
         ))
     
     imagens = query.order_by(ImagemQuestao.data_upload.desc()).all()
@@ -1311,7 +1275,8 @@ def adicionar_questao():
                 # Remove sintaxe Jinja2
                 texto = re.sub(r"{{\s*url_for\('static',\s*filename='([^']+)'\)\s*}}", r"/static/\1", texto)
                 # Garante que todas as URLs de imagem começam com /static/
-                texto = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', texto)
+                texto = re.sub(r'src="([^"]*)\s+([^"]*)"', r'src="\1\2"', texto)
+                texto = re.sub(r"src='([^']*)\s+([^']*)'", r"src='\1\2'", texto)
             return texto
         
         # Processar URLs em todos os campos
@@ -1408,9 +1373,17 @@ def ranking_escolas():
     """Página com o ranking completo das escolas."""
     # Busca todas as disciplinas
     disciplinas = Disciplinas.query.all()
+    
+    # Obtém o ano selecionado e tipo de ranking dos parâmetros da URL
+    ano_selecionado = request.args.get('ano', 'todos')
+    tipo_ranking = request.args.get('tipo_ranking', 'pontuacao')
+    mes_selecionado = request.args.get('mes', 'todos')
+
+    # Busca todos os anos escolares
+    anos_escolares = Ano_escolar.query.order_by(Ano_escolar.nome).all()
 
     # Ranking Geral
-    ranking_geral = db.session.query(
+    query_geral = db.session.query(
         Escolas,
         func.count(distinct(Usuarios.id)).label('total_alunos'),
         func.avg(DesempenhoSimulado.pontuacao).label('media_pontos'),
@@ -1419,15 +1392,47 @@ def ranking_escolas():
     ).join(Usuarios, Usuarios.escola_id == Escolas.id)\
      .join(DesempenhoSimulado, DesempenhoSimulado.aluno_id == Usuarios.id)\
      .join(SimuladosGerados, SimuladosGerados.id == DesempenhoSimulado.simulado_id)\
-     .filter(Usuarios.tipo_usuario_id == 4)\
-     .group_by(Escolas.id)\
-     .order_by(desc('media_pontos'))\
-     .all()
+     .filter(Usuarios.tipo_usuario_id == 4)
+
+    # Aplicar filtro de ano escolar se necessário
+    if ano_selecionado != 'todos':
+        query_geral = query_geral.filter(SimuladosGerados.ano_escolar_id == ano_selecionado)
+
+    # Aplicar filtro de mês se necessário
+    if mes_selecionado != 'todos':
+        query_geral = query_geral.filter(SimuladosGerados.mes_id == mes_selecionado)
+
+    # Agrupar e ordenar
+    query_geral = query_geral.group_by(Escolas.id)
+    if tipo_ranking == 'pontuacao':
+        query_geral = query_geral.order_by(desc('media_pontos'))
+    else:
+        query_geral = query_geral.order_by(desc('media_geral'))
+
+    ranking_geral_results = query_geral.all()
+
+    # Formata o ranking geral
+    ranking_geral = {
+        'todos': [
+            {
+                'id': escola.id,
+                'nome': escola.nome_da_escola,
+                'codigo_ibge': escola.codigo_ibge,
+                'total_alunos': total_alunos,
+                'media_pontos': media_pontos,
+                'media_geral': media_geral,
+                'total_simulados': total_simulados
+            }
+            for escola, total_alunos, media_pontos, media_geral, total_simulados in ranking_geral_results
+        ]
+    }
 
     # Ranking por Disciplina
     ranking_disciplinas = {}
     for disciplina in disciplinas:
-        ranking = db.session.query(
+        ranking_disciplinas[disciplina.id] = {'todos': []}
+        
+        query_disc = db.session.query(
             Escolas,
             func.count(distinct(Usuarios.id)).label('total_alunos'),
             func.avg(DesempenhoSimulado.pontuacao).label('media_pontos'),
@@ -1448,13 +1453,26 @@ def ranking_escolas():
                 SimuladosGerados.id == DesempenhoSimulado.simulado_id,
                 SimuladosGerados.disciplina_id == disciplina.id
             )
-        ).group_by(
-            Escolas.id
-        ).order_by(
-            func.avg(DesempenhoSimulado.pontuacao).desc()
-        ).all()
+        )
+
+        # Aplicar filtro de ano escolar se necessário
+        if ano_selecionado != 'todos':
+            query_disc = query_disc.filter(SimuladosGerados.ano_escolar_id == ano_selecionado)
+
+        # Aplicar filtro de mês se necessário
+        if mes_selecionado != 'todos':
+            query_disc = query_disc.filter(SimuladosGerados.mes_id == mes_selecionado)
+
+        # Agrupar e ordenar
+        query_disc = query_disc.group_by(Escolas.id)
+        if tipo_ranking == 'pontuacao':
+            query_disc = query_disc.order_by(func.avg(DesempenhoSimulado.pontuacao).desc())
+        else:
+            query_disc = query_disc.order_by(func.avg(DesempenhoSimulado.desempenho).desc())
+
+        ranking = query_disc.all()
         
-        ranking_disciplinas[disciplina.id] = [
+        ranking_disciplinas[disciplina.id]['todos'] = [
             {
                 'id': escola.id,
                 'nome': escola.nome_da_escola,
@@ -1467,25 +1485,15 @@ def ranking_escolas():
             for escola, total_alunos, media_pontos, media_geral, total_simulados in ranking
         ]
 
-    # Formata o ranking geral
-    ranking_geral = [
-        {
-            'id': escola.id,
-            'nome': escola.nome_da_escola,
-            'codigo_ibge': escola.codigo_ibge,
-            'total_alunos': total_alunos,
-            'media_pontos': media_pontos,
-            'media_geral': media_geral,
-            'total_simulados': total_simulados
-        }
-        for escola, total_alunos, media_pontos, media_geral, total_simulados in ranking_geral
-    ]
-
     return render_template(
         'secretaria_educacao/ranking_escolas.html',
         disciplinas=disciplinas,
         ranking_geral=ranking_geral,
-        ranking_disciplinas=ranking_disciplinas
+        rankings_disciplinas=ranking_disciplinas,
+        anos_escolares=anos_escolares,
+        ano_selecionado=ano_selecionado,
+        tipo_ranking=tipo_ranking,
+        mes_selecionado=mes_selecionado
     )
 
 @bp.route('/ranking-alunos')
@@ -1521,13 +1529,14 @@ def ranking_alunos():
     ).all()
     escolas = [escola[0] for escola in escolas]  # Converte de tupla para lista
 
-    # Ranking geral dos alunos
+    # Ranking Geral
     ranking_geral = db.session.query(
         Usuarios.id,
         Usuarios.nome,
         Ano_escolar.nome.label('ano_escolar'),
         Escolas.nome_da_escola.label('escola'),
         Turmas.turma.label('turma'),
+        func.avg(DesempenhoSimulado.pontuacao).label('media_pontuacao'),
         func.avg(DesempenhoSimulado.desempenho).label('media_geral'),
         func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
     ).join(
@@ -1560,6 +1569,7 @@ def ranking_alunos():
             Ano_escolar.nome.label('ano_escolar'),
             Escolas.nome_da_escola.label('escola'),
             Turmas.turma.label('turma'),
+            func.avg(DesempenhoSimulado.pontuacao).label('media_pontuacao'),
             func.avg(DesempenhoSimulado.desempenho).label('media_disciplina'),
             func.count(distinct(DesempenhoSimulado.simulado_id)).label('total_simulados')
         ).join(
@@ -1596,10 +1606,11 @@ def ranking_alunos():
                     'ano_escolar': ano_escolar,
                     'escola': escola,
                     'turma': turma,
+                    'media_pontuacao': float(media_pontuacao or 0),
                     'media_disciplina': float(media_disciplina or 0),
                     'total_simulados': total_simulados
                 }
-                for id, nome, ano_escolar, escola, turma, media_disciplina, total_simulados in ranking
+                for id, nome, ano_escolar, escola, turma, media_pontuacao, media_disciplina, total_simulados in ranking
             ]
 
             # Adiciona todos os alunos na chave 'todos'
@@ -1622,10 +1633,11 @@ def ranking_alunos():
             'ano_escolar': ano_escolar,
             'escola': escola,
             'turma': turma,
+            'media_pontuacao': float(media_pontuacao or 0),
             'media_geral': float(media_geral or 0),
             'total_simulados': total_simulados
         }
-        for id, nome, ano_escolar, escola, turma, media_geral, total_simulados in ranking_geral
+        for id, nome, ano_escolar, escola, turma, media_pontuacao, media_geral, total_simulados in ranking_geral
     ]
 
     return render_template(
@@ -1647,23 +1659,26 @@ def buscar_turmas():
     escola = request.args.get('escola')
     ano_escolar = request.args.get('ano_escolar')
     
-    if not escola or not ano_escolar:
-        return jsonify({'error': 'Escola e ano escolar são obrigatórios'}), 400
-        
-    turmas = db.session.query(
-        Turmas.turma
-    ).join(
-        Escolas, Escolas.id == Turmas.escola_id
-    ).join(
-        Ano_escolar, Ano_escolar.id == Turmas.ano_escolar_id
-    ).filter(
-        Escolas.nome_da_escola == escola,
-        Ano_escolar.nome == ano_escolar
-    ).order_by(
-        Turmas.turma
-    ).all()
+    if not escola:
+        return jsonify({'error': 'Escola não especificada'})
+
+    query = """
+        SELECT DISTINCT t.turma
+        FROM turmas t
+        JOIN escolas e ON t.escola_id = e.id
+        WHERE e.nome_da_escola = :escola
+    """
+    params = {'escola': escola}
+
+    if ano_escolar != 'todos':
+        query += " AND t.ano_escolar_id = :ano_escolar"
+        params['ano_escolar'] = ano_escolar
+
+    query += " ORDER BY t.turma"
     
-    turmas = [turma[0] for turma in turmas]
+    result = db.session.execute(text(query), params)
+    turmas = [row[0] for row in result]
+    
     return jsonify({'turmas': turmas})
 
 @bp.route('/visualizar_simulado/<int:simulado_id>')
@@ -1700,7 +1715,8 @@ def visualizar_simulado(simulado_id):
         questoes = db.session.query(
             BancoQuestoes
         ).join(
-            SimuladoQuestoes, BancoQuestoes.id == SimuladoQuestoes.questao_id
+            SimuladoQuestoes,
+            SimuladoQuestoes.questao_id == BancoQuestoes.id
         ).filter(
             SimuladoQuestoes.simulado_id == simulado_id
         ).all()
@@ -1715,14 +1731,10 @@ def visualizar_simulado(simulado_id):
                     if match:
                         filename = match.group(1).strip()
                         texto = f'{pre_img}<img src="/static/{filename}'
-                else:
-                    # Se não tem sintaxe Jinja2, garante que o caminho começa com /static/
-                    texto = re.sub(r'src="(?!/static/)([^"]+)"', r'src="/static/\1"', texto)
-                    texto = re.sub(r"src='(?!/static/)([^']+)'", r"src='/static/\1'", texto)
-                
-                # Remove espaços extras nas URLs
-                texto = re.sub(r'src="([^"]*)\s+([^"]*)"', r'src="\1\2"', texto)
-                texto = re.sub(r"src='([^']*)\s+([^']*)'", r"src='\1\2'", texto)
+            
+            # Remove espaços extras nas URLs
+            texto = re.sub(r'src="([^"]*)\s+([^"]*)"', r'src="\1\2"', texto)
+            texto = re.sub(r"src='([^']*)\s+([^']*)'", r"src='\1\2'", texto)
             return texto
 
         # Formatar questões tratando as imagens
@@ -1755,3 +1767,536 @@ def visualizar_simulado(simulado_id):
         print(f"Erro ao visualizar simulado: {str(e)}")
         flash(f"Erro ao visualizar simulado: {str(e)}", "danger")
         return redirect(url_for("secretaria_educacao.meus_simulados"))
+
+@bp.route('/dados-grafico')
+@login_required
+def dados_grafico():
+    disciplina = request.args.get('disciplina', 'todos')
+    ano = request.args.get('ano', 'todos')
+    tipo = request.args.get('tipo', 'pontuacao')
+    periodo = request.args.get('periodo', 'ano')
+    mes = int(request.args.get('mes', datetime.now().month))
+    print(f"Recebendo requisição para dados_grafico com parâmetros: disciplina={disciplina}, ano={ano}, tipo={tipo}, periodo={periodo}, mes={mes}")
+
+    # Dados base
+    query = """
+        SELECT 
+            u.nome as nome_aluno,
+            e.nome_da_escola,
+            MONTH(d.data_resposta) as mes,
+            DAY(d.data_resposta) as dia,
+            AVG(CASE 
+                WHEN :tipo = 'pontuacao' THEN d.pontuacao 
+                ELSE d.desempenho * 100
+            END) as media
+        FROM usuarios u
+        JOIN desempenho_simulado d ON d.aluno_id = u.id
+        JOIN escolas e ON u.escola_id = e.id
+        JOIN simulados_gerados s ON d.simulado_id = s.id
+        JOIN turmas t ON u.turma_id = t.id
+        JOIN ano_escolar a ON u.ano_escolar_id = a.id
+        WHERE u.tipo_usuario_id = 4
+        AND d.data_resposta IS NOT NULL
+        AND e.codigo_ibge = :codigo_ibge
+    """
+    params = {'tipo': tipo, 'codigo_ibge': current_user.codigo_ibge}
+
+    # Adicionar filtros
+    if disciplina != 'todos':
+        query += " AND s.disciplina_id = :disciplina"
+        params['disciplina'] = disciplina
+    if ano != 'todos':
+        query += " AND a.nome = :ano"
+        params['ano'] = ano
+    if periodo == 'mes':
+        query += " AND MONTH(d.data_resposta) = :mes"
+        params['mes'] = mes
+
+    # Agrupar
+    query += """
+        GROUP BY u.nome, e.nome_da_escola,
+        MONTH(d.data_resposta),
+        DAY(d.data_resposta)
+        ORDER BY u.nome, mes, dia
+    """
+
+    try:
+        result = db.session.execute(text(query), params)
+        dados = result.fetchall()
+        print(f"Dados recuperados do banco: {len(dados)} registros")
+
+        # Processar dados por escola
+        escolas_dados = {}
+        for row in dados:
+            escola = row[1]  # nome_da_escola
+            mes = int(row[2])
+            dia = int(row[3])
+            media = float(row[4])
+
+            if escola not in escolas_dados:
+                escolas_dados[escola] = []
+
+            escolas_dados[escola].append({
+                'mes': mes,
+                'dia': dia,
+                'media': media
+            })
+
+        # Calcular média do município
+        media_municipio = []
+        if periodo == 'ano':
+            for mes in range(1, 13):
+                medias_mes = [d['media'] for escola_data in escolas_dados.values() 
+                            for d in escola_data if d['mes'] == mes]
+                if medias_mes:
+                    media = sum(medias_mes) / len(medias_mes)
+                else:
+                    media = 0
+                media_municipio.append({
+                    'mes': mes,
+                    'dia': 1,  # Dia fixo para dados anuais
+                    'media': media
+                })
+        else:
+            max_dia = calendar.monthrange(2024, mes)[1]
+            for dia in range(1, max_dia + 1):
+                medias_dia = [d['media'] for escola_data in escolas_dados.values() 
+                            for d in escola_data if d['dia'] == dia]
+                if medias_dia:
+                    media = sum(medias_dia) / len(medias_dia)
+                else:
+                    media = 0
+                media_municipio.append({
+                    'mes': mes,
+                    'dia': dia,
+                    'media': media
+                })
+
+        # Formatar resposta
+        response_data = []
+
+        # Adicionar média do município primeiro
+        response_data.append({
+            'name': 'Média do Município',
+            'isMedia': True,
+            'data': media_municipio
+        })
+
+        # Adicionar dados das escolas (limitado a 10)
+        for escola, dados in list(escolas_dados.items())[:10]:
+            response_data.append({
+                'name': escola,
+                'isMedia': False,
+                'data': sorted(dados, key=lambda x: (x['mes'], x['dia']))
+            })
+
+        print(f"Dados formatados para resposta: {len(response_data)} escolas")
+        return jsonify(response_data)
+
+    except Exception as e:
+        print(f"Erro ao buscar dados do gráfico: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-escolas-grafico')
+@login_required
+def buscar_escolas_grafico():
+    q = request.args.get('q', '').lower()
+    escolas = db.session.query(Escolas.nome_da_escola).distinct().all()
+    escolas = [e[0] for e in escolas if q in e[0].lower()]
+    return jsonify(escolas)
+
+@bp.route('/buscar-turmas-grafico')
+@login_required
+def buscar_turmas_grafico():
+    try:
+        escola = request.args.get('escola')
+        ano_escolar = request.args.get('ano_escolar')
+
+        if not escola:
+            return jsonify({'error': 'Escola não especificada'})
+
+        query = """
+            SELECT DISTINCT t.turma
+            FROM turmas t
+            JOIN escolas e ON t.escola_id = e.id
+            WHERE e.nome_da_escola = :escola
+        """
+        params = {'escola': escola}
+
+        if ano_escolar != 'todos':
+            query += " AND t.ano_escolar_id = :ano_escolar"
+            params['ano_escolar'] = ano_escolar
+
+        query += " ORDER BY t.turma"
+        
+        result = db.session.execute(text(query), params)
+        turmas = [row[0] for row in result]
+        
+        return jsonify({'turmas': turmas})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-alunos-turma-grafico')
+@login_required
+def buscar_alunos_turma_grafico():
+    try:
+        escola = request.args.get('escola')
+        turma = request.args.get('turma')
+
+        if not escola or not turma:
+            return jsonify([])
+            
+        alunos = db.session.query(
+            Usuarios.id,
+            Usuarios.nome
+        ).join(
+            Turmas, Usuarios.turma_id == Turmas.id
+        ).join(
+            Escolas, Usuarios.escola_id == Escolas.id
+        ).filter(
+            Escolas.nome_da_escola == escola,
+            Turmas.turma == turma,
+            Usuarios.tipo_usuario_id == 4
+        ).order_by(
+            Usuarios.nome
+        ).all()
+
+        return jsonify([{'id': a.id, 'nome': a.nome} for a in alunos])
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/dados-grafico-alunos')
+@login_required
+def dados_grafico_alunos():
+    tipo = request.args.get('tipo', 'pontuacao')
+    periodo = request.args.get('periodo', 'ano')
+    mes = int(request.args.get('mes', datetime.now().month))
+    disciplina = request.args.get('disciplina', 'todos')
+    ano = request.args.get('ano', 'todos')
+    escola = request.args.get('escola')
+    turma = request.args.get('turma')
+    print(f"Recebendo requisição para dados_grafico_alunos com parâmetros: disciplina={disciplina}, ano={ano}, tipo={tipo}, periodo={periodo}, mes={mes}, escola={escola}, turma={turma}")
+
+    # Dados base
+    query = """
+        SELECT 
+            u.nome as nome_aluno,
+            e.nome_da_escola,
+            DATE(d.data_resposta) as data_resposta,
+            AVG(CASE 
+                WHEN :tipo = 'pontuacao' THEN d.pontuacao 
+                ELSE d.desempenho
+            END) as media
+        FROM usuarios u
+        JOIN desempenho_simulado d ON d.aluno_id = u.id
+        JOIN escolas e ON u.escola_id = e.id
+        JOIN simulados_gerados s ON d.simulado_id = s.id
+        JOIN turmas t ON u.turma_id = t.id
+        JOIN ano_escolar a ON u.ano_escolar_id = a.id
+        WHERE u.tipo_usuario_id = 4
+        AND d.data_resposta IS NOT NULL
+        AND e.codigo_ibge = :codigo_ibge
+    """
+    params = {
+        'tipo': tipo,
+        'codigo_ibge': current_user.codigo_ibge
+    }
+
+    # Adicionar filtros
+    if disciplina != 'todos':
+        query += " AND s.disciplina_id = :disciplina"
+        params['disciplina'] = disciplina
+    if ano != 'todos':
+        query += " AND a.nome = :ano"
+        params['ano'] = ano
+    if escola:
+        query += " AND e.nome_da_escola = :escola"
+        params['escola'] = escola
+    if turma:
+        query += " AND t.turma = :turma"
+        params['turma'] = turma
+    if periodo == 'mes':
+        query += " AND MONTH(d.data_resposta) = :mes"
+        params['mes'] = mes
+
+    # Agrupar
+    query += """
+        GROUP BY u.nome, e.nome_da_escola, DATE(d.data_resposta)
+        ORDER BY u.nome, data_resposta
+    """
+
+    try:
+        result = db.session.execute(text(query), params)
+        dados = result.fetchall()
+        print(f"Dados recuperados do banco: {len(dados)} registros")
+        print(f"Exemplo de registro: {dados[0] if dados else 'Nenhum dado'}")
+
+        # Processar dados por aluno
+        alunos_dados = {}
+        for row in dados:
+            nome_aluno = f"{row[0]} ({row[1]})"  # nome_aluno (escola)
+            data = row[2]
+            media = float(row[3])
+            mes = data.month
+            dia = data.day
+            print(f"Processando: aluno={nome_aluno}, data={data}, media={media}")
+
+            if nome_aluno not in alunos_dados:
+                alunos_dados[nome_aluno] = []
+
+            alunos_dados[nome_aluno].append({
+                'mes': mes,
+                'dia': dia,
+                'media': media
+            })
+
+        # Calcular média geral
+        media_geral = []
+        if periodo == 'ano':
+            for mes in range(1, 13):
+                medias_mes = [d['media'] for aluno_data in alunos_dados.values() 
+                            for d in aluno_data if d['mes'] == mes]
+                media = sum(medias_mes) / len(medias_mes) if medias_mes else 0
+                media_geral.append({
+                    'mes': mes,
+                    'dia': 1,
+                    'media': media
+                })
+        else:
+            max_dia = calendar.monthrange(2024, mes)[1]
+            for dia in range(1, max_dia + 1):
+                medias_dia = [d['media'] for aluno_data in alunos_dados.values() 
+                            for d in aluno_data if d['dia'] == dia and d['mes'] == mes]
+                media = sum(medias_dia) / len(medias_dia) if medias_dia else 0
+                media_geral.append({
+                    'mes': mes,
+                    'dia': dia,
+                    'media': media
+                })
+
+        # Formatar resposta
+        response_data = []
+
+        # Adicionar média geral primeiro
+        response_data.append({
+            'name': 'Média Geral',
+            'isMedia': True,
+            'data': media_geral
+        })
+
+        # Adicionar dados dos alunos (limitado a 10)
+        for aluno, dados in list(alunos_dados.items())[:10]:
+            response_data.append({
+                'name': aluno,
+                'isMedia': False,
+                'data': sorted(dados, key=lambda x: (x['mes'], x['dia']))
+            })
+
+        print(f"Dados formatados para resposta: {len(response_data)} alunos")
+        return jsonify(response_data)
+
+    except Exception as e:
+        print(f"Erro ao buscar dados do gráfico: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-escolas-ranking')
+@login_required
+def buscar_escolas_ranking():
+    """Retorna lista de escolas para autocomplete."""
+    try:
+        print(f"[DEBUG] Usuário tipo: {current_user.tipo_usuario_id}")
+        if current_user.tipo_usuario_id not in [5, 6]:
+            print("[DEBUG] Usuário não autorizado")
+            return jsonify([])
+            
+        termo = request.args.get('termo', '')
+        print(f"[DEBUG] Buscando escolas. Termo: '{termo}', IBGE: {current_user.codigo_ibge}")
+        
+        escolas = db.session.query(
+            Escolas.nome_da_escola
+        ).filter(
+            Escolas.codigo_ibge == current_user.codigo_ibge,
+            Escolas.nome_da_escola.like(f'%{termo}%')
+        ).order_by(
+            Escolas.nome_da_escola
+        ).all()
+        
+        resultado = [escola[0] for escola in escolas]
+        print(f"[DEBUG] Escolas encontradas: {len(resultado)}")
+        print(f"[DEBUG] Escolas: {resultado}")
+        return jsonify(resultado)
+    
+    except Exception as e:
+        print(f"[DEBUG] Erro ao buscar escolas: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-turmas-ranking')
+@login_required
+def buscar_turmas_ranking():
+    """Retorna turmas de uma escola e ano escolar específicos."""
+    try:
+        print(f"[DEBUG] Usuário tipo: {current_user.tipo_usuario_id}")
+        if current_user.tipo_usuario_id not in [5, 6]:
+            print("[DEBUG] Usuário não autorizado")
+            return jsonify([])
+            
+        escola = request.args.get('escola')
+        ano_escolar = request.args.get('ano')
+        
+        if not escola or not ano_escolar:
+            return jsonify([])
+        
+        # Buscar todas as turmas da escola e ano escolar, independente de terem desempenho
+        turmas = db.session.query(
+            distinct(Turmas.turma)
+        ).join(
+            Usuarios, Usuarios.turma_id == Turmas.id
+        ).join(
+            Escolas, Escolas.id == Usuarios.escola_id
+        ).join(
+            Ano_escolar, Ano_escolar.id == Usuarios.ano_escolar_id
+        ).filter(
+            Escolas.nome_da_escola == escola,
+            Ano_escolar.nome == ano_escolar
+        ).order_by(
+            Turmas.turma
+        ).all()
+        
+        return jsonify([turma[0] for turma in turmas])
+    
+    except Exception as e:
+        print(f"[DEBUG] Erro ao buscar turmas: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-escolas-grafico-alunos')
+@login_required
+def buscar_escolas_grafico_alunos():
+    termo = request.args.get('term', '')
+    
+    try:
+        query = """
+            SELECT DISTINCT e.nome_da_escola
+            FROM escolas e
+            JOIN usuarios u ON u.escola_id = e.id
+            WHERE u.tipo_usuario_id = 4
+            AND e.nome_da_escola LIKE :termo
+            ORDER BY e.nome_da_escola
+            LIMIT 10
+        """
+        
+        result = db.session.execute(text(query), {'termo': f'%{termo}%'})
+        escolas = [row[0] for row in result]
+        
+        return jsonify(escolas)
+    except Exception as e:
+        print(f"Erro ao buscar escolas: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-anos-escolares-grafico')
+@login_required
+def buscar_anos_escolares_grafico():
+    """Retorna lista de anos escolares disponíveis."""
+    try:
+        query = """
+            SELECT DISTINCT ae.nome
+            FROM ano_escolar ae
+            JOIN usuarios u ON u.ano_escolar_id = ae.id
+            WHERE u.tipo_usuario_id = 4
+            AND u.codigo_ibge = :codigo_ibge
+            ORDER BY ae.nome
+        """
+        
+        result = db.session.execute(text(query), {'codigo_ibge': current_user.codigo_ibge})
+        anos = [row[0] for row in result]
+        
+        return jsonify(anos)
+    except Exception as e:
+        print(f"Erro ao buscar anos escolares: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@bp.route('/buscar-alunos-ranking')
+@login_required
+def buscar_alunos_ranking():
+    """Retorna alunos filtrados por município, escola, ano e turma."""
+    try:
+        print("[DEBUG] Iniciando busca de alunos")
+        if current_user.tipo_usuario_id not in [5, 6]:
+            print("[DEBUG] Usuário não autorizado")
+            return jsonify([])
+            
+        termo = request.args.get('term', '')
+        ano_escolar = request.args.get('ano')
+        escola = request.args.get('escola')
+        turma = request.args.get('turma')
+        
+        print(f"[DEBUG] Parâmetros: termo='{termo}', ano='{ano_escolar}', escola='{escola}', turma='{turma}'")
+        
+        # Query base
+        query = db.session.query(
+            Usuarios.nome.label('nome'),
+            Usuarios.id.label('id')
+        ).filter(
+            Usuarios.tipo_usuario_id == 4  # Alunos
+        )
+        
+        # Filtro de município
+        if current_user.codigo_ibge:
+            print(f"[DEBUG] Filtrando por município: {current_user.codigo_ibge}")
+            query = query.join(
+                Escolas, 
+                Escolas.id == Usuarios.escola_id
+            ).filter(
+                Escolas.codigo_ibge == current_user.codigo_ibge
+            )
+        
+        # Join em ano escolar se necessário
+        if ano_escolar and ano_escolar != 'todos':
+            print(f"[DEBUG] Filtrando por ano: {ano_escolar}")
+            query = query.join(
+                Ano_escolar,
+                Ano_escolar.id == Usuarios.ano_escolar_id
+            ).filter(Ano_escolar.nome == ano_escolar)
+            
+        # Filtro por escola
+        if escola:
+            print(f"[DEBUG] Filtrando por escola: {escola}")            
+            query = query.filter(Escolas.nome_da_escola == escola)
+            
+        # Join em turmas se necessário
+        if turma:
+            print(f"[DEBUG] Filtrando por turma: {turma}")
+            query = query.join(
+                Turmas,
+                Turmas.id == Usuarios.turma_id
+            ).filter(
+                Turmas.turma == turma
+            )
+            
+        # Filtro por nome do aluno
+        if termo:
+            print(f"[DEBUG] Filtrando por termo: {termo}")
+            query = query.filter(Usuarios.nome.ilike(f'%{termo}%'))
+            
+        # Debug da query
+        print("[DEBUG] SQL Query:")
+        print(str(query.statement.compile(compile_kwargs={'literal_binds': True})))
+        
+        # Executar query
+        alunos = query.order_by(Usuarios.nome).limit(10).all()
+        
+        print(f"[DEBUG] Encontrados {len(alunos)} alunos")
+        for aluno in alunos:
+            print(f"[DEBUG] - {aluno.nome} (ID: {aluno.id})")
+        
+        return jsonify([{
+            'id': aluno.id,
+            'label': aluno.nome,
+            'value': aluno.nome
+        } for aluno in alunos])
+        
+    except Exception as e:
+        print(f"[DEBUG] Erro ao buscar alunos: {str(e)}")
+        print(f"[DEBUG] Tipo do erro: {type(e)}")
+        import traceback
+        print(f"[DEBUG] Traceback: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500

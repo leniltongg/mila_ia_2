@@ -1,175 +1,919 @@
 {% extends "secretaria_educacao/base_secretaria_educacao.html" %}
 
 {% block content %}
+<!-- jQuery UI -->
+<link href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css" rel="stylesheet">
+<script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
+
+<!-- DataTables -->
+<link href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- D3.js -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+
+<style>
+    /* Reset e Estilos Globais */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    /* Estilos do Gráfico */
+    .chart-container {
+        height: 70vh;
+        min-height: 500px;
+        position: relative;
+    }
+
+    .line {
+        fill: none;
+        stroke-width: 2;
+        stroke-linejoin: round;
+        stroke-linecap: round;
+        opacity: 1;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .line.fade {
+        opacity: 0.15;
+    }
+
+    .line.highlight {
+        opacity: 1;
+        stroke-width: 3;
+        filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
+    }
+
+    .point {
+        fill-opacity: 1;
+        stroke: white;
+        stroke-width: 1;
+        transition: all 0.3s ease;
+    }
+
+    .point.fade {
+        opacity: 0.15;
+    }
+
+    .legend-item {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .legend-item.fade {
+        opacity: 0.3;
+    }
+
+    .legend-item:hover {
+        opacity: 1;
+    }
+
+    .legend-item text {
+        font-size: 12px;
+        user-select: none;
+    }
+
+    .axis-x text, .axis-y text {
+        font-size: 12px;
+    }
+
+    .grid line {
+        stroke: #ddd;
+        stroke-opacity: 0.7;
+        shape-rendering: crispEdges;
+    }
+
+    .grid path {
+        stroke-width: 0;
+    }
+
+    .tooltip {
+        position: fixed;  
+        padding: 4px 8px;
+        background: #333;
+        color: white;
+        border: 1px solid #222;
+        border-radius: 4px;
+        pointer-events: none;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        z-index: 1000;
+        white-space: nowrap;
+        transform: translate(-50%, -150%);  
+        margin-top: -5px;
+    }
+
+    .tooltip::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 0;
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-top: 5px solid #333;
+    }
+</style>
+
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="section-title">
-            <i class="bi bi-trophy me-2"></i>Ranking de Escolas
-        </h1>
-        <nav aria-label="breadcrumb">
-            <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="{{ url_for('secretaria_educacao.portal_secretaria_educacao') }}">Dashboard</a></li>
-                <li class="breadcrumb-item active">Ranking de Escolas</li>
-            </ol>
-        </nav>
-    </div>
+    <div class="row">
+        <!-- Coluna da Tabela -->
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="card-title mb-0">Ranking das Escolas</h5>
+                        <div class="d-flex align-items-center">
+                            <!-- Botão do Gráfico -->
+                            <button type="button" class="btn btn-outline-primary me-3" data-bs-toggle="modal" data-bs-target="#chartModal">
+                                <i class="fas fa-chart-bar"></i>
+                            </button>
+                        </div>
+                    </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header bg-white">
-            <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
-                        <i class="bi bi-graph-up me-1"></i>Geral
-                    </button>
-                </li>
-                {% for disciplina in disciplinas %}
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="disciplina-{{ disciplina.id }}-tab" data-bs-toggle="tab" data-bs-target="#disciplina-{{ disciplina.id }}" type="button" role="tab">
-                        <i class="bi bi-book me-1"></i>{{ disciplina.nome }}
-                    </button>
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-        <div class="card-body">
-            <div class="tab-content">
-                <!-- Ranking Geral -->
-                <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center" style="width: 80px;">Posição</th>
-                                    <th>Escola</th>
-                                    <th class="text-center">Total de Alunos</th>
-                                    <th class="text-center">Média Geral</th>
-                                    <th class="text-center">Pontuação</th>
-                                    <th class="text-center">Simulados Realizados</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for escola in ranking_geral %}
-                                <tr>
-                                    <td class="text-center">
-                                        {% if loop.index == 1 %}
-                                            <div class="badge bg-warning"><i class="bi bi-trophy-fill"></i></div>
-                                        {% elif loop.index == 2 %}
-                                            <div class="badge bg-secondary"><i class="bi bi-trophy-fill"></i></div>
-                                        {% elif loop.index == 3 %}
-                                            <div class="badge bg-danger"><i class="bi bi-trophy-fill"></i></div>
-                                        {% else %}
-                                            {{ loop.index }}º
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="fw-bold">{{ escola.nome }}</div>
-                                        <small class="text-muted">Código IBGE: {{ escola.codigo_ibge }}</small>
-                                    </td>
-                                    <td class="text-center">{{ escola.total_alunos }}</td>
-                                    <td class="text-center">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <div class="me-2">{{ "%.1f"|format(escola.media_geral|float) }}%</div>
-                                            <div class="progress" style="width: 60px; height: 6px;">
-                                                <div class="progress-bar bg-primary" style="width: {{ escola.media_geral|float }}%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <div class="me-2">{{ "%.1f"|format(escola.media_pontos|float) }}%</div>
-                                            <div class="progress" style="width: 60px; height: 6px;">
-                                                <div class="progress-bar bg-success" style="width: {{ escola.media_pontos|float }}%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">{{ escola.total_simulados }}</td>
-                                </tr>
+                    <!-- Conteúdo da Tabela -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <div class="btn-group" role="group">
+                                    <input type="radio" class="btn-check" name="periodo" id="periodo_ano" value="ano" checked>
+                                    <label class="btn btn-outline-primary" for="periodo_ano">Anual</label>
+                                    
+                                    <input type="radio" class="btn-check" name="periodo" id="periodo_mes" value="mes">
+                                    <label class="btn btn-outline-primary" for="periodo_mes">Mensal</label>
+                                </div>
+                                
+                                <select id="mes_select" class="form-select ms-2" style="width: auto;" disabled>
+                                    <option value="1">Janeiro</option>
+                                    <option value="2">Fevereiro</option>
+                                    <option value="3">Março</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Maio</option>
+                                    <option value="6">Junho</option>
+                                    <option value="7">Julho</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Setembro</option>
+                                    <option value="10">Outubro</option>
+                                    <option value="11">Novembro</option>
+                                    <option value="12">Dezembro</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Switch Toggle -->
+                    <div class="switch-field">
+                        <input type="radio" id="radio-pontuacao" name="tipo_ranking" value="pontuacao" {% if tipo_ranking == 'pontuacao' %}checked{% endif %}>
+                        <label for="radio-pontuacao">Ordenar por Pontuação</label>
+                        <input type="radio" id="radio-desempenho" name="tipo_ranking" value="desempenho" {% if tipo_ranking == 'desempenho' %}checked{% endif %}>
+                        <label for="radio-desempenho">Ordenar por Desempenho</label>
+                    </div>
+
+                    <!-- Abas de Navegação -->
+                    <ul class="nav nav-tabs mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
+                                <i class="fas fa-chart-line me-1"></i>Geral
+                            </button>
+                        </li>
+                        {% for disciplina in disciplinas %}
+                        <li class="nav-item" role="presentation">
+                            <button type="button" class="nav-link" id="disciplina-{{ disciplina.id }}-tab" data-bs-toggle="tab" data-bs-target="#disciplina-{{ disciplina.id }}" type="button" role="tab">
+                                <i class="fas fa-book me-1"></i>{{ disciplina.nome }}
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- Filtros -->
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <!-- Anos Escolares -->
+                        <div class="d-flex align-items-center">                            
+                            <ul class="nav nav-tabs nav-tabs-secondary nav-tabs-compact mb-0" id="anosEscolares" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <a href="{{ url_for('secretaria_educacao.ranking_escolas', ano='todos', tipo_ranking=tipo_ranking, mes=mes_selecionado) }}" class="nav-link {% if ano_selecionado == 'todos' %}active{% endif %}">
+                                        Todos
+                                    </a>
+                                </li>
+                                {% for ano in anos_escolares %}
+                                <li class="nav-item" role="presentation">
+                                    <a href="{{ url_for('secretaria_educacao.ranking_escolas', ano=ano.id, tipo_ranking=tipo_ranking, mes=mes_selecionado) }}" class="nav-link {% if ano_selecionado|string == ano.id|string %}active{% endif %}">
+                                        {{ ano.nome }}
+                                    </a>
+                                </li>
                                 {% endfor %}
-                            </tbody>
-                        </table>
+                            </ul>
+                        </div>
+
+                        <!-- Filtro de Mês -->
+                        <div class="d-flex align-items-center">
+                            <select class="form-select form-select-sm" id="mesSelecionado" onchange="filtrarPorMes(this.value)">
+                                <option value="todos" {% if mes_selecionado == 'todos' %}selected{% endif %}>Todos os Meses</option>
+                                {% for mes in range(1, 13) %}
+                                <option value="{{ mes }}" {% if mes_selecionado|string == mes|string %}selected{% endif %}>
+                                    {{ mes|mes_nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="tab-content">
+                        <!-- Ranking Geral -->
+                        <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
+                            <div class="table-responsive">
+                                <table id="rankingTableGeral" class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width: 80px;">Posição</th>
+                                            <th>Escola</th>
+                                            <th class="text-center">Total de Alunos</th>
+                                            <th class="text-center">Pontuação</th>
+                                            <th class="text-center">Desempenho</th>
+                                            <th class="text-center">Total de Simulados</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for escola in ranking_geral['todos'] %}
+                                        <tr>
+                                            <td class="text-center">{{ loop.index }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-0">{{ escola.nome }}</h6>
+                                                        <small class="text-muted">Código IBGE: {{ escola.codigo_ibge }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">{{ escola.total_alunos }}</td>
+                                            <td class="text-center">
+                                                <div class="progress-container">
+                                                    <div class="progress-label">{{ "%.2f"|format(escola.media_pontos) }}%</div>
+                                                    <div class="progress progress-custom">
+                                                        <div class="progress-bar bg-primary" role="progressbar" 
+                                                            style="width: {{ escola.media_pontos }}%" 
+                                                            aria-valuenow="{{ escola.media_pontos }}" 
+                                                            aria-valuemin="0" 
+                                                            aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="progress-container">
+                                                    <div class="progress-label">{{ "%.2f"|format(escola.media_geral) }}%</div>
+                                                    <div class="progress progress-custom">
+                                                        <div class="progress-bar bg-success" role="progressbar" 
+                                                            style="width: {{ escola.media_geral|int }}%" 
+                                                            aria-valuenow="{{ escola.media_geral|int }}" 
+                                                            aria-valuemin="0" 
+                                                            aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">{{ escola.total_simulados }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Rankings por Disciplina -->
+                        {% for disciplina in disciplinas %}
+                        <div class="tab-pane fade" id="disciplina-{{ disciplina.id }}" role="tabpanel" aria-labelledby="disciplina-{{ disciplina.id }}-tab">
+                            <div class="table-responsive">
+                                <table id="rankingTable{{ disciplina.id }}" class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width: 80px;">Posição</th>
+                                            <th>Escola</th>
+                                            <th class="text-center">Total de Alunos</th>
+                                            <th class="text-center">Pontuação</th>
+                                            <th class="text-center">Desempenho</th>
+                                            <th class="text-center">Total de Simulados</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for escola in rankings_disciplinas[disciplina.id]['todos'] %}
+                                        <tr>
+                                            <td class="text-center">{{ loop.index }}</td>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    <div>
+                                                        <h6 class="mb-0">{{ escola.nome }}</h6>
+                                                        <small class="text-muted">Código IBGE: {{ escola.codigo_ibge }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">{{ escola.total_alunos }}</td>
+                                            <td class="text-center">
+                                                <div class="progress-container">
+                                                    <div class="progress-label">{{ "%.2f"|format(escola.media_pontos) }}%</div>
+                                                    <div class="progress progress-custom">
+                                                        <div class="progress-bar bg-primary" role="progressbar" 
+                                                            style="width: {{ escola.media_pontos }}%" 
+                                                            aria-valuenow="{{ escola.media_pontos }}" 
+                                                            aria-valuemin="0" 
+                                                            aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="progress-container">
+                                                    <div class="progress-label">{{ "%.2f"|format(escola.media_geral) }}%</div>
+                                                    <div class="progress progress-custom">
+                                                        <div class="progress-bar bg-success" role="progressbar" 
+                                                            style="width: {{ escola.media_geral|int }}%" 
+                                                            aria-valuenow="{{ escola.media_geral|int }}" 
+                                                            aria-valuemin="0" 
+                                                            aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td class="text-center">{{ escola.total_simulados }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {% endfor %}
                     </div>
                 </div>
-
-                <!-- Ranking por Disciplina -->
-                {% for disciplina in disciplinas %}
-                <div class="tab-pane fade" id="disciplina-{{ disciplina.id }}" role="tabpanel">
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
-                            <thead class="table-light">
-                                <tr>
-                                    <th class="text-center" style="width: 80px;">Posição</th>
-                                    <th>Escola</th>
-                                    <th class="text-center">Total de Alunos</th>
-                                    <th class="text-center">Média em {{ disciplina.nome }}</th>
-                                    <th class="text-center">Pontuação em {{ disciplina.nome }}</th>
-                                    <th class="text-center">Simulados Realizados</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for escola in ranking_disciplinas[disciplina.id] %}
-                                <tr>
-                                    <td class="text-center">
-                                        {% if loop.index == 1 %}
-                                            <div class="badge bg-warning"><i class="bi bi-trophy-fill"></i></div>
-                                        {% elif loop.index == 2 %}
-                                            <div class="badge bg-secondary"><i class="bi bi-trophy-fill"></i></div>
-                                        {% elif loop.index == 3 %}
-                                            <div class="badge bg-danger"><i class="bi bi-trophy-fill"></i></div>
-                                        {% else %}
-                                            {{ loop.index }}º
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="fw-bold">{{ escola.nome }}</div>
-                                        <small class="text-muted">Código IBGE: {{ escola.codigo_ibge }}</small>
-                                    </td>
-                                    <td class="text-center">{{ escola.total_alunos }}</td>
-                                    <td class="text-center">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <div class="me-2">{{ "%.1f"|format(escola.media_geral|float) }}%</div>
-                                            <div class="progress" style="width: 60px; height: 6px;">
-                                                <div class="progress-bar bg-primary" style="width: {{ escola.media_geral|float }}%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        <div class="d-flex align-items-center justify-content-center">
-                                            <div class="me-2">{{ "%.1f"|format(escola.media_pontos|float) }}%</div>
-                                            <div class="progress" style="width: 60px; height: 6px;">
-                                                <div class="progress-bar bg-success" style="width: {{ escola.media_pontos|float }}%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">{{ escola.total_simulados }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endfor %}
             </div>
         </div>
     </div>
 </div>
 
-<style>
-.section-title {
-    color: #2D1B69;
-    font-weight: 700;
-    position: relative;
-    padding-bottom: 10px;
-    margin-bottom: 25px;
+<!-- Modal do Gráfico -->
+<div class="modal fade" id="chartModal" tabindex="-1" aria-labelledby="chartModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="chartModalLabel">Gráfico de Desempenho</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="chart-controls">
+                    <div class="row">
+                        <!-- Período -->
+                        <div class="col-md-3">
+                            <label>Período</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="periodo" id="periodo_anual" value="ano" checked>
+                                <label class="btn btn-outline-primary" for="periodo_anual">Anual</label>
+                                <input type="radio" class="btn-check" name="periodo" id="periodo_mensal" value="mes">
+                                <label class="btn btn-outline-primary" for="periodo_mensal">Mensal</label>
+                            </div>
+                        </div>
+                        <!-- Mês (visível apenas quando Mensal) -->
+                        <div class="col-md-3" id="mes_container" style="display: none;">
+                            <label for="mesSelect">Mês</label>
+                            <select id="mesSelect" class="form-select">
+                                <option value="3">Março</option>
+                                <option value="4">Abril</option>
+                                <option value="5">Maio</option>
+                                <option value="6">Junho</option>
+                                <option value="7">Julho</option>
+                                <option value="8">Agosto</option>
+                                <option value="9">Setembro</option>
+                                <option value="10">Outubro</option>
+                                <option value="11">Novembro</option>
+                                <option value="12">Dezembro</option>
+                            </select>
+                        </div>
+                        <!-- Tipo -->
+                        <div class="col-md-3">
+                            <label>Tipo</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="tipo" id="tipo_pontuacao" value="pontuacao" checked>
+                                <label class="btn btn-outline-primary" for="tipo_pontuacao">Pontuação</label>
+                                <input type="radio" class="btn-check" name="tipo" id="tipo_desempenho" value="desempenho">
+                                <label class="btn btn-outline-primary" for="tipo_desempenho">Desempenho</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <!-- Disciplina -->
+                        <div class="col-md-4">
+                            <label for="disciplinaSelect">Disciplina</label>
+                            <select id="disciplinaSelect" class="form-select">
+                                <option value="todos">Todas as Disciplinas</option>
+                                {% for disciplina in disciplinas %}
+                                <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <!-- Ano Escolar -->
+                        <div class="col-md-4">
+                            <label for="anoSelect">Ano Escolar</label>
+                            <select id="anoSelect" class="form-select">
+                                <option value="todos">Todos os Anos</option>
+                                {% for ano in anos_escolares %}
+                                <option value="{{ ano.id }}">{{ ano.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <!-- Busca de Escolas -->
+                        <div class="col-md-8">
+                            <div class="position-relative">
+                                <input type="text" id="escolaSearch" class="form-control" placeholder="Digite o nome da escola..." autocomplete="off">
+                                <div id="escolasDropdown" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
+                                </div>
+                                <button class="btn btn-primary mt-2" type="button" id="addEscolaBtn" onclick="adicionarEscolaAtual()" disabled>
+                                    Comparar
+                                </button>
+                            </div>
+                            <div id="escolasComparacao" class="mt-2 d-flex flex-wrap gap-2">
+                                <!-- Tags das escolas selecionadas serão adicionadas aqui -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="chart" class="chart-container"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para destacar escola
+function highlightEscola(escolaNome) {
+    if (escolaNome) {
+        // Escurece todas as linhas e pontos
+        d3.selectAll('.line, .point')
+            .classed('fade', true);
+        
+        d3.selectAll('.legend-item')
+            .classed('fade', true);
+
+        // Destaca apenas a escola selecionada
+        d3.selectAll('.line').filter(function(d) {
+            return d && d[0] && d[0].escola === escolaNome;
+        }).classed('fade', false).classed('highlight', true);
+
+        d3.selectAll('.point').filter(function(d) {
+            return d && d.escola === escolaNome;
+        }).classed('fade', false);
+
+        d3.selectAll('.legend-item').filter(function(d) {
+            return d.name === escolaNome;
+        }).classed('fade', false);
+    } else {
+        // Remove todos os destaques
+        d3.selectAll('.line, .point, .legend-item')
+            .classed('fade', false)
+            .classed('highlight', false);
+    }
 }
-.section-title:after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 60px;
-    height: 4px;
-    background: linear-gradient(90deg, #2D1B69, #6C63FF);
-    border-radius: 4px;
+
+// Configuração do gráfico
+const margin = { top: 40, right: 200, bottom: 50, left: 60 };
+let width = 800;
+let height = 400;
+
+// Criar o SVG
+const svg = d3.select('#chart')
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+// Criar escalas
+const x = d3.scaleLinear().range([0, width]);
+const y = d3.scaleLinear().range([height, 0]);
+const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+// Adicionar grid
+const xGrid = svg.append('g')
+    .attr('class', 'grid')
+    .attr('transform', `translate(0,${height})`);
+
+const yGrid = svg.append('g')
+    .attr('class', 'grid');
+
+// Adicionar eixos
+const xAxis = svg.append('g')
+    .attr('class', 'axis axis-x')
+    .attr('transform', `translate(0,${height})`);
+
+const yAxis = svg.append('g')
+    .attr('class', 'axis axis-y');
+
+// Criar grupo para as linhas e pontos
+const linesGroup = svg.append('g').attr('class', 'lines');
+
+// Criar grupo para a legenda
+const legend = svg.append('g')
+    .attr('class', 'legend')
+    .attr('transform', `translate(${width + 20}, 0)`);
+
+// Criar tooltip
+const tooltip = d3.select('#chart')
+    .append('div')
+    .attr('class', 'tooltip')
+    .style('opacity', 0);
+
+// Função para mostrar tooltip
+function showTooltip(event, d, escola) {
+    const [mouseX, mouseY] = d3.pointer(event);
+    const xValue = x.invert(mouseX);
+    
+    // Encontrar o ponto mais próximo
+    const bisect = d3.bisector(d => periodo === 'ano' ? d.mes : d.dia).left;
+    const index = bisect(d, xValue);
+    const ponto = d[index];
+    
+    if (ponto) {
+        const valor = tipo === 'pontuacao' ? 
+            d3.format('.1f')(ponto.media) : 
+            d3.format('.0f')(ponto.media * 100) + '%';
+
+        // Calcular a posição exata do ponto no gráfico
+        const xPos = x(periodo === 'ano' ? ponto.mes : ponto.dia);
+        const yPos = y(ponto.media);
+        const svgRect = svg.node().getBoundingClientRect();
+        const chartX = svgRect.left + margin.left + xPos;
+        const chartY = svgRect.top + margin.top + yPos;
+
+        // Ajustar posição do tooltip
+        tooltip.style('opacity', 1)
+            .html(valor)
+            .style('left', chartX + 'px')
+            .style('top', chartY + 'px');
+    }
 }
-</style>
+
+// Função para esconder tooltip
+function hideTooltip() {
+    tooltip.style('opacity', 0);
+}
+
+// Variáveis globais
+let escolasSelecionadas = new Set();
+let todasEscolas = [];
+let escolaAtual = '';
+
+// Função para buscar escolas
+function buscarEscolas(texto) {
+    const dropdown = document.getElementById('escolasDropdown');
+    
+    if (!texto) {
+        dropdown.style.display = 'none';
+        return;
+    }
+
+    // Pegar todas as escolas da tabela atual se ainda não tiver
+    if (todasEscolas.length === 0) {
+        const escolas = Array.from(document.querySelectorAll('table tbody tr td:first-child'))
+            .map(td => td.textContent.trim())
+            .filter(escola => escola && !escola.includes('Média'));
+        todasEscolas = [...new Set(escolas)];
+    }
+
+    const escolasFiltradas = todasEscolas.filter(escola => 
+        escola.toLowerCase().includes(texto.toLowerCase())
+    );
+
+    if (escolasFiltradas.length > 0) {
+        dropdown.innerHTML = escolasFiltradas
+            .map(escola => `
+                <div class="dropdown-item p-2 cursor-pointer" 
+                     style="cursor: pointer;" 
+                     onmouseover="this.style.backgroundColor='#f8f9fa'"
+                     onmouseout="this.style.backgroundColor=''"
+                     onclick="selecionarEscola('${escola}')">${escola}</div>
+            `)
+            .join('');
+        dropdown.style.display = 'block';
+    } else {
+        dropdown.style.display = 'none';
+    }
+}
+
+// Função para selecionar escola
+function selecionarEscola(escola) {
+    escolaAtual = escola;
+    document.getElementById('escolaSearch').value = escola;
+    document.getElementById('escolasDropdown').style.display = 'none';
+    document.getElementById('addEscolaBtn').disabled = false;
+}
+
+// Event listeners
+document.getElementById('escolaSearch').addEventListener('input', function(e) {
+    buscarEscolas(e.target.value);
+    document.getElementById('addEscolaBtn').disabled = true;
+    escolaAtual = '';
+});
+
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('escolasDropdown');
+    const searchInput = document.getElementById('escolaSearch');
+    
+    if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// Função para adicionar escola atual
+function adicionarEscolaAtual() {
+    if (escolaAtual) {
+        adicionarEscola(escolaAtual);
+        document.getElementById('escolaSearch').value = '';
+        document.getElementById('addEscolaBtn').disabled = true;
+        escolaAtual = '';
+    }
+}
+
+// Função para adicionar escola à comparação
+function adicionarEscola(escola) {
+    if (escolasSelecionadas.size >= 5) {
+        alert('Você pode comparar no máximo 5 escolas');
+        return;
+    }
+
+    if (!escolasSelecionadas.has(escola)) {
+        escolasSelecionadas.add(escola);
+        
+        // Adicionar tag da escola
+        const div = document.createElement('div');
+        div.className = 'badge bg-primary me-2';
+        div.setAttribute('data-escola', escola);
+        div.innerHTML = `
+            ${escola}
+            <i class="fas fa-times ms-2" style="cursor: pointer;" onclick="removerEscola('${escola}')"></i>
+        `;
+        document.getElementById('escolasComparacao').appendChild(div);
+
+        // Atualizar gráfico
+        updateChart();
+    }
+}
+
+// Função para remover escola da comparação
+function removerEscola(escola) {
+    escolasSelecionadas.delete(escola);
+    document.querySelector(`[data-escola="${escola}"]`).remove();
+    updateChart();
+}
+
+// Função para atualizar o gráfico
+async function updateChart() {
+    const periodo = document.querySelector('input[name="periodo"]:checked').value;
+    const mes = document.getElementById('mesSelect').value;
+    const tipo = document.querySelector('input[name="tipo"]:checked').value;
+    const disciplina = document.getElementById('disciplinaSelect').value;
+    const ano = document.getElementById('anoSelect').value;
+
+    try {
+        // Buscar dados
+        const url = `/secretaria_educacao/dados-grafico?periodo=${periodo}&mes=${mes}&tipo=${tipo}&disciplina=${disciplina}&ano=${ano}`;
+        const response = await fetch(url);
+        const dados = await response.json();
+
+        // Filtrar apenas escolas selecionadas se houver alguma
+        const dadosProcessados = dados.filter(d => {
+            return d.isMedia || escolasSelecionadas.size === 0 || escolasSelecionadas.has(d.name);
+        });
+
+        if (dadosProcessados.length === 0) {
+            console.log("Sem dados para exibir");
+            return;
+        }
+
+        // Configurar escalas
+        if (periodo === 'ano') {
+            x.domain([1, 12]);
+            xAxis.call(d3.axisBottom(x).tickFormat(d => {
+                const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                return meses[d-1];
+            }));
+        } else {
+            const maxDia = new Date(2024, mes, 0).getDate();
+            x.domain([1, maxDia]);
+            xAxis.call(d3.axisBottom(x).tickFormat(d => d));
+        }
+
+        const maxY = d3.max(dadosProcessados, d => d3.max(d.data, v => v.media));
+        y.domain([0, maxY || (tipo === 'pontuacao' ? 10 : 100)]);
+
+        // Atualizar grid
+        xGrid.call(d3.axisBottom(x).tickSize(-height).tickFormat(''));
+        yGrid.call(d3.axisLeft(y).tickSize(-width).tickFormat(''));
+
+        // Atualizar eixo Y
+        yAxis.call(d3.axisLeft(y).tickFormat(d => tipo === 'pontuacao' ? d : d + '%'));
+
+        // Criar função da linha
+        const line = d3.line()
+            .x(d => x(periodo === 'ano' ? d.mes : d.dia))
+            .y(d => y(d.media))
+            .defined(d => !isNaN(d.media))
+            .curve(d3.curveMonotoneX);
+
+        // Limpar linhas e pontos existentes
+        linesGroup.selectAll('*').remove();
+
+        // Adicionar novas linhas e pontos
+        dadosProcessados.forEach(escola => {
+            // Criar array com todos os dias do mês ou meses do ano
+            let dadosCompletos;
+            if (periodo === 'ano') {
+                dadosCompletos = Array.from({length: 12}, (_, i) => {
+                    const mesAtual = i + 1;
+                    const dadoExistente = escola.data.find(d => d.mes === mesAtual);
+                    return {
+                        mes: mesAtual,
+                        dia: 1,
+                        media: dadoExistente ? dadoExistente.media : 0,
+                        escola: escola.name
+                    };
+                });
+            } else {
+                const maxDia = new Date(2024, mes, 0).getDate();
+                dadosCompletos = Array.from({length: maxDia}, (_, i) => {
+                    const diaAtual = i + 1;
+                    const dadoExistente = escola.data.find(d => d.dia === diaAtual);
+                    return {
+                        mes: mes,
+                        dia: diaAtual,
+                        media: dadoExistente ? dadoExistente.media : 0,
+                        escola: escola.name
+                    };
+                });
+            }
+
+            const escolaCor = color(escola.name);
+
+            // Desenhar linha com interatividade
+            const path = linesGroup.append('path')
+                .datum(dadosCompletos)
+                .attr('class', 'line')
+                .attr('d', line)
+                .attr('stroke', escolaCor)
+                .attr('stroke-width', 2)
+                .attr('fill', 'none')
+                .on('mouseenter', function(event) {
+                    highlightEscola(escola.name);
+                    showTooltip(event, dadosCompletos, escola.name);
+                })
+                .on('mousemove', function(event) {
+                    showTooltip(event, dadosCompletos, escola.name);
+                })
+                .on('mouseleave', function() {
+                    highlightEscola(null);
+                    hideTooltip();
+                });
+
+            // Desenhar pontos com interatividade
+            const points = linesGroup.selectAll(null)
+                .data(dadosCompletos)
+                .enter()
+                .append('circle')
+                .attr('class', 'point')
+                .attr('cx', d => x(periodo === 'ano' ? d.mes : d.dia))
+                .attr('cy', d => y(d.media))
+                .attr('r', 3)
+                .attr('fill', escolaCor)
+                .on('mouseenter', function(event, d) {
+                    d3.select(this).attr('r', 5);  // Aumenta o ponto ao passar o mouse
+                    highlightEscola(escola.name);
+                    showTooltip(event, [d], escola.name);
+                })
+                .on('mouseleave', function() {
+                    d3.select(this).attr('r', 3);  // Volta ao tamanho normal
+                    highlightEscola(null);
+                    hideTooltip();
+                });
+        });
+
+        // Limpar legenda existente
+        legend.selectAll('*').remove();
+
+        // Adicionar nova legenda
+        const legendItems = legend.selectAll('.legend-item')
+            .data(dadosProcessados)
+            .enter()
+            .append('g')
+            .attr('class', 'legend-item')
+            .attr('transform', (d, i) => `translate(0,${i * 20})`);
+
+        legendItems.append('rect')
+            .attr('width', 15)
+            .attr('height', 15)
+            .attr('fill', d => color(d.name));
+
+        legendItems.append('text')
+            .attr('x', 20)
+            .attr('y', 12)
+            .text(d => d.name)
+            .attr('font-weight', d => d.isMedia ? 'bold' : 'normal');
+
+        // Adicionar interatividade à legenda
+        legendItems
+            .on('mouseenter', function(event, d) {
+                highlightEscola(d.name);
+            })
+            .on('mouseleave', function() {
+                highlightEscola(null);
+            });
+
+        // Atualizar lista de escolas para o autocomplete
+        todasEscolas = dados.filter(d => !d.isMedia).map(d => d.name);
+
+    } catch (error) {
+        console.error('Erro ao atualizar o gráfico:', error);
+    }
+}
+
+// Event listeners
+document.querySelectorAll('input[name="periodo"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        console.log("Período alterado para:", this.value); 
+        document.getElementById('mes_container').style.display = 
+            this.value === 'mes' ? 'block' : 'none';
+        updateChart();
+    });
+});
+
+document.getElementById('mesSelect').addEventListener('change', updateChart);
+document.getElementById('disciplinaSelect').addEventListener('change', updateChart);
+document.getElementById('anoSelect').addEventListener('change', updateChart);
+document.querySelectorAll('input[name="tipo"]').forEach(radio => {
+    radio.addEventListener('change', updateChart);
+});
+
+document.getElementById('addEscolaBtn').addEventListener('click', function() {
+    const escola = document.getElementById('escolaSearch').value;
+    if (escola && todasEscolas.includes(escola)) {
+        adicionarEscola(escola);
+        document.getElementById('escolaSearch').value = '';
+        this.disabled = true;
+    }
+});
+
+// Atualizar gráfico quando o modal é aberto
+const chartModal = document.getElementById('chartModal');
+chartModal.addEventListener('shown.bs.modal', function () {
+    console.log("Modal aberto - atualizando dimensões"); 
+    // Atualizar dimensões
+    const container = document.getElementById('chart');
+    width = container.clientWidth - margin.left - margin.right;
+    height = container.clientHeight - margin.top - margin.bottom;
+    console.log("Novas dimensões:", { width, height }); 
+
+    // Atualizar SVG
+    d3.select('#chart svg')
+        .attr('width', width + margin.left + margin.right)
+        .attr('height', height + margin.top + margin.bottom);
+
+    // Atualizar escalas
+    x.range([0, width]);
+    y.range([height, 0]);
+
+    // Atualizar posições
+    xGrid.attr('transform', `translate(0,${height})`);
+    xAxis.attr('transform', `translate(0,${height})`);
+    legend.attr('transform', `translate(${width + 20}, 0)`);
+
+    updateChart();
+});
+
+// Redimensionar gráfico quando a janela é redimensionada
+window.addEventListener('resize', function() {
+    if (chartModal.classList.contains('show')) {
+        const container = document.getElementById('chart');
+        width = container.clientWidth - margin.left - margin.right;
+        height = container.clientHeight - margin.top - margin.bottom;
+
+        d3.select('#chart svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom);
+
+        x.range([0, width]);
+        y.range([height, 0]);
+
+        xGrid.attr('transform', `translate(0,${height})`);
+        xAxis.attr('transform', `translate(0,${height})`);
+        legend.attr('transform', `translate(${width + 20}, 0)`);
+
+        updateChart();
+    }
+});
+</script>
+
 {% endblock %}

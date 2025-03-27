@@ -1,292 +1,995 @@
 {% extends "secretaria_educacao/base_secretaria_educacao.html" %}
 
+{% block head %}
+<!-- D3.js -->
+<script src="https://d3js.org/d3.v7.min.js"></script>
+{% endblock %}
+
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Ranking de Alunos</h2>
-        <div class="col-md-4 position-relative">
-            <input type="text" class="form-control" id="escolaFilter" placeholder="Buscar escola..." autocomplete="off">
-            <div id="escolasDropdown" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
+<!-- Font Awesome -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- Coluna da Tabela -->
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Ranking de Alunos</h2>
+                <div class="col-md-4 position-relative">
+                    <input type="text" class="form-control" id="escolaSearch" placeholder="Buscar escola..." autocomplete="off">
+                    <div id="escolasDropdown" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abas para Ranking Geral e por Disciplina -->
+            <ul class="nav nav-tabs mb-3" id="rankingTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
+                        Ranking Geral
+                    </button>
+                </li>
+                {% for disciplina in disciplinas %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="disciplina-{{ loop.index }}-tab" data-bs-toggle="tab" data-bs-target="#disciplina-{{ loop.index }}" type="button" role="tab" aria-controls="disciplina-{{ loop.index }}" aria-selected="false">
+                        {{ disciplina.nome }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <!-- Abas para Anos Escolares -->
+            <ul class="nav nav-tabs nav-tabs-secondary mb-3" id="anosEscolares" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" onclick="filtrarPorAno('todos')">
+                        Todos os Anos
+                    </button>
+                </li>
+                {% for ano in anos_escolares %}
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" onclick="filtrarPorAno('{{ ano }}')">
+                        {{ ano }}
+                    </button>
+                </li>
+                {% endfor %}
+            </ul>
+
+            <!-- Filtro de Turma -->
+            <div class="mb-3">
+                <select class="form-select" id="turmaFilter" disabled>
+                    <option value="">Selecione uma turma...</option>
+                </select>
+            </div>
+
+            <!-- Botão para abrir o modal -->
+            <div class="d-flex justify-content-end mb-3">
+                <button type="button" class="btn btn-link p-0" data-bs-toggle="modal" data-bs-target="#graficoModal" title="Visualizar Gráfico">
+                    <i class="fas fa-chart-line fa-lg text-primary"></i>
+                </button>
+            </div>
+
+            <!-- Conteúdo das Abas -->
+            <div class="tab-content" id="rankingTabsContent">
+                <!-- Ranking Geral -->
+                <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Nome</th>
+                                    <th>Ano Escolar</th>
+                                    <th>Escola</th>
+                                    <th>Turma</th>
+                                    <th>Média Geral</th>
+                                    <th>Pontuação</th>
+                                    <th>Total de Simulados</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rankingBodyGeral">
+                                {% for aluno in ranking_geral %}
+                                <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}" data-turma="{{ aluno.turma }}">
+                                    <td>{{ loop.index }}º</td>
+                                    <td>{{ aluno.nome }}</td>
+                                    <td>{{ aluno.ano_escolar }}</td>
+                                    <td>{{ aluno.escola }}</td>
+                                    <td>{{ aluno.turma }}</td>
+                                    <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
+                                    <td>{{ "%.1f"|format(aluno.media_pontuacao) }}%</td>
+                                    <td>{{ aluno.total_simulados }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Ranking por Disciplina -->
+                {% for disciplina in disciplinas %}
+                <div class="tab-pane fade" id="disciplina-{{ loop.index }}" role="tabpanel" aria-labelledby="disciplina-{{ loop.index }}-tab">
+                    {% if disciplina.nome in ranking_disciplinas %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Nome</th>
+                                    <th>Ano Escolar</th>
+                                    <th>Escola</th>
+                                    <th>Turma</th>
+                                    <th>Média na Disciplina</th>
+                                    <th>Pontuação</th>
+                                    <th>Total de Simulados</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rankingBody-{{ loop.index }}">
+                                {% for aluno in ranking_disciplinas[disciplina.nome]['todos'] %}
+                                <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}" data-turma="{{ aluno.turma }}">
+                                    <td>{{ loop.index }}º</td>
+                                    <td>{{ aluno.nome }}</td>
+                                    <td>{{ aluno.ano_escolar }}</td>
+                                    <td>{{ aluno.escola }}</td>
+                                    <td>{{ aluno.turma }}</td>
+                                    <td>{{ "%.1f"|format(aluno.media_disciplina) }}%</td>
+                                    <td>{{ "%.1f"|format(aluno.media_pontuacao) }}%</td>
+                                    <td>{{ aluno.total_simulados }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info mt-3">
+                        Nenhum dado disponível para esta disciplina.
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
             </div>
         </div>
-    </div>
 
-    <!-- Abas para Ranking Geral e por Disciplina -->
-    <ul class="nav nav-tabs mb-3" id="rankingTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="geral-tab" data-bs-toggle="tab" data-bs-target="#geral" type="button" role="tab" aria-controls="geral" aria-selected="true">
-                Ranking Geral
-            </button>
-        </li>
-        {% for disciplina in disciplinas %}
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="disciplina-{{ loop.index }}-tab" data-bs-toggle="tab" data-bs-target="#disciplina-{{ loop.index }}" type="button" role="tab" aria-controls="disciplina-{{ loop.index }}" aria-selected="false">
-                {{ disciplina.nome }}
-            </button>
-        </li>
-        {% endfor %}
-    </ul>
-
-    <!-- Abas para Anos Escolares -->
-    <ul class="nav nav-tabs nav-tabs-secondary mb-3" id="anosEscolares" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" onclick="filtrarPorAno('todos')">
-                Todos os Anos
-            </button>
-        </li>
-        {% for ano in anos_escolares %}
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" onclick="filtrarPorAno('{{ ano }}')">
-                {{ ano }}
-            </button>
-        </li>
-        {% endfor %}
-    </ul>
-
-    <!-- Filtro de Turma -->
-    <div class="mb-3">
-        <select class="form-select" id="turmaFilter" disabled>
-            <option value="">Selecione uma turma...</option>
-        </select>
-    </div>
-
-    <!-- Conteúdo das Abas -->
-    <div class="tab-content" id="rankingTabsContent">
-        <!-- Ranking Geral -->
-        <div class="tab-pane fade show active" id="geral" role="tabpanel" aria-labelledby="geral-tab">
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Posição</th>
-                            <th>Nome</th>
-                            <th>Ano Escolar</th>
-                            <th>Escola</th>
-                            <th>Turma</th>
-                            <th>Média Geral</th>
-                            <th>Total de Simulados</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rankingBodyGeral">
-                        {% for aluno in ranking_geral %}
-                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}" data-turma="{{ aluno.turma }}">
-                            <td>{{ loop.index }}º</td>
-                            <td>{{ aluno.nome }}</td>
-                            <td>{{ aluno.ano_escolar }}</td>
-                            <td>{{ aluno.escola }}</td>
-                            <td>{{ aluno.turma }}</td>
-                            <td>{{ "%.1f"|format(aluno.media_geral) }}%</td>
-                            <td>{{ aluno.total_simulados }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <!-- Modal do Gráfico -->
+        <div class="modal fade" id="graficoModal" tabindex="-1" aria-labelledby="graficoModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl" style="max-width: 90%; width: 1200px;">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="graficoModalLabel">Visualização Gráfica</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="chart-controls mb-4">
+                            <div class="row mb-3">
+                                <!-- Tipo -->
+                                <div class="col-md-3">
+                                    <label>Tipo</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="tipo" id="tipo_pontuacao" value="pontuacao" checked>
+                                        <label class="btn btn-outline-primary" for="tipo_pontuacao">Pontuação</label>
+                                        <input type="radio" class="btn-check" name="tipo" id="tipo_desempenho" value="desempenho">
+                                        <label class="btn btn-outline-primary" for="tipo_desempenho">Desempenho</label>
+                                    </div>
+                                </div>
+                                <!-- Período -->
+                                <div class="col-md-3">
+                                    <label>Período</label>
+                                    <div class="btn-group w-100" role="group">
+                                        <input type="radio" class="btn-check" name="periodo" id="periodo_anual" value="ano" checked>
+                                        <label class="btn btn-outline-primary" for="periodo_anual">Anual</label>
+                                        <input type="radio" class="btn-check" name="periodo" id="periodo_mensal" value="mes">
+                                        <label class="btn btn-outline-primary" for="periodo_mensal">Mensal</label>
+                                    </div>
+                                </div>
+                                <!-- Mês (visível apenas quando Mensal) -->
+                                <div class="col-md-3" id="mes_container" style="display: none;">
+                                    <label for="mesSelect">Mês</label>
+                                    <select id="mesSelect" class="form-select">
+                                        <option value="3">Março</option>
+                                        <option value="4">Abril</option>
+                                        <option value="5">Maio</option>
+                                        <option value="6">Junho</option>
+                                        <option value="7">Julho</option>
+                                        <option value="8">Agosto</option>
+                                        <option value="9">Setembro</option>
+                                        <option value="10">Outubro</option>
+                                        <option value="11">Novembro</option>
+                                        <option value="12">Dezembro</option>
+                                    </select>
+                                </div>
+                                <!-- Disciplina -->
+                                <div class="col-md-3">
+                                    <label for="disciplinaSelect">Disciplina</label>
+                                    <select id="disciplinaSelect" class="form-select">
+                                        <option value="todos">Todas as Disciplinas</option>
+                                        {% for disciplina in disciplinas %}
+                                        <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mb-3">
+                                <!-- Ano Escolar -->
+                                <div class="col-md-3">
+                                    <label for="anoSelect">Ano Escolar</label>
+                                    <select id="anoSelect" class="form-select">
+                                        <option value="todos">Todos os Anos</option>
+                                    </select>
+                                </div>
+                                <!-- Escola -->
+                                <div class="col-md-6">
+                                    <label>Escola</label>
+                                    <div class="position-relative">
+                                        <input type="text" id="escolaSearchModal" class="form-control" placeholder="Digite o nome da escola..." autocomplete="off">
+                                        <div id="escolasDropdownModal" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Turma -->
+                                <div class="col-md-3">
+                                    <label for="turmaSelect">Turma</label>
+                                    <select id="turmaSelect" class="form-select" disabled>
+                                        <option value="">Selecione uma turma...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <!-- Alunos -->
+                                <div class="col-md-12">
+                                    <label>Alunos</label>
+                                    <div class="position-relative">
+                                        <input type="text" id="alunoSearch" class="form-control" placeholder="Digite o nome do aluno..." autocomplete="off">
+                                        <div id="alunosDropdown" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
+                                        </div>
+                                    </div>
+                                    <!-- Lista de alunos selecionados -->
+                                    <div id="alunosSelecionados" class="mt-2">
+                                        <!-- Os alunos selecionados serão adicionados aqui -->
+                                    </div>
+                                    <!-- Botão de comparar (inicialmente oculto) -->
+                                    <button id="compararBtn" class="btn btn-primary mt-2" style="display: none;">
+                                        Comparar Alunos
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="chart" class="chart-container" style="height: 450px; width: 100%;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Ranking por Disciplina -->
-        {% for disciplina in disciplinas %}
-        <div class="tab-pane fade" id="disciplina-{{ loop.index }}" role="tabpanel" aria-labelledby="disciplina-{{ loop.index }}-tab">
-            {% if disciplina.nome in ranking_disciplinas %}
-            <div class="table-responsive">
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Posição</th>
-                            <th>Nome</th>
-                            <th>Ano Escolar</th>
-                            <th>Escola</th>
-                            <th>Turma</th>
-                            <th>Média na Disciplina</th>
-                            <th>Total de Simulados</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rankingBody-{{ loop.index }}">
-                        {% for aluno in ranking_disciplinas[disciplina.nome]['todos'] %}
-                        <tr data-ano="{{ aluno.ano_escolar }}" data-escola="{{ aluno.escola }}" data-turma="{{ aluno.turma }}">
-                            <td>{{ loop.index }}º</td>
-                            <td>{{ aluno.nome }}</td>
-                            <td>{{ aluno.ano_escolar }}</td>
-                            <td>{{ aluno.escola }}</td>
-                            <td>{{ aluno.turma }}</td>
-                            <td>{{ "%.1f"|format(aluno.media_disciplina) }}%</td>
-                            <td>{{ aluno.total_simulados }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <div class="alert alert-info mt-3">
-                Nenhum dado disponível para esta disciplina.
-            </div>
-            {% endif %}
-        </div>
-        {% endfor %}
-    </div>
-</div>
-
-<script>
-// Lista global de escolas
-const todasEscolas = {{ escolas|tojson|safe }};
-console.log("Escolas carregadas:", todasEscolas);
-
-function filtrarPorAno(anoSelecionado) {
-    // Atualiza os botões ativos
-    document.querySelectorAll('#anosEscolares .nav-link').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.textContent.trim() === (anoSelecionado === 'todos' ? 'Todos os Anos' : anoSelecionado)) {
-            btn.classList.add('active');
-        }
-    });
-
-    // Atualiza as turmas disponíveis se tiver escola selecionada
-    const escola = document.getElementById('escolaFilter').value;
-    if (escola && anoSelecionado !== 'todos') {
-        atualizarTurmas();
-    } else {
-        // Desabilita e limpa o select de turmas
-        const turmaSelect = document.getElementById('turmaFilter');
-        turmaSelect.disabled = true;
-        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
-    }
-
-    // Filtra todas as tabelas
-    document.querySelectorAll('.tab-pane tbody').forEach(tbody => {
-        const rows = tbody.getElementsByTagName('tr');
-        let posicao = 1;
-
-        for (let row of rows) {
-            const anoAluno = row.getAttribute('data-ano');
-            const escolaValue = document.getElementById('escolaFilter').value.toLowerCase();
-            const escolaAluno = row.getAttribute('data-escola').toLowerCase();
-            const turmaValue = document.getElementById('turmaFilter').value;
-            const turmaAluno = row.getAttribute('data-turma');
-            
-            const matchAno = anoSelecionado === 'todos' || anoSelecionado === anoAluno;
-            const matchEscola = !escolaValue || escolaAluno.includes(escolaValue);
-            const matchTurma = !turmaValue || turmaValue === turmaAluno;
-            
-            if (matchAno && matchEscola && matchTurma) {
-                row.style.display = '';
-                row.getElementsByTagName('td')[0].textContent = posicao + 'º';
-                posicao++;
-            } else {
-                row.style.display = 'none';
-            }
-        }
-    });
-}
-
-function buscarEscolas(texto) {
-    const dropdown = document.getElementById('escolasDropdown');
-    console.log("Buscando escolas com texto:", texto);
-    
-    if (!texto) {
-        dropdown.style.display = 'none';
-        return;
-    }
-
-    const escolasFiltradas = todasEscolas.filter(escola => 
-        escola.toLowerCase().includes(texto.toLowerCase())
-    );
-
-    if (escolasFiltradas.length > 0) {
-        dropdown.innerHTML = escolasFiltradas
-            .map(escola => `<div class="dropdown-item p-2 cursor-pointer hover-bg-light" onclick="selecionarEscola('${escola}')">${escola}</div>`)
-            .join('');
-        dropdown.style.display = 'block';
-    } else {
-        dropdown.style.display = 'none';
-    }
-}
-
-function selecionarEscola(escola) {
-    document.getElementById('escolaFilter').value = escola;
-    document.getElementById('escolasDropdown').style.display = 'none';
-    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
-    
-    // Só atualiza as turmas se não for "Todos os Anos"
-    if (anoSelecionado !== 'Todos os Anos') {
-        atualizarTurmas();
-    } else {
-        // Se for "Todos os Anos", desabilita o select de turmas
-        const turmaSelect = document.getElementById('turmaFilter');
-        turmaSelect.disabled = true;
-        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
-    }
-    
-    filtrarPorAno(anoSelecionado === 'Todos os Anos' ? 'todos' : anoSelecionado);
-}
-
-function atualizarTurmas() {
-    const escola = document.getElementById('escolaFilter').value;
-    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
-    const turmaSelect = document.getElementById('turmaFilter');
-    
-    if (!escola || anoSelecionado === 'Todos os Anos') {
-        turmaSelect.disabled = true;
-        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
-        return;
-    }
-
-    console.log('Buscando turmas para:', escola, anoSelecionado);
-
-    // Buscar turmas da escola e ano selecionados
-    fetch(`/secretaria_educacao/buscar-turmas?escola=${encodeURIComponent(escola)}&ano_escolar=${encodeURIComponent(anoSelecionado)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro na resposta do servidor');
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('Turmas recebidas:', data);
-            
-            if (data.error) {
-                console.error('Erro ao buscar turmas:', data.error);
-                return;
+        <style>
+            .chart-container {
+                position: relative;
+                width: 100%;
+                height: 450px;
+                min-height: 450px;
             }
 
-            turmaSelect.innerHTML = '<option value="">Todas as turmas</option>';
-            data.turmas.forEach(turma => {
-                const option = document.createElement('option');
-                option.value = turma;
-                option.textContent = turma;
-                turmaSelect.appendChild(option);
+            /* Estilos para o dropdown de escolas */
+            #escolasDropdown, #escolasDropdownModal {
+                max-height: 200px;
+                overflow-y: auto;
+                border: 1px solid #dee2e6;
+                border-radius: 0 0 4px 4px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                background-color: white;
+                z-index: 1050;
+            }
+
+            #escolasDropdown .dropdown-item, #escolasDropdownModal .dropdown-item {
+                padding: 8px 12px;
+                cursor: pointer;
+                transition: background-color 0.2s ease;
+            }
+
+            #escolasDropdown .dropdown-item:hover, #escolasDropdownModal .dropdown-item:hover {
+                background-color: #f8f9fa;
+            }
+
+            #escolasDropdown .text-muted, #escolasDropdownModal .text-muted {
+                color: #6c757d;
+                padding: 8px 12px;
+            }
+
+            #escolasDropdown .text-danger, #escolasDropdownModal .text-danger {
+                color: #dc3545;
+                padding: 8px 12px;
+            }
+
+            /* Estilo para o input de busca */
+            #escolaSearch, #escolaSearchModal {
+                border-radius: 4px;
+                border: 1px solid #ced4da;
+                padding: 8px 12px;
+                transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            }
+
+            #escolaSearch:focus, #escolaSearchModal:focus {
+                border-color: #80bdff;
+                outline: 0;
+                box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+            }
+        </style>
+
+        <script>
+            // Variáveis globais
+            let todasEscolas = new Set();
+
+            // Função para buscar escolas
+            async function buscarEscolas(texto, isModal = false) {
+                const dropdownId = isModal ? 'escolasDropdownModal' : 'escolasDropdown';
+                const dropdown = document.getElementById(dropdownId);
+                
+                if (!texto) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/secretaria_educacao/buscar-escolas-grafico-alunos?term=${encodeURIComponent(texto)}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const escolas = await response.json();
+                    
+                    if (escolas.length > 0) {
+                        dropdown.innerHTML = escolas
+                            .filter(escola => escola.toLowerCase().includes(texto.toLowerCase()))
+                            .map(escola => `
+                                <div class="dropdown-item p-2 cursor-pointer" 
+                                     style="cursor: pointer;" 
+                                     onmouseover="this.style.backgroundColor='#f8f9fa'"
+                                     onmouseout="this.style.backgroundColor=''"
+                                     onclick="selecionarEscola('${escola}', ${isModal})">${escola}</div>
+                            `)
+                            .join('');
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.innerHTML = '<div class="p-2 text-muted">Nenhuma escola encontrada</div>';
+                        dropdown.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar escolas:', error);
+                    dropdown.innerHTML = '<div class="p-2 text-danger">Erro ao buscar escolas</div>';
+                    dropdown.style.display = 'block';
+                }
+            }
+
+            // Função para selecionar escola
+            function selecionarEscola(escola, isModal = false) {
+                const inputId = isModal ? 'escolaSearchModal' : 'escolaSearch';
+                const dropdownId = isModal ? 'escolasDropdownModal' : 'escolasDropdown';
+                
+                document.getElementById(inputId).value = escola;
+                document.getElementById(dropdownId).style.display = 'none';
+                
+                if (!isModal) {
+                    atualizarTurmas();
+                }
+                updateChart();
+            }
+
+            // Função para atualizar turmas
+            async function atualizarTurmas() {
+                const escola = document.getElementById('escolaSearch').value;
+                const anoAtivo = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
+                const turmaSelect = document.getElementById('turmaFilter');
+                
+                if (!escola || anoAtivo === 'Todos os Anos') {
+                    turmaSelect.disabled = true;
+                    turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/secretaria_educacao/buscar-turmas-ranking?escola=${encodeURIComponent(escola)}&ano=${encodeURIComponent(anoAtivo)}`);
+                    const turmas = await response.json();
+                    
+                    turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+                    turmas.forEach(turma => {
+                        const option = document.createElement('option');
+                        option.value = turma;
+                        option.textContent = turma;
+                        turmaSelect.appendChild(option);
+                    });
+                    turmaSelect.disabled = false;
+                } catch (error) {
+                    console.error('Erro ao buscar turmas:', error);
+                }
+            }
+
+            // Função para filtrar alunos
+            function filtrarAlunos() {
+                const escola = document.getElementById('escolaSearch').value;
+                const turma = document.getElementById('turmaFilter').value;
+                const rows = document.querySelectorAll('tbody tr');
+                
+                rows.forEach(row => {
+                    const escolaCell = row.querySelector('td:nth-child(4)').textContent;
+                    const turmaCell = row.querySelector('td:nth-child(5)').textContent;
+                    const shouldShow = (!escola || escolaCell === escola) && (!turma || turmaCell === turma);
+                    row.style.display = shouldShow ? '' : 'none';
+                });
+            }
+
+            // Função para atualizar turmas no modal do gráfico
+            async function atualizarTurmasModal() {
+                const escola = document.getElementById('escolaSearchModal').value;
+                const ano = document.getElementById('anoSelect').value;
+                const turmaSelect = document.getElementById('turmaSelect');
+                
+                if (!escola || !ano) {
+                    turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+                    turmaSelect.disabled = true;
+                    return;
+                }
+                
+                try {
+                    const response = await fetch(`/secretaria_educacao/buscar-turmas-ranking?escola=${encodeURIComponent(escola)}&ano=${encodeURIComponent(ano)}`);
+                    const turmas = await response.json();
+                    
+                    turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
+                    turmas.forEach(turma => {
+                        const option = document.createElement('option');
+                        option.value = turma;
+                        option.textContent = turma;
+                        turmaSelect.appendChild(option);
+                    });
+                    turmaSelect.disabled = false;
+                } catch (error) {
+                    console.error('Erro ao buscar turmas:', error);
+                }
+            }
+
+            // Variáveis para controle de alunos
+            let alunosSelecionados = [];
+            const MAX_ALUNOS_COMPARACAO = 5;
+
+            // Função para buscar alunos
+            async function buscarAlunos(texto) {
+                const dropdown = document.getElementById('alunosDropdown');
+                
+                if (!texto) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                try {
+                    const ano = document.getElementById('anoSelect').value;
+                    const escola = document.getElementById('escolaSearchModal').value;
+                    const turma = document.getElementById('turmaSelect').value;
+                    
+                    const params = new URLSearchParams();
+                    params.append('term', texto);
+                    
+                    if (ano) params.append('ano', ano);
+                    if (escola) params.append('escola', escola);
+                    if (turma) params.append('turma', turma);
+
+                    const response = await fetch(`/secretaria_educacao/buscar-alunos-ranking?${params}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const alunos = await response.json();
+                    
+                    if (alunos.length > 0) {
+                        dropdown.innerHTML = alunos
+                            .map(aluno => `
+                                <div class="dropdown-item p-2 cursor-pointer" 
+                                     style="cursor: pointer;" 
+                                     onmouseover="this.style.backgroundColor='#f8f9fa'"
+                                     onmouseout="this.style.backgroundColor=''"
+                                     onclick="selecionarAluno(${aluno.id}, '${aluno.value}')">${aluno.label}</div>
+                            `)
+                            .join('');
+                        dropdown.style.display = 'block';
+                    } else {
+                        dropdown.innerHTML = '<div class="p-2 text-muted">Nenhum aluno encontrado</div>';
+                        dropdown.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Erro ao buscar alunos:', error);
+                    dropdown.innerHTML = '<div class="p-2 text-danger">Erro ao buscar alunos</div>';
+                    dropdown.style.display = 'block';
+                }
+            }
+
+            // Função para selecionar aluno
+            function selecionarAluno(id, nome) {
+                if (alunosSelecionados.length >= MAX_ALUNOS_COMPARACAO) {
+                    alert('Máximo de 5 alunos para comparação!');
+                    return;
+                }
+
+                if (!alunosSelecionados.some(a => a.id === id)) {
+                    alunosSelecionados.push({ id, nome });
+                    atualizarListaAlunosSelecionados();
+                }
+
+                document.getElementById('alunoSearch').value = '';
+                document.getElementById('alunosDropdown').style.display = 'none';
+                document.getElementById('compararBtn').style.display = alunosSelecionados.length > 0 ? 'block' : 'none';
+            }
+
+            // Função para remover aluno da comparação
+            function removerAluno(id) {
+                alunosSelecionados = alunosSelecionados.filter(a => a.id !== id);
+                atualizarListaAlunosSelecionados();
+                document.getElementById('compararBtn').style.display = alunosSelecionados.length > 0 ? 'block' : 'none';
+            }
+
+            // Função para atualizar a lista de alunos selecionados
+            function atualizarListaAlunosSelecionados() {
+                const container = document.getElementById('alunosSelecionados');
+                container.innerHTML = alunosSelecionados
+                    .map(aluno => `
+                        <div class="badge bg-primary me-2 mb-2">
+                            ${aluno.nome}
+                            <button type="button" class="btn-close btn-close-white ms-2" 
+                                    onclick="removerAluno(${aluno.id})" 
+                                    style="font-size: 0.5em;">
+                            </button>
+                        </div>
+                    `)
+                    .join('');
+            }
+
+            // Event listeners
+            document.getElementById('escolaSearch').addEventListener('input', (e) => {
+                buscarEscolas(e.target.value.trim(), false);
             });
-            turmaSelect.disabled = false;
-        })
-        .catch(error => {
-            console.error('Erro ao buscar turmas:', error);
-            turmaSelect.disabled = true;
-            turmaSelect.innerHTML = '<option value="">Erro ao carregar turmas</option>';
-        });
-}
 
-// Event listeners
-document.getElementById('escolaFilter').addEventListener('input', function(e) {
-    buscarEscolas(e.target.value);
-    // Se o campo de escola for limpo, desabilita o select de turmas
-    if (!e.target.value) {
-        const turmaSelect = document.getElementById('turmaFilter');
-        turmaSelect.disabled = true;
-        turmaSelect.innerHTML = '<option value="">Selecione uma turma...</option>';
-    }
-});
+            document.getElementById('escolaSearchModal').addEventListener('input', (e) => {
+                buscarEscolas(e.target.value.trim(), true);
+            });
 
-document.getElementById('turmaFilter').addEventListener('change', function() {
-    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
-    filtrarPorAno(anoSelecionado === 'Todos os Anos' ? 'todos' : anoSelecionado);
-});
+            document.getElementById('turmaFilter').addEventListener('change', () => {
+                filtrarAlunos();
+                updateChart();
+            });
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', function() {
-    const escolaFilter = document.getElementById('escolaFilter');
-    const anoSelecionado = document.querySelector('#anosEscolares .nav-link.active').textContent.trim();
-    if (escolaFilter.value && anoSelecionado !== 'Todos os Anos') {
-        atualizarTurmas();
-    }
-});
-</script>
+            // Carregar anos escolares quando o modal abrir
+            document.getElementById('graficoModal').addEventListener('show.bs.modal', async function() {
+                try {
+                    const response = await fetch('/secretaria_educacao/buscar-anos-escolares-grafico');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const anos = await response.json();
+                    
+                    const anoSelect = document.getElementById('anoSelect');
+                    anoSelect.innerHTML = '<option value="todos">Todos os Anos</option>';
+                    anos.forEach(ano => {
+                        const option = document.createElement('option');
+                        option.value = ano;
+                        option.textContent = ano;
+                        anoSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar anos escolares:', error);
+                }
+            });
+
+            document.querySelectorAll('#anosEscolares .nav-link').forEach(link => {
+                link.addEventListener('click', function() {
+                    document.querySelectorAll('#anosEscolares .nav-link').forEach(l => l.classList.remove('active'));
+                    this.classList.add('active');
+                    atualizarTurmas();
+                    updateChart();
+                });
+            });
+
+            document.getElementById('anoSelect').addEventListener('change', () => {
+                atualizarTurmasModal();
+                updateChart();
+            });
+
+            document.getElementById('escolaSearchModal').addEventListener('change', () => {
+                atualizarTurmasModal();
+                updateChart();
+            });
+
+            document.getElementById('turmaSelect').addEventListener('change', () => {
+                updateChart();
+            });
+
+            // Fechar dropdowns quando clicar fora
+            document.addEventListener('click', (e) => {
+                const dropdowns = ['escolasDropdown', 'escolasDropdownModal'];
+                const inputs = ['escolaSearch', 'escolaSearchModal'];
+                
+                dropdowns.forEach((dropdownId, index) => {
+                    const dropdown = document.getElementById(dropdownId);
+                    const input = document.getElementById(inputs[index]);
+                    if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                        dropdown.style.display = 'none';
+                    }
+                });
+            });
+
+            // Event listener para busca de alunos
+            document.getElementById('alunoSearch').addEventListener('input', (e) => {
+                buscarAlunos(e.target.value.trim());
+            });
+
+            // Event listener para comparar alunos
+            document.getElementById('compararBtn').addEventListener('click', () => {
+                const alunosIds = alunosSelecionados.map(a => a.id);
+                // Atualizar o gráfico com os alunos selecionados
+                updateChart(alunosIds);
+            });
+
+            // Inicialização do gráfico
+            let chart;
+
+            function initializeChart() {
+                const margin = {top: 20, right: 300, bottom: 30, left: 50};  
+                const width = document.getElementById('chart').offsetWidth - margin.left - margin.right;
+                const height = 400;  
+
+                const svg = d3.select('#chart')
+                    .append('svg')
+                    .attr('width', width + margin.left + margin.right)
+                    .attr('height', height + margin.top + margin.bottom)
+                    .append('g')
+                    .attr('transform', `translate(${margin.left},${margin.top})`);
+
+                chart = {svg, width, height, margin};
+                updateChart();
+            }
+
+            function updateChartDimensions() {
+                if (!chart) return;
+                
+                const width = document.getElementById('chart').offsetWidth - chart.margin.left - chart.margin.right;
+                
+                chart.svg.select('svg')
+                    .attr('width', width + chart.margin.left + chart.margin.right);
+                    
+                chart.width = width;
+                updateChart();
+            }
+
+            async function updateChart(alunosIds = null) {
+                if (!chart) return;
+
+                const tipo = document.querySelector('input[name="tipo"]:checked').value;
+                const periodo = document.querySelector('input[name="periodo"]:checked').value;
+                const mes = document.getElementById('mesSelect').value;
+                const disciplina = document.getElementById('disciplinaSelect').value;
+                const ano = document.getElementById('anoSelect').value;
+                const escola = document.getElementById('escolaSearchModal').value;
+                const turma = document.getElementById('turmaSelect').value;
+
+                try {
+                    const response = await fetch(`/secretaria_educacao/dados-grafico-alunos?tipo=${tipo}&periodo=${periodo}&mes=${mes}&disciplina=${disciplina}&ano=${ano}&escola=${encodeURIComponent(escola)}&turma=${encodeURIComponent(turma)}&alunos=${alunosIds ? alunosIds.join(',') : ''}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    console.log('Dados recebidos:', data);
+
+                    const {svg, width, height} = chart;
+                    svg.selectAll('*').remove();
+
+                    if (!data || !Array.isArray(data) || data.length === 0) {
+                        svg.append('text')
+                            .attr('x', width / 2)
+                            .attr('y', height / 2)
+                            .attr('text-anchor', 'middle')
+                            .text('Sem dados disponíveis');
+                        return;
+                    }
+
+                    const x = d3.scaleLinear()
+                        .domain(periodo === 'ano' ? [1, 12] : [1, 31])
+                        .range([0, width]);
+
+                    const y = d3.scaleLinear()
+                        .domain([0, 100])  // Sempre 0-100 pois já está em porcentagem
+                        .range([height, 0]);
+
+                    const line = d3.line()
+                        .x(d => x(periodo === 'ano' ? d.mes : d.dia))
+                        .y(d => y(d.media))
+                        .defined(d => !isNaN(d.media));
+
+                    const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+                    // Eixos
+                    svg.append('g')
+                        .attr('transform', `translate(0,${height})`)
+                        .call(d3.axisBottom(x)
+                            .ticks(periodo === 'ano' ? 12 : 31)
+                            .tickFormat(d => periodo === 'ano' ? 
+                                ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][d-1] : 
+                                d));
+
+                    svg.append('g')
+                        .call(d3.axisLeft(y).tickFormat(d => d + '%'));
+
+                    // Grid
+                    svg.append('g')
+                        .attr('class', 'grid')
+                        .attr('opacity', 0.1)
+                        .call(d3.axisLeft(y).tickSize(-width).tickFormat(''));
+
+                    // Adicionar div para o tooltip
+                    const tooltip = d3.select('#chart').append('div')
+                        .attr('class', 'tooltip')
+                        .style('opacity', 0)
+                        .style('position', 'absolute')
+                        .style('pointer-events', 'none');
+
+                    // Função para formatar o texto do tooltip
+                    function formatTooltip(d, valor = null) {
+                        let mediaAtual = '';
+                        if (valor !== null) {
+                            mediaAtual = `<br>Valor atual: ${valor.toFixed(1)}%`;
+                        }
+                        
+                        return `
+                            <div style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                Escola: ${d.escola || 'N/A'}<br>
+                                Ano: ${d.ano_escolar || 'N/A'}<br>
+                                Turma: ${d.turma || 'N/A'}<br>
+                                Turno: ${d.turno || 'N/A'}${mediaAtual}
+                            </div>
+                        `;
+                    }
+
+                    // Função para mostrar o tooltip
+                    function showTooltip(event, d, valor = null) {
+                        tooltip.html(formatTooltip(d, valor))
+                            .style('left', (event.pageX + 10) + 'px')
+                            .style('top', (event.pageY - 28) + 'px')
+                            .transition()
+                            .duration(200)
+                            .style('opacity', 1);
+                    }
+
+                    // Função para esconder o tooltip
+                    function hideTooltip() {
+                        tooltip.transition()
+                            .duration(500)
+                            .style('opacity', 0);
+                    }
+
+                    // Linhas e pontos
+                    data.forEach((d, i) => {
+                        console.log('Processando série:', d);
+                        
+                        // Criar array completo com todos os meses/dias
+                        let dadosCompletos;
+                        if (periodo === 'ano') {
+                            dadosCompletos = Array.from({length: 12}, (_, i) => {
+                                const dadoExistente = d.data.find(item => item.mes === i + 1);
+                                return {
+                                    mes: i + 1,
+                                    dia: 1,
+                                    media: dadoExistente ? dadoExistente.media : 0
+                                };
+                            });
+                        } else {
+                            const maxDia = new Date(2024, parseInt(mes), 0).getDate();
+                            dadosCompletos = Array.from({length: maxDia}, (_, i) => {
+                                const dadoExistente = d.data.find(item => item.dia === i + 1 && item.mes === parseInt(mes));
+                                return {
+                                    mes: parseInt(mes),
+                                    dia: i + 1,
+                                    media: dadoExistente ? dadoExistente.media : 0
+                                };
+                            });
+                        }
+                        
+                        const path = svg.append('path')
+                            .datum(dadosCompletos)
+                            .attr('class', 'line')
+                            .attr('fill', 'none')
+                            .attr('stroke', color(i))
+                            .attr('stroke-width', d.isMedia ? 3 : 2)
+                            .attr('stroke-dasharray', d.isMedia ? '5,5' : 'none')
+                            .attr('d', line)
+                            .attr('data-name', d.name)
+                            .on('mouseover', function(event) {
+                                highlightAluno(d.name);
+                                // Encontrar o valor mais próximo do mouse
+                                const mouseX = x.invert(d3.pointer(event)[0]);
+                                const bisect = d3.bisector(p => periodo === 'ano' ? p.mes : p.dia).left;
+                                const index = bisect(dadosCompletos, mouseX);
+                                const ponto = dadosCompletos[index];
+                                showTooltip(event, d, ponto ? ponto.media : null);
+                            })
+                            .on('mousemove', function(event) {
+                                // Atualizar tooltip com o valor atual
+                                const mouseX = x.invert(d3.pointer(event)[0]);
+                                const bisect = d3.bisector(p => periodo === 'ano' ? p.mes : p.dia).left;
+                                const index = bisect(dadosCompletos, mouseX);
+                                const ponto = dadosCompletos[index];
+                                showTooltip(event, d, ponto ? ponto.media : null);
+                            })
+                            .on('mouseout', function() {
+                                highlightAluno(null);
+                                hideTooltip();
+                            });
+
+                        // Pontos
+                        const dots = svg.selectAll(`circle-${i}`)
+                            .data(dadosCompletos.filter(p => p.media > 0))
+                            .enter()
+                            .append('circle')
+                            .attr('cx', p => x(periodo === 'ano' ? p.mes : p.dia))
+                            .attr('cy', p => y(p.media))
+                            .attr('r', 4)
+                            .attr('fill', color(i))
+                            .attr('data-name', d.name)
+                            .on('mouseover', function(event) {
+                                highlightAluno(d.name);
+                                showTooltip(event, d);
+                            })
+                            .on('mouseout', function() {
+                                highlightAluno(null);
+                                hideTooltip();
+                            });
+
+                        // Legenda com eventos de hover e tooltip
+                        const legendItem = svg.append('g')
+                            .attr('class', 'legend-item')
+                            .attr('transform', `translate(${width + 20},${i * 25})`);
+
+                        legendItem.append('rect')
+                            .attr('x', 0)
+                            .attr('width', 19)
+                            .attr('height', 19)
+                            .attr('fill', color(i))
+                            .style('stroke-dasharray', d.isMedia ? '5,5' : 'none')
+                            .style('cursor', 'pointer')
+                            .on('mouseover', function(event) {
+                                highlightAluno(d.name);
+                                showTooltip(event, d);
+                            })
+                            .on('mouseout', function() {
+                                highlightAluno(null);
+                                hideTooltip();
+                            });
+
+                        legendItem.append('text')
+                            .attr('x', 24)
+                            .attr('y', 9)
+                            .attr('dy', '.35em')
+                            .style('text-anchor', 'start')
+                            .style('cursor', 'pointer')
+                            .text(d.name)
+                            .on('mouseover', function(event) {
+                                highlightAluno(d.name);
+                                showTooltip(event, d);
+                            })
+                            .on('mouseout', function() {
+                                highlightAluno(null);
+                                hideTooltip();
+                            });
+                    });
+
+                } catch (error) {
+                    console.error('Erro ao atualizar gráfico:', error);
+                }
+            }
+
+            // Função para destacar aluno no gráfico
+            function highlightAluno(alunoNome) {
+                if (alunoNome) {
+                    // Primeiro, deixa todas as linhas e pontos opacos
+                    d3.selectAll('path.line').classed('fade', true).classed('highlight', false);
+                    d3.selectAll('circle').classed('fade', true);
+                    d3.selectAll('.legend-item').classed('fade', true).classed('highlight', false);
+
+                    // Depois, destaca apenas a linha e pontos do aluno selecionado
+                    d3.selectAll('path.line').filter(function() {
+                        return d3.select(this).attr('data-name') === alunoNome;
+                    }).classed('fade', false).classed('highlight', true);
+
+                    d3.selectAll('circle').filter(function() {
+                        return d3.select(this).attr('data-name') === alunoNome;
+                    }).classed('fade', false);
+
+                    d3.selectAll('.legend-item').filter(function() {
+                        const text = d3.select(this).select('text').text();
+                        return text === alunoNome;
+                    }).classed('fade', false).classed('highlight', true);
+                } else {
+                    // Remove todos os destaques
+                    d3.selectAll('path.line, circle, .legend-item')
+                        .classed('fade', false)
+                        .classed('highlight', false);
+                }
+            }
+
+            // Event listeners para o gráfico
+            window.addEventListener('resize', updateChartDimensions);
+            document.querySelectorAll('input[name="tipo"], input[name="periodo"], #mesSelect, #disciplinaSelect, #anoSelect').forEach(el => {
+                el.addEventListener('change', updateChart);
+            });
+
+            // Inicializar o gráfico quando o modal abrir
+            document.getElementById('graficoModal').addEventListener('shown.bs.modal', function () {
+                if (!chart) {
+                    initializeChart();
+                } else {
+                    updateChartDimensions();
+                }
+            });
+        </script>
+
+        <style>
+            .chart-container {
+                position: relative;
+                width: 100%;
+                height: 450px;
+                min-height: 450px;
+            }
+
+            .grid line {
+                stroke: #ddd;
+                stroke-opacity: 0.7;
+                shape-rendering: crispEdges;
+            }
+
+            .grid path {
+                stroke-width: 0;
+            }
+
+            .tooltip {
+                position: absolute;
+                z-index: 1500;
+                pointer-events: none;
+            }
+
+            .legend-item {
+                cursor: pointer;
+            }
+
+            .legend-item.highlight text {
+                font-weight: bold;
+            }
+
+            .legend-item.fade {
+                opacity: 0.2;
+            }
+
+            .aluno-tag {
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+
+            .aluno-tag:hover {
+                transform: translateY(-2px);
+            }
+
+            .aluno-tag.selected {
+                background-color: #0d6efd !important;
+                color: white;
+            }
+
+            .nav-tabs .nav-link {
+                color: #495057;
+                background-color: transparent;
+                border: none;
+                padding: 8px 16px;
+                transition: all 0.2s;
+            }
+
+            .nav-tabs .nav-link:hover {
+                color: #007bff;
+            }
+
+            .nav-tabs .nav-link.active {
+                color: #007bff;
+                border-bottom: 2px solid #007bff;
+            }
+
+            .form-select:disabled {
+                background-color: #e9ecef;
+                cursor: not-allowed;
+            }
+        </style>
 {% endblock %}
