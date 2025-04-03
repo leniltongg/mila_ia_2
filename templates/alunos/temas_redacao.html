@@ -1,0 +1,74 @@
+{% extends "alunos/base_alunos.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-pen-fancy me-2"></i>Temas de Redação</h2>
+        <a href="{{ url_for('alunos_bp.preparar_redacao') }}" class="btn btn-primary">
+            <i class="fas fa-pen me-2"></i>Redação Livre
+        </a>
+    </div>
+
+    <div class="row">
+        {% if temas %}
+            {% for tema in temas %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h5 class="card-title mb-0">{{ tema.titulo }}</h5>
+                            <span class="badge bg-{{ 'primary' if tema.tipo == 'enem' else 'success' if tema.tipo == 'vestibular' else 'info' }}">
+                                {{ tema.tipo.upper() }}
+                            </span>
+                        </div>
+                        
+                        <p class="card-text text-muted mb-3">
+                            {{ tema.descricao[:200] + '...' if tema.descricao|length > 200 else tema.descricao }}
+                        </p>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="small text-muted">
+                                <div>Enviado em {{ tema.data_envio.strftime('%d/%m/%Y') }}</div>
+                                {% if tema.data_limite %}
+                                <div>
+                                    Prazo: {{ tema.data_limite.strftime('%d/%m/%Y') }}
+                                    {% if tema.data_limite < now() %}
+                                    <span class="text-danger">(Encerrado)</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            {% if tema.respondido %}
+                            <div class="text-end">
+                                <div class="text-success mb-2">
+                                    <i class="fas fa-check-circle me-1"></i>Respondido
+                                </div>
+                                <h4 class="mb-0">Nota: {{ tema.nota }}</h4>
+                            </div>
+                            {% else %}
+                            <a href="{{ url_for('alunos_bp.responder_tema', tema_id=tema.id) }}" 
+                               class="btn btn-primary">
+                                <i class="fas fa-pen me-2"></i>Responder
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="col-12">
+            <div class="text-center py-5">
+                <i class="fas fa-pen-alt fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhum tema disponível no momento</h4>
+                <p class="text-muted">
+                    Novos temas serão enviados em breve pela secretaria de educação.<br>
+                    Enquanto isso, você pode praticar usando a <a href="{{ url_for('alunos_bp.preparar_redacao') }}">Redação Livre</a>.
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

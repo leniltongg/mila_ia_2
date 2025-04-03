@@ -1,12 +1,17 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=1024">
-    <title>{% block title %}Sistema Educacional{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
     
     <!-- Custom CSS -->
@@ -16,228 +21,137 @@
             display: flex;
             flex-direction: column;
         }
-
-        .wrapper {
-            display: flex;
-            flex: 1;
-        }
-
-        .sidebar {
-            width: 250px;
-            min-height: 100vh;
-            background-color: #f8f9fa;
-            border-right: 1px solid #dee2e6;
-            padding: 1rem;
-            transition: all 0.3s ease;
-        }
-
+        
         .content {
             flex: 1;
-            padding: 1rem;
-            background-color: #fff;
-            min-width: 0; /* Importante para evitar overflow em telas pequenas */
+            padding: 2rem 0;
+        }
+        
+        .footer {
+            margin-top: auto;
+            padding: 1rem 0;
+            background-color: #f8f9fa;
+            border-top: 1px solid #dee2e6;
         }
 
-        .nav-item {
-            margin-bottom: 0.5rem;
-        }
-
-        .nav-link {
-            color: #333;
-            text-decoration: none;
+        .navbar {
             padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            white-space: nowrap; /* Evita quebra de texto */
+            box-shadow: 0 2px 4px rgba(0,0,0,.1);
         }
 
-        .nav-link:hover {
+        .navbar .nav-link {
+            color: rgba(0,0,0,.65) !important;
+            padding: 0.5rem 1rem;
+        }
+
+        .navbar .nav-link:hover {
+            color: rgba(0,0,0,.8) !important;
+        }
+
+        .navbar .nav-link.active {
+            color: #0d6efd !important;
+            font-weight: 500;
+        }
+
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+        }
+
+        .dropdown-item {
+            padding: 0.5rem 1rem;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .dropdown-item.active {
             background-color: #e9ecef;
-        }
-
-        .nav-link.active {
-            background-color: #0d6efd;
-            color: white;
-        }
-
-        /* Estilos para dispositivos móveis */
-        @media (max-width: 768px) {
-            .wrapper {
-                position: relative;
-            }
-
-            .sidebar {
-                position: fixed;
-                left: -250px;
-                z-index: 1000;
-                height: 100%;
-            }
-
-            .sidebar.show {
-                left: 0;
-            }
-
-            .content {
-                margin-left: 0;
-                width: 100%;
-            }
-
-            .sidebar-backdrop {
-                display: none;
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                z-index: 999;
-            }
-
-            .sidebar-backdrop.show {
-                display: block;
-            }
-
-            /* Ajustes para tabelas responsivas */
-            .table-responsive {
-                margin-bottom: 0;
-            }
-
-            /* Ajustes para formulários */
-            .form-group {
-                margin-bottom: 1rem;
-            }
-
-            /* Ajustes para botões */
-            .btn {
-                white-space: nowrap;
-                margin-bottom: 0.5rem;
-            }
-        }
-
-        /* Melhorias para telas touch */
-        @media (hover: none) {
-            .nav-link {
-                padding: 0.75rem 1rem; /* Área de toque maior */
-            }
-
-            .btn {
-                padding: 0.5rem 1rem;
-                min-height: 44px; /* Altura mínima recomendada para touch */
-            }
-
-            select.form-control {
-                min-height: 44px;
-            }
+            color: #0d6efd;
         }
     </style>
+    
     {% block head %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar Mobile -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light d-lg-none">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container-fluid">
-            <button class="btn btn-link" type="button" id="sidebarToggle">
-                <i class="bi bi-list"></i>
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-graduation-cap me-2"></i>Mila IA
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
             </button>
-            <span class="navbar-brand">{% block mobile_title %}{% endblock %}</span>
+            
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    {% block navbar_items %}{% endblock %}
+                </ul>
+
+                {% if current_user.is_authenticated %}
+                <div class="d-flex align-items-center">
+                    <span class="me-3">Olá, {{ current_user.nome }}</span>
+                    <div class="dropdown">
+                        <a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-circle fs-4"></i>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('secretaria_educacao.perfil') }}">
+                                    <i class="fas fa-id-card me-2"></i>Meu Perfil
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('logout') }}">
+                                    <i class="fas fa-sign-out-alt me-2"></i>Sair
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                {% else %}
+                <div class="d-flex">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </a>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </nav>
 
-    <div class="wrapper">
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
-            <div class="d-none d-lg-block mb-4">
-                <h5>{% block sidebar_title %}{% endblock %}</h5>
-            </div>
-            {% block sidebar_content %}{% endblock %}
-        </div>
-
-        <!-- Backdrop para dispositivos móveis -->
-        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
-
-        <!-- Content -->
-        <div class="content">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            {% block content %}{% endblock %}
-        </div>
+    <div class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% block content %}{% endblock %}
     </div>
 
-    <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+    <footer class="footer">
+        <div class="container">
+            <div class="text-center">
+                <small class="text-muted">&copy; 2025 Mila IA. Todos os direitos reservados.</small>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Custom JS -->
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const sidebar = document.getElementById('sidebar');
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            const backdrop = document.getElementById('sidebarBackdrop');
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-            // Toggle sidebar on mobile
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', function() {
-                    sidebar.classList.toggle('show');
-                    backdrop.classList.toggle('show');
-                });
-            }
-
-            // Close sidebar when clicking backdrop
-            if (backdrop) {
-                backdrop.addEventListener('click', function() {
-                    sidebar.classList.remove('show');
-                    backdrop.classList.remove('show');
-                });
-            }
-
-            // Handle collapsible menus
-            const collapsibles = document.querySelectorAll('[data-bs-toggle="collapse"]');
-            collapsibles.forEach(function(element) {
-                element.addEventListener('click', function() {
-                    const icon = this.querySelector('.bi-chevron-down');
-                    if (icon) {
-                        icon.style.transform = icon.style.transform === 'rotate(180deg)' ? 'rotate(0deg)' : 'rotate(180deg)';
-                    }
-                });
-            });
-
-            // Adiciona suporte a gestos touch para o sidebar
-            let touchStartX = 0;
-            let touchEndX = 0;
-
-            document.addEventListener('touchstart', function(e) {
-                touchStartX = e.changedTouches[0].screenX;
-            }, false);
-
-            document.addEventListener('touchend', function(e) {
-                touchEndX = e.changedTouches[0].screenX;
-                handleSwipe();
-            }, false);
-
-            function handleSwipe() {
-                const swipeDistance = touchEndX - touchStartX;
-                
-                if (Math.abs(swipeDistance) > 100) { // Mínimo de 100px para considerar como swipe
-                    if (swipeDistance > 0) { // Swipe da esquerda para direita
-                        sidebar.classList.add('show');
-                        backdrop.classList.add('show');
-                    } else { // Swipe da direita para esquerda
-                        sidebar.classList.remove('show');
-                        backdrop.classList.remove('show');
-                    }
-                }
-            }
-        });
-    </script>
-    {% block scripts %}{% endblock %}
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -1,20 +1,218 @@
 {% extends "alunos/base_alunos.html" %}
 
 {% block head %}
+<style>
+/* Estilos modernos para a página de redação */
+.card {
+    border: none;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    border-radius: 12px;
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0 30px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border-radius: 12px 12px 0 0 !important;
+    padding: 1.5rem;
+    border: none;
+}
+
+.card-header h5 {
+    color: #fff;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+    font-weight: 600;
+    font-size: 1.3rem;
+}
+
+.tema-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.tema-tipo {
+    display: inline-block;
+    padding: 0.35rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.tema-titulo {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.tema-descricao {
+    color: #666;
+    line-height: 1.6;
+    white-space: pre-line;
+}
+
+.form-control, .form-select {
+    border: 2px solid #eee;
+    border-radius: 8px;
+    padding: 12px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #FFD700;
+    box-shadow: 0 0 0 0.2rem rgba(255,215,0,0.25);
+}
+
+textarea.form-control {
+    min-height: 250px;
+    line-height: 1.6;
+    font-size: 1rem;
+}
+
+.form-label {
+    font-weight: 500;
+    color: #444;
+    margin-bottom: 0.5rem;
+}
+
+.checkbox-group {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+}
+
+.form-check {
+    margin: 0.5rem 0;
+}
+
+.form-check-input:checked {
+    background-color: #FFD700;
+    border-color: #FFD700;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(255,215,0,0.3);
+}
+
+.contador-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.contador-caracteres {
+    background: #f8f9fa;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Estilos para o modal */
+.modal-content {
+    border: none;
+    border-radius: 12px;
+}
+
+.modal-header {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border-radius: 12px 12px 0 0;
+    border: none;
+}
+
+.modal-title {
+    color: #fff;
+    font-weight: 600;
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.nav-tabs .nav-link {
+    color: #666;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s ease;
+}
+
+.nav-tabs .nav-link.active {
+    color: #000;
+    background: #fff;
+    border-bottom: 3px solid #FFD700;
+}
+
+.progress {
+    height: 12px;
+    border-radius: 6px;
+    background-color: #f0f0f0;
+}
+
+.progress-bar {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    border-radius: 6px;
+}
+
+.loading-spinner {
+    width: 4rem;
+    height: 4rem;
+    color: #FFD700;
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+    animation: fadeIn 0.5s ease-out;
+}
+</style>
+
 <script>
 async function analisarRedacao() {
+    const redacao = document.getElementById('redacao').value;
+    {% if tema %}
+    const temaId = {{ tema.id }};
+    {% else %}
     const tipo = document.getElementById('tipo').value;
     const tema = document.getElementById('tema').value;
-    const redacao = document.getElementById('redacao').value;
     const analiseEstrutura = document.getElementById('analise_estrutura').checked;
     const analiseArgumentos = document.getElementById('analise_argumentos').checked;
     const analiseGramatical = document.getElementById('analise_gramatical').checked;
     const sugestoesMelhoria = document.getElementById('sugestoes_melhoria').checked;
+    {% endif %}
 
-    if (!tipo || !tema || !redacao.trim()) {
+    if (!redacao.trim()) {
+        alert('Por favor, escreva sua redação antes de enviar.');
+        return;
+    }
+
+    {% if not tema %}
+    if (!tipo || !tema) {
         alert('Por favor, preencha todos os campos obrigatórios.');
         return;
     }
+    {% endif %}
 
     // Mostrar loading no modal
     const modal = new bootstrap.Modal(document.getElementById('analiseModal'));
@@ -31,12 +229,15 @@ async function analisarRedacao() {
     });
 
     try {
-        const response = await fetch('/alunos/analisar_redacao', {
+        const response = await fetch('{% if tema %}{{ url_for("alunos_bp.analisar_redacao_tema") }}{% else %}{{ url_for("alunos_bp.analisar_redacao") }}{% endif %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
+            body: JSON.stringify({% if tema %}{
+                tema_id: temaId,
+                redacao: redacao
+            }{% else %}{
                 tipo: tipo,
                 tema: tema,
                 redacao: redacao,
@@ -44,7 +245,7 @@ async function analisarRedacao() {
                 analise_argumentos: analiseArgumentos,
                 analise_gramatical: analiseGramatical,
                 sugestoes_melhoria: sugestoesMelhoria
-            })
+            }{% endif %})
         });
 
         const data = await response.json();
@@ -70,8 +271,14 @@ async function analisarRedacao() {
 
             // Mostrar resultado
             resultadoDiv.style.display = 'block';
+            
+            // Desabilitar edição e botão de análise se for tema
+            {% if tema %}
+            document.getElementById('redacao').disabled = true;
+            document.querySelector('button[onclick="analisarRedacao()"]').disabled = true;
+            {% endif %}
         } else {
-            throw new Error(data.error || 'Erro ao analisar redação');
+            throw new Error(data.message || 'Erro ao analisar redação');
         }
     } catch (error) {
         console.error('Erro:', error);
@@ -94,8 +301,7 @@ function copiarAnalise() {
 
 async function baixarAnalise() {
     try {
-        const tipo = document.getElementById('tipo').value;
-        const tema = document.getElementById('tema').value;
+        const temaId = document.getElementById('tema_id').value;
         const redacao = document.getElementById('redacao').value;
         const analise = {
             nota_final: document.getElementById('nota-final').textContent,
@@ -116,8 +322,7 @@ async function baixarAnalise() {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                tipo: tipo,
-                tema: tema,
+                tema_id: temaId,
                 redacao: redacao,
                 analise: analise
             })
@@ -165,59 +370,83 @@ document.addEventListener('DOMContentLoaded', function() {
 
 {% block content %}
 <div class="container mt-4">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
+    <h2 class="mb-4">
+        <i class="fas fa-pen-fancy me-2"></i>
+        {% if tema %}
+        {{ tema.titulo }}
+        {% else %}
+        Redação Livre
+        {% endif %}
+    </h2>
+
+    {% if tema %}
+    <div class="alert alert-info mb-4">
+        <h5 class="alert-heading">Descrição do Tema</h5>
+        <p class="mb-0">{{ tema.descricao }}</p>
+        {% if tema.data_limite %}
+        <hr>
+        <p class="mb-0">
+            <i class="fas fa-calendar-alt me-2"></i>
+            Prazo: {{ tema.data_limite.strftime('%d/%m/%Y') }}
+        </p>
+        {% endif %}
+    </div>
+    {% else %}
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="tipo" class="form-label">Tipo de Redação</label>
+                <select class="form-select" id="tipo" required>
+                    <option value="">Selecione...</option>
+                    <option value="enem">ENEM</option>
+                    <option value="vestibular">Vestibular</option>
+                    <option value="concurso">Concurso</option>
+                </select>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="form-group">
+                <label for="tema" class="form-label">Tema</label>
+                <input type="text" class="form-control" id="tema" placeholder="Digite o tema da sua redação" required>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
             <div class="card">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="fas fa-pen-fancy me-2"></i>Preparar Redação</h5>
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-cog me-2"></i>Configurações da Análise
+                    </h5>
                 </div>
                 <div class="card-body">
-                    <form id="redacao-form">
-                        <!-- Tipo de redação -->
-                        <div class="mb-3">
-                            <label for="tipo" class="form-label">Tipo de Redação</label>
-                            <select class="form-select" id="tipo" required>
-                                <option value="">Selecione o tipo de redação</option>
-                                <option value="enem">ENEM</option>
-                                <option value="vestibular">Vestibular</option>
-                                <option value="concurso">Concurso</option>
-                            </select>
-                        </div>
-
-                        <!-- Tema -->
-                        <div class="mb-3">
-                            <label for="tema" class="form-label">Tema</label>
-                            <input type="text" class="form-control" id="tema" required>
-                        </div>
-
-                        <!-- Redação -->
-                        <div class="mb-3">
-                            <label for="redacao" class="form-label">Redação</label>
-                            <textarea class="form-control" id="redacao" rows="10" required></textarea>
-                            <small class="text-muted">Caracteres: <span id="contador-caracteres">0</span>/3000</small>
-                        </div>
-
-                        <!-- Opções de análise -->
-                        <div class="mb-3">
-                            <label class="form-label">Opções de Análise</label>
+                    <div class="row">
+                        <div class="col-md-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="analise_estrutura" checked>
                                 <label class="form-check-label" for="analise_estrutura">
                                     Análise de Estrutura
                                 </label>
                             </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="analise_argumentos" checked>
                                 <label class="form-check-label" for="analise_argumentos">
-                                    Análise de Argumentos
+                                    Análise de Argumentação
                                 </label>
                             </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="analise_gramatical" checked>
                                 <label class="form-check-label" for="analise_gramatical">
                                     Análise Gramatical
                                 </label>
                             </div>
+                        </div>
+                        <div class="col-md-3">
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" id="sugestoes_melhoria" checked>
                                 <label class="form-check-label" for="sugestoes_melhoria">
@@ -225,114 +454,124 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </label>
                             </div>
                         </div>
-
-                        <button type="button" class="btn btn-warning" onclick="analisarRedacao()">
-                            <i class="fas fa-search me-2"></i>Analisar Redação
-                        </button>
-                    </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    {% endif %}
+
+    <div class="form-group mb-4">
+        <label for="redacao" class="form-label">Sua Redação</label>
+        <textarea class="form-control" id="redacao" rows="15" placeholder="Digite sua redação aqui..." required></textarea>
+    </div>
+
+    <div class="text-end">
+        <button class="btn btn-primary" onclick="analisarRedacao()">
+            <i class="fas fa-check me-2"></i>Enviar para Análise
+        </button>
+    </div>
 </div>
 
 <!-- Modal de Análise -->
-<div class="modal fade" id="analiseModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+<div class="modal fade" id="analiseModal" tabindex="-1" aria-labelledby="analiseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Análise da Redação</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <h5 class="modal-title" id="analiseModalLabel">Análise da Redação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <div id="loading" class="text-center">
-                    <div class="spinner-border text-warning" role="status">
-                        <span class="visually-hidden">Carregando...</span>
+                <!-- Loading -->
+                <div id="loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Analisando...</span>
                     </div>
-                    <p class="mt-2">Analisando sua redação...</p>
+                    <h5 class="mt-3">Analisando sua redação...</h5>
+                    <p class="text-muted">Por favor, aguarde enquanto nosso sistema analisa seu texto.</p>
                 </div>
 
+                <!-- Resultado -->
                 <div id="resultado" style="display: none;">
+                    <div class="text-center mb-4">
+                        <h1 class="display-4" id="nota-final">0</h1>
+                        <p class="text-muted">Nota Final</p>
+                    </div>
+
                     <div class="row mb-4">
-                        <div class="col text-center">
-                            <h4>Nota Final</h4>
-                            <h2 id="nota-final" class="display-4 text-primary">0</h2>
-                        </div>
-                    </div>
-
-                    <div class="mb-4">
-                        <h5>Competências</h5>
-                        <div class="mb-2">
-                            <label>1. Domínio da norma culta da língua escrita</label>
-                            <div class="progress">
-                                <div id="comp1" class="progress-bar bg-success" style="width: 0%">0</div>
+                        <div class="col-12">
+                            <h5 class="mb-3">Competências</h5>
+                            <div class="mb-3">
+                                <label class="form-label">Competência 1</label>
+                                <div class="progress">
+                                    <div id="comp1" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-2">
-                            <label>2. Compreensão da proposta e desenvolvimento do tema</label>
-                            <div class="progress">
-                                <div id="comp2" class="progress-bar bg-success" style="width: 0%">0</div>
+                            <div class="mb-3">
+                                <label class="form-label">Competência 2</label>
+                                <div class="progress">
+                                    <div id="comp2" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-2">
-                            <label>3. Capacidade de organizar e relacionar informações e argumentos</label>
-                            <div class="progress">
-                                <div id="comp3" class="progress-bar bg-success" style="width: 0%">0</div>
+                            <div class="mb-3">
+                                <label class="form-label">Competência 3</label>
+                                <div class="progress">
+                                    <div id="comp3" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-2">
-                            <label>4. Construção da argumentação e uso de mecanismos linguísticos</label>
-                            <div class="progress">
-                                <div id="comp4" class="progress-bar bg-success" style="width: 0%">0</div>
+                            <div class="mb-3">
+                                <label class="form-label">Competência 4</label>
+                                <div class="progress">
+                                    <div id="comp4" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="mb-2">
-                            <label>5. Elaboração de proposta de intervenção para o problema</label>
-                            <div class="progress">
-                                <div id="comp5" class="progress-bar bg-success" style="width: 0%">0</div>
+                            <div class="mb-3">
+                                <label class="form-label">Competência 5</label>
+                                <div class="progress">
+                                    <div id="comp5" class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <ul class="nav nav-tabs" role="tablist">
-                        <li class="nav-item">
-                            <a class="nav-link active" data-bs-toggle="tab" href="#estrutura">Estrutura</a>
+                    <ul class="nav nav-tabs mb-3" id="analiseTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="estrutura-tab" data-bs-toggle="tab" data-bs-target="#estrutura" type="button" role="tab">
+                                Estrutura
+                            </button>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#argumentacao">Argumentação</a>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="argumentacao-tab" data-bs-toggle="tab" data-bs-target="#argumentacao" type="button" role="tab">
+                                Argumentação
+                            </button>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#gramatica">Gramática</a>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="gramatica-tab" data-bs-toggle="tab" data-bs-target="#gramatica" type="button" role="tab">
+                                Gramática
+                            </button>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" data-bs-toggle="tab" href="#sugestoes">Sugestões</a>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="sugestoes-tab" data-bs-toggle="tab" data-bs-target="#sugestoes" type="button" role="tab">
+                                Sugestões
+                            </button>
                         </li>
                     </ul>
 
-                    <div class="tab-content mt-3" id="analiseContent">
-                        <div class="tab-pane fade show active" id="estrutura">
+                    <div class="tab-content" id="analiseTabContent">
+                        <div class="tab-pane fade show active" id="estrutura" role="tabpanel">
                             <div id="estrutura-content"></div>
                         </div>
-                        <div class="tab-pane fade" id="argumentacao">
+                        <div class="tab-pane fade" id="argumentacao" role="tabpanel">
                             <div id="argumentacao-content"></div>
                         </div>
-                        <div class="tab-pane fade" id="gramatica">
+                        <div class="tab-pane fade" id="gramatica" role="tabpanel">
                             <div id="gramatica-content"></div>
                         </div>
-                        <div class="tab-pane fade" id="sugestoes">
+                        <div class="tab-pane fade" id="sugestoes" role="tabpanel">
                             <div id="sugestoes-content"></div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" onclick="copiarAnalise()">
-                    <i class="fas fa-copy me-2"></i>Copiar
-                </button>
-                <button type="button" class="btn btn-success" onclick="baixarAnalise()">
-                    <i class="fas fa-download me-2"></i>Baixar PDF
-                </button>
             </div>
         </div>
     </div>

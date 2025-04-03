@@ -282,6 +282,42 @@ class RespostasSimulado(db.Model):
     resposta = db.Column(db.String(1), nullable=False)
     data_resposta = db.Column(db.DateTime, nullable=True, default=db.func.current_timestamp())
 
+class TemasRedacao(db.Model):
+    """Temas de redação enviados pela secretaria"""
+    __tablename__ = 'temas_redacao'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    descricao = db.Column(db.Text, nullable=False)
+    tipo = db.Column(db.String(50), nullable=False)  # enem, vestibular, concurso
+    data_envio = db.Column(db.DateTime, default=datetime.now)
+    data_limite = db.Column(db.DateTime, nullable=True)
+    codigo_ibge = db.Column(db.Integer, nullable=True)
+    ano_escolar_id = db.Column(db.Integer, db.ForeignKey('Ano_escolar.id'), nullable=True)
+    ativo = db.Column(db.Boolean, default=True)
+    
+    ano_escolar = db.relationship('Ano_escolar', backref='temas_redacao')
+
+class RedacoesAlunos(db.Model):
+    """Redações enviadas pelos alunos"""
+    __tablename__ = 'redacoes_alunos'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    tema_id = db.Column(db.Integer, db.ForeignKey('temas_redacao.id'))
+    aluno_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'))
+    texto = db.Column(db.Text, nullable=False)
+    data_envio = db.Column(db.DateTime, default=datetime.now)
+    nota_final = db.Column(db.Integer)
+    comp1 = db.Column(db.Integer)
+    comp2 = db.Column(db.Integer)
+    comp3 = db.Column(db.Integer)
+    comp4 = db.Column(db.Integer)
+    comp5 = db.Column(db.Integer)
+    analise_estrutura = db.Column(db.Text)
+    analise_argumentos = db.Column(db.Text)
+    analise_gramatical = db.Column(db.Text)
+    sugestoes_melhoria = db.Column(db.Text)
+
 def init_db():
     """Initialize the database tables."""
     db.create_all()

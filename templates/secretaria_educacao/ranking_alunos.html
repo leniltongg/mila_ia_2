@@ -615,7 +615,6 @@
             // Event listener para comparar alunos
             document.getElementById('compararBtn').addEventListener('click', () => {
                 const alunosIds = alunosSelecionados.map(a => a.id);
-                // Atualizar o gráfico com os alunos selecionados
                 updateChart(alunosIds);
             });
 
@@ -623,14 +622,14 @@
             let chart;
 
             function initializeChart() {
-                const margin = {top: 20, right: 300, bottom: 30, left: 50};  
+                const margin = {top: 20, right: 220, bottom: 30, left: 50};  
                 const width = document.getElementById('chart').offsetWidth - margin.left - margin.right;
                 const height = 400;  
 
                 const svg = d3.select('#chart')
                     .append('svg')
-                    .attr('width', width + margin.left + margin.right)
-                    .attr('height', height + margin.top + margin.bottom)
+                    .attr('width', document.getElementById('chart').offsetWidth)
+                    .attr('height', document.getElementById('chart').offsetHeight)
                     .append('g')
                     .attr('transform', `translate(${margin.left},${margin.top})`);
 
@@ -644,7 +643,7 @@
                 const width = document.getElementById('chart').offsetWidth - chart.margin.left - chart.margin.right;
                 
                 chart.svg.select('svg')
-                    .attr('width', width + chart.margin.left + chart.margin.right);
+                    .attr('width', document.getElementById('chart').offsetWidth);
                     
                 chart.width = width;
                 updateChart();
@@ -667,7 +666,7 @@
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     const data = await response.json();
-                    console.log('Dados recebidos:', data);
+                    console.log('Dados recebidos do servidor:', data);
 
                     const {svg, width, height} = chart;
                     svg.selectAll('*').remove();
@@ -719,33 +718,56 @@
                         .attr('class', 'tooltip')
                         .style('opacity', 0)
                         .style('position', 'absolute')
-                        .style('pointer-events', 'none');
+                        .style('pointer-events', 'none')
+                        .style('background', 'white')
+                        .style('padding', '8px')
+                        .style('border-radius', '4px')
+                        .style('border', '1px solid #ddd')
+                        .style('box-shadow', '0 2px 4px rgba(0,0,0,0.1)')
+                        .style('z-index', '1000')
+                        .style('transition', 'opacity 0.2s')
+                        .style('width', '250px'); // Largura fixa para o tooltip
 
                     // Função para formatar o texto do tooltip
-                    function formatTooltip(d, valor = null) {
+                    function formatTooltip(serie, valor = null) {
+                        console.log('Dados para tooltip:', serie);
                         let mediaAtual = '';
                         if (valor !== null) {
                             mediaAtual = `<br>Valor atual: ${valor.toFixed(1)}%`;
                         }
                         
+                        // Extrair apenas o nome do aluno (remover a parte da escola entre parênteses)
+                        const nomeAluno = serie.name.split(' (')[0];
+                        
                         return `
                             <div style="background: white; padding: 8px; border-radius: 4px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                                Escola: ${d.escola || 'N/A'}<br>
-                                Ano: ${d.ano_escolar || 'N/A'}<br>
-                                Turma: ${d.turma || 'N/A'}<br>
-                                Turno: ${d.turno || 'N/A'}${mediaAtual}
+                                <strong>${nomeAluno}</strong><br>
+                                Escola: ${serie.escola || 'N/A'}<br>
+                                Ano: ${serie.ano_escolar || 'N/A'}<br>
+                                Turma: ${serie.turma || 'N/A'}<br>
+                                Turno: ${serie.turno || 'N/A'}${mediaAtual}
                             </div>
                         `;
                     }
 
                     // Função para mostrar o tooltip
-                    function showTooltip(event, d, valor = null) {
-                        tooltip.html(formatTooltip(d, valor))
-                            .style('left', (event.pageX + 10) + 'px')
-                            .style('top', (event.pageY - 28) + 'px')
-                            .transition()
+                    function showTooltip(event, serie, valor = null) {
+                        const tooltipWidth = 250; // largura do tooltip
+                        const tooltipHeight = 150; // altura do tooltip
+                        const padding = 10; // espaço entre elementos
+                        
+                        // Posicionar o tooltip na área superior direita do gráfico, antes da legenda
+                        const tooltipX = width - tooltipWidth - padding;
+                        const tooltipY = padding; // pequena margem do topo
+                        
+                        tooltip.transition()
                             .duration(200)
-                            .style('opacity', 1);
+                            .style('opacity', .9);
+                        
+                        tooltip.html(formatTooltip(serie, valor))
+                            .style('left', tooltipX + 'px')
+                            .style('top', tooltipY + 'px')
+                            .style('max-width', tooltipWidth + 'px');
                     }
 
                     // Função para esconder o tooltip
@@ -756,14 +778,14 @@
                     }
 
                     // Linhas e pontos
-                    data.forEach((d, i) => {
-                        console.log('Processando série:', d);
+                    data.forEach((serie, i) => {
+                        console.log('Processando série:', serie);
                         
                         // Criar array completo com todos os meses/dias
                         let dadosCompletos;
                         if (periodo === 'ano') {
                             dadosCompletos = Array.from({length: 12}, (_, i) => {
-                                const dadoExistente = d.data.find(item => item.mes === i + 1);
+                                const dadoExistente = serie.data.find(item => item.mes === i + 1);
                                 return {
                                     mes: i + 1,
                                     dia: 1,
@@ -773,7 +795,7 @@
                         } else {
                             const maxDia = new Date(2024, parseInt(mes), 0).getDate();
                             dadosCompletos = Array.from({length: maxDia}, (_, i) => {
-                                const dadoExistente = d.data.find(item => item.dia === i + 1 && item.mes === parseInt(mes));
+                                const dadoExistente = serie.data.find(item => item.dia === i + 1 && item.mes === parseInt(mes));
                                 return {
                                     mes: parseInt(mes),
                                     dia: i + 1,
@@ -787,18 +809,13 @@
                             .attr('class', 'line')
                             .attr('fill', 'none')
                             .attr('stroke', color(i))
-                            .attr('stroke-width', d.isMedia ? 3 : 2)
-                            .attr('stroke-dasharray', d.isMedia ? '5,5' : 'none')
+                            .attr('stroke-width', serie.isMedia ? 3 : 2)
+                            .attr('stroke-dasharray', serie.isMedia ? '5,5' : 'none')
                             .attr('d', line)
-                            .attr('data-name', d.name)
+                            .attr('data-name', serie.name)
                             .on('mouseover', function(event) {
-                                highlightAluno(d.name);
-                                // Encontrar o valor mais próximo do mouse
-                                const mouseX = x.invert(d3.pointer(event)[0]);
-                                const bisect = d3.bisector(p => periodo === 'ano' ? p.mes : p.dia).left;
-                                const index = bisect(dadosCompletos, mouseX);
-                                const ponto = dadosCompletos[index];
-                                showTooltip(event, d, ponto ? ponto.media : null);
+                                highlightAluno(serie.name);
+                                showTooltip(event, serie);
                             })
                             .on('mousemove', function(event) {
                                 // Atualizar tooltip com o valor atual
@@ -806,7 +823,7 @@
                                 const bisect = d3.bisector(p => periodo === 'ano' ? p.mes : p.dia).left;
                                 const index = bisect(dadosCompletos, mouseX);
                                 const ponto = dadosCompletos[index];
-                                showTooltip(event, d, ponto ? ponto.media : null);
+                                showTooltip(event, serie, ponto ? ponto.media : null);
                             })
                             .on('mouseout', function() {
                                 highlightAluno(null);
@@ -822,31 +839,36 @@
                             .attr('cy', p => y(p.media))
                             .attr('r', 4)
                             .attr('fill', color(i))
-                            .attr('data-name', d.name)
+                            .attr('data-name', serie.name)
                             .on('mouseover', function(event) {
-                                highlightAluno(d.name);
-                                showTooltip(event, d);
+                                highlightAluno(serie.name);
+                                showTooltip(event, serie);
                             })
                             .on('mouseout', function() {
                                 highlightAluno(null);
                                 hideTooltip();
                             });
+                    });
 
-                        // Legenda com eventos de hover e tooltip
+                    // Legenda com eventos de hover e tooltip
+                    data.forEach((serie, i) => {
                         const legendItem = svg.append('g')
                             .attr('class', 'legend-item')
                             .attr('transform', `translate(${width + 20},${i * 25})`);
+
+                        // Extrair apenas o nome do aluno para a legenda
+                        const nomeAluno = serie.name.split(' (')[0];
 
                         legendItem.append('rect')
                             .attr('x', 0)
                             .attr('width', 19)
                             .attr('height', 19)
                             .attr('fill', color(i))
-                            .style('stroke-dasharray', d.isMedia ? '5,5' : 'none')
+                            .style('stroke-dasharray', serie.isMedia ? '5,5' : 'none')
                             .style('cursor', 'pointer')
                             .on('mouseover', function(event) {
-                                highlightAluno(d.name);
-                                showTooltip(event, d);
+                                highlightAluno(serie.name);
+                                showTooltip(event, serie);
                             })
                             .on('mouseout', function() {
                                 highlightAluno(null);
@@ -859,17 +881,16 @@
                             .attr('dy', '.35em')
                             .style('text-anchor', 'start')
                             .style('cursor', 'pointer')
-                            .text(d.name)
+                            .text(nomeAluno)
                             .on('mouseover', function(event) {
-                                highlightAluno(d.name);
-                                showTooltip(event, d);
+                                highlightAluno(serie.name);
+                                showTooltip(event, serie);
                             })
                             .on('mouseout', function() {
                                 highlightAluno(null);
                                 hideTooltip();
                             });
                     });
-
                 } catch (error) {
                     console.error('Erro ao atualizar gráfico:', error);
                 }
@@ -894,7 +915,7 @@
 
                     d3.selectAll('.legend-item').filter(function() {
                         const text = d3.select(this).select('text').text();
-                        return text === alunoNome;
+                        return text === alunoNome.split(' (')[0];
                     }).classed('fade', false).classed('highlight', true);
                 } else {
                     // Remove todos os destaques
@@ -907,7 +928,13 @@
             // Event listeners para o gráfico
             window.addEventListener('resize', updateChartDimensions);
             document.querySelectorAll('input[name="tipo"], input[name="periodo"], #mesSelect, #disciplinaSelect, #anoSelect').forEach(el => {
-                el.addEventListener('change', updateChart);
+                el.addEventListener('change', () => updateChart());
+            });
+
+            // Adicionar evento ao botão de comparar
+            document.getElementById('compararBtn').addEventListener('click', () => {
+                const alunosIds = alunosSelecionados.map(a => a.id);
+                updateChart(alunosIds);
             });
 
             // Inicializar o gráfico quando o modal abrir
@@ -916,6 +943,13 @@
                     initializeChart();
                 } else {
                     updateChartDimensions();
+                    // Se houver alunos selecionados, atualizar o gráfico com eles
+                    if (alunosSelecionados.length > 0) {
+                        const alunosIds = alunosSelecionados.map(a => a.id);
+                        updateChart(alunosIds);
+                    } else {
+                        updateChart();
+                    }
                 }
             });
         </script>

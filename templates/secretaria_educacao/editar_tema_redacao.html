@@ -1,0 +1,61 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block title %}Editar Tema de Redação{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Editar Tema de Redação</h3>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('secretaria_educacao.editar_tema_redacao', tema_id=tema.id) }}">
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" value="{{ tema.titulo }}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="3" required>{{ tema.descricao }}</textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="tipo" class="form-label">Tipo</label>
+                            <select class="form-select" id="tipo" name="tipo" required>
+                                <option value="dissertativo" {% if tema.tipo == 'dissertativo' %}selected{% endif %}>Dissertativo</option>
+                                <option value="narrativo" {% if tema.tipo == 'narrativo' %}selected{% endif %}>Narrativo</option>
+                                <option value="argumentativo" {% if tema.tipo == 'argumentativo' %}selected{% endif %}>Argumentativo</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="data_limite" class="form-label">Data Limite</label>
+                            <input type="date" class="form-control" id="data_limite" name="data_limite" 
+                                   value="{{ tema.data_limite.strftime('%Y-%m-%d') if tema.data_limite else '' }}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                            <select class="form-select" id="ano_escolar_id" name="ano_escolar_id" required>
+                                {% for ano in anos_escolares %}
+                                <option value="{{ ano.id }}" {% if tema.ano_escolar_id == ano.id %}selected{% endif %}>
+                                    {{ ano.nome }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('secretaria_educacao.gerenciar_temas_redacao') }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

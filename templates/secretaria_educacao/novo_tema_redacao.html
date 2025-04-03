@@ -1,0 +1,82 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block title %}Novo Tema de Redação{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-plus me-2"></i>Novo Tema de Redação
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('secretaria_educacao.novo_tema_redacao') }}">
+                        <!-- Título -->
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título do Tema</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo" required
+                                   placeholder="Ex: Os desafios da educação no século XXI">
+                        </div>
+
+                        <!-- Descrição -->
+                        <div class="mb-3">
+                            <label for="descricao" class="form-label">Descrição do Tema</label>
+                            <textarea class="form-control" id="descricao" name="descricao" rows="5" required
+                                    placeholder="Descreva o tema, inclua textos de apoio, instruções e outros materiais relevantes..."></textarea>
+                        </div>
+
+                        <div class="row">
+                            <!-- Tipo -->
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="tipo" class="form-label">Tipo de Redação</label>
+                                    <select class="form-select" id="tipo" name="tipo" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="enem">ENEM</option>
+                                        <option value="vestibular">Vestibular</option>
+                                        <option value="concurso">Concurso</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Ano Escolar -->
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="ano_escolar_id" class="form-label">Ano Escolar</label>
+                                    <select class="form-select" id="ano_escolar_id" name="ano_escolar_id" required>
+                                        <option value="">Selecione...</option>
+                                        {% for ano in anos_escolares %}
+                                        <option value="{{ ano.id }}">{{ ano.nome }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Data Limite -->
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="data_limite" class="form-label">Data Limite</label>
+                                    <input type="date" class="form-control" id="data_limite" name="data_limite">
+                                    <small class="text-muted">Opcional</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <a href="{{ url_for('secretaria_educacao.temas_redacao') }}" class="btn btn-light me-2">
+                                <i class="fas fa-times me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Salvar Tema
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

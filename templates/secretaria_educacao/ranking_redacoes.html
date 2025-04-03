@@ -1,0 +1,144 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block title %}Ranking de Redações{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 mb-0 text-gray-800">Ranking de Redações</h1>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Tipo de Ranking</label>
+                    <select class="form-select" id="tipoRanking">
+                        <option value="alunos">Por Alunos</option>
+                        <option value="escolas">Por Escolas</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Período</label>
+                    <select class="form-select" id="periodoRanking">
+                        <option value="total">Total</option>
+                        <option value="mes">Mês Atual</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Ano Escolar</label>
+                    <select class="form-select" id="anoEscolar">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="rankingTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Aluno</th>
+                            <th>Escola</th>
+                            <th>Média Geral</th>
+                            <th>Domínio da Escrita</th>
+                            <th>Compreensão do Tema</th>
+                            <th>Organização de Ideias</th>
+                            <th>Argumentação</th>
+                            <th>Proposta de Solução</th>
+                            <th>Total de Redações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Código IBGE do usuário atual
+const CODIGO_IBGE_USUARIO = "{{ current_user.codigo_ibge }}";
+
+function atualizarRanking() {
+    const tipo = document.getElementById('tipoRanking').value;
+    const periodo = document.getElementById('periodoRanking').value;
+    const anoEscolar = document.getElementById('anoEscolar').value;
+
+    fetch(`/secretaria_educacao/ranking_redacoes?tipo=${tipo}&periodo=${periodo}&ano_escolar_id=${anoEscolar}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Atualiza anos escolares
+                const selectAno = document.getElementById('anoEscolar');
+                selectAno.innerHTML = '<option value="">Todos</option>';
+                data.anos_escolares.forEach(ano => {
+                    selectAno.innerHTML += `<option value="${ano}" ${ano === anoEscolar ? 'selected' : ''}>${ano}</option>`;
+                });
+
+                // Atualiza meses
+                const selectPeriodo = document.getElementById('periodoRanking');
+                selectPeriodo.innerHTML = '<option value="total">Total</option>';
+                data.meses.forEach(mes => {
+                    selectPeriodo.innerHTML += `<option value="${mes.id}" ${periodo === mes.id ? 'selected' : ''}>${mes.nome}</option>`;
+                });
+
+                const tbody = document.getElementById('rankingTable').getElementsByTagName('tbody')[0];
+                tbody.innerHTML = '';
+
+                data.ranking.forEach((item, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${index + 1}</td>
+                        <td>${tipo === 'alunos' ? item.aluno : '-'}</td>
+                        <td>${item.escola}</td>
+                        <td>${item.media_geral}</td>
+                        <td>${item.competencias.comp1}</td>
+                        <td>${item.competencias.comp2}</td>
+                        <td>${item.competencias.comp3}</td>
+                        <td>${item.competencias.comp4}</td>
+                        <td>${item.competencias.comp5}</td>
+                        <td class="d-flex align-items-center">
+                            ${item.total_redacoes}
+                            ${tipo === 'alunos' ? `
+                                <a href="/secretaria_educacao/redacoes_aluno/${item.aluno_id}" class="btn btn-sm btn-primary ms-2" title="Ver redações">
+                                    <i class="fas fa-file-alt"></i>
+                                </a>
+                            ` : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                if (data.ranking.length === 0) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td colspan="10" class="text-center">Nenhum resultado encontrado</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            } else {
+                console.error('Erro ao carregar ranking:', data.error);
+            }
+        })
+        .catch(error => console.error('Erro ao carregar ranking:', error));
+}
+
+// Carrega o ranking ao carregar a página
+document.addEventListener('DOMContentLoaded', atualizarRanking);
+
+// Atualizar quando mudar os filtros
+document.getElementById('tipoRanking').addEventListener('change', atualizarRanking);
+document.getElementById('periodoRanking').addEventListener('change', atualizarRanking);
+document.getElementById('anoEscolar').addEventListener('change', atualizarRanking);
+</script>
+{% endblock %}

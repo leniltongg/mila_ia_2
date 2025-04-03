@@ -23,66 +23,49 @@
 
     /* Estilos do Gráfico */
     .chart-container {
-        height: 70vh;
-        min-height: 500px;
         position: relative;
+        width: 100%;
+        height: 450px;
+        min-height: 450px;
+        background-color: #fff;
+        border-radius: 4px;
+        padding: 10px;
     }
 
     .line {
         fill: none;
         stroke-width: 2;
-        stroke-linejoin: round;
-        stroke-linecap: round;
-        opacity: 1;
         transition: all 0.3s ease;
-        cursor: pointer;
     }
 
     .line.fade {
-        opacity: 0.15;
+        opacity: 0.2;
     }
 
     .line.highlight {
-        opacity: 1;
         stroke-width: 3;
-        filter: drop-shadow(0 0 2px rgba(0,0,0,0.3));
+        filter: drop-shadow(0 0 3px rgba(0,0,0,0.3));
     }
 
     .point {
-        fill-opacity: 1;
-        stroke: white;
-        stroke-width: 1;
         transition: all 0.3s ease;
     }
 
     .point.fade {
-        opacity: 0.15;
+        opacity: 0.2;
     }
 
     .legend-item {
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: opacity 0.3s ease;
     }
 
     .legend-item.fade {
-        opacity: 0.3;
-    }
-
-    .legend-item:hover {
-        opacity: 1;
-    }
-
-    .legend-item text {
-        font-size: 12px;
-        user-select: none;
-    }
-
-    .axis-x text, .axis-y text {
-        font-size: 12px;
+        opacity: 0.2;
     }
 
     .grid line {
-        stroke: #ddd;
+        stroke: #e0e0e0;
         stroke-opacity: 0.7;
         shape-rendering: crispEdges;
     }
@@ -91,34 +74,134 @@
         stroke-width: 0;
     }
 
-    .tooltip {
-        position: fixed;  
-        padding: 4px 8px;
-        background: #333;
-        color: white;
-        border: 1px solid #222;
-        border-radius: 4px;
-        pointer-events: none;
-        font-size: 14px;
-        font-weight: bold;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        z-index: 1000;
-        white-space: nowrap;
-        transform: translate(-50%, -150%);  
-        margin-top: -5px;
+    .axis-x path,
+    .axis-y path {
+        stroke: #666;
     }
 
-    .tooltip::after {
-        content: '';
+    .axis-x text,
+    .axis-y text {
+        fill: #666;
+        font-size: 12px;
+    }
+
+    .progress-container {
+        position: relative;
+        width: 100%;
+        margin-bottom: 5px;
+    }
+
+    .progress-label {
         position: absolute;
-        bottom: -5px;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 5px solid transparent;
-        border-right: 5px solid transparent;
-        border-top: 5px solid #333;
+        left: 0;
+        right: 0;
+        text-align: center;
+        z-index: 1;
+        color: #333;
+        font-size: 12px;
+        line-height: 20px;
+    }
+
+    .progress-custom {
+        height: 20px;
+        background-color: #f5f5f5;
+        border-radius: 4px;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+    }
+
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+
+    /* Estilos para o dropdown de escolas */
+    #escolasDropdown {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #dee2e6;
+        border-radius: 0 0 4px 4px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background-color: white;
+        z-index: 1050;
+    }
+
+    #escolasDropdown .dropdown-item {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    #escolasDropdown .dropdown-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    #escolasDropdown .text-muted {
+        color: #6c757d;
+        padding: 8px 12px;
+    }
+
+    #escolasDropdown .text-danger {
+        color: #dc3545;
+        padding: 8px 12px;
+    }
+
+    /* Estilo para o input de busca */
+    #escolaSearch {
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+        padding: 8px 12px;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+
+    #escolaSearch:focus {
+        border-color: #80bdff;
+        outline: 0;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+
+    /* Estilos para o tooltip */
+    #tooltip {
+        position: absolute;
+        pointer-events: none;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border: 1px solid #ddd;
+        z-index: 1000;
+        max-width: 200px;
+        white-space: nowrap;
+    }
+
+    /* Estilos para o gráfico */
+    .line {
+        transition: opacity 0.2s ease, stroke-width 0.2s ease;
+    }
+
+    .line.fade {
+        opacity: 0.1;
+    }
+
+    .line.highlight {
+        stroke-width: 3;
+    }
+
+    .point {
+        transition: opacity 0.2s ease, r 0.2s ease;
+    }
+
+    .point.fade {
+        opacity: 0.1;
+    }
+
+    .legend-item {
+        transition: opacity 0.2s ease;
+    }
+
+    .legend-item.fade {
+        opacity: 0.3;
     }
 </style>
 
@@ -138,35 +221,7 @@
                         </div>
                     </div>
 
-                    <!-- Conteúdo da Tabela -->
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <div class="d-flex align-items-center">
-                                <div class="btn-group" role="group">
-                                    <input type="radio" class="btn-check" name="periodo" id="periodo_ano" value="ano" checked>
-                                    <label class="btn btn-outline-primary" for="periodo_ano">Anual</label>
-                                    
-                                    <input type="radio" class="btn-check" name="periodo" id="periodo_mes" value="mes">
-                                    <label class="btn btn-outline-primary" for="periodo_mes">Mensal</label>
-                                </div>
-                                
-                                <select id="mes_select" class="form-select ms-2" style="width: auto;" disabled>
-                                    <option value="1">Janeiro</option>
-                                    <option value="2">Fevereiro</option>
-                                    <option value="3">Março</option>
-                                    <option value="4">Abril</option>
-                                    <option value="5">Maio</option>
-                                    <option value="6">Junho</option>
-                                    <option value="7">Julho</option>
-                                    <option value="8">Agosto</option>
-                                    <option value="9">Setembro</option>
-                                    <option value="10">Outubro</option>
-                                    <option value="11">Novembro</option>
-                                    <option value="12">Dezembro</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <!-- Switch Toggle -->
                     <div class="switch-field">
@@ -371,79 +426,87 @@
                         <div class="col-md-3">
                             <label>Período</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="periodo" id="periodo_anual" value="ano" checked>
-                                <label class="btn btn-outline-primary" for="periodo_anual">Anual</label>
-                                <input type="radio" class="btn-check" name="periodo" id="periodo_mensal" value="mes">
-                                <label class="btn btn-outline-primary" for="periodo_mensal">Mensal</label>
+                                <input type="radio" class="btn-check" name="periodo" id="periodoAno" value="ano" checked>
+                                <label class="btn btn-outline-primary" for="periodoAno">Ano</label>
+                                <input type="radio" class="btn-check" name="periodo" id="periodoMes" value="mes">
+                                <label class="btn btn-outline-primary" for="periodoMes">Mês</label>
                             </div>
                         </div>
-                        <!-- Mês (visível apenas quando Mensal) -->
+                        <!-- Mês -->
                         <div class="col-md-3" id="mes_container" style="display: none;">
-                            <label for="mesSelect">Mês</label>
+                            <label>Mês</label>
                             <select id="mesSelect" class="form-select">
-                                <option value="3">Março</option>
-                                <option value="4">Abril</option>
-                                <option value="5">Maio</option>
-                                <option value="6">Junho</option>
-                                <option value="7">Julho</option>
-                                <option value="8">Agosto</option>
-                                <option value="9">Setembro</option>
-                                <option value="10">Outubro</option>
-                                <option value="11">Novembro</option>
-                                <option value="12">Dezembro</option>
+                                <option value="1" {% if request.args.get('mes', mes_atual|string) == '1' %}selected{% endif %}>Janeiro</option>
+                                <option value="2" {% if request.args.get('mes', mes_atual|string) == '2' %}selected{% endif %}>Fevereiro</option>
+                                <option value="3" {% if request.args.get('mes', mes_atual|string) == '3' %}selected{% endif %}>Março</option>
+                                <option value="4" {% if request.args.get('mes', mes_atual|string) == '4' %}selected{% endif %}>Abril</option>
+                                <option value="5" {% if request.args.get('mes', mes_atual|string) == '5' %}selected{% endif %}>Maio</option>
+                                <option value="6" {% if request.args.get('mes', mes_atual|string) == '6' %}selected{% endif %}>Junho</option>
+                                <option value="7" {% if request.args.get('mes', mes_atual|string) == '7' %}selected{% endif %}>Julho</option>
+                                <option value="8" {% if request.args.get('mes', mes_atual|string) == '8' %}selected{% endif %}>Agosto</option>
+                                <option value="9" {% if request.args.get('mes', mes_atual|string) == '9' %}selected{% endif %}>Setembro</option>
+                                <option value="10" {% if request.args.get('mes', mes_atual|string) == '10' %}selected{% endif %}>Outubro</option>
+                                <option value="11" {% if request.args.get('mes', mes_atual|string) == '11' %}selected{% endif %}>Novembro</option>
+                                <option value="12" {% if request.args.get('mes', mes_atual|string) == '12' %}selected{% endif %}>Dezembro</option>
                             </select>
                         </div>
                         <!-- Tipo -->
                         <div class="col-md-3">
                             <label>Tipo</label>
                             <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="tipo" id="tipo_pontuacao" value="pontuacao" checked>
-                                <label class="btn btn-outline-primary" for="tipo_pontuacao">Pontuação</label>
-                                <input type="radio" class="btn-check" name="tipo" id="tipo_desempenho" value="desempenho">
-                                <label class="btn btn-outline-primary" for="tipo_desempenho">Desempenho</label>
+                                <input type="radio" class="btn-check" name="tipo" id="tipoDesempenho" value="desempenho" checked>
+                                <label class="btn btn-outline-primary" for="tipoDesempenho">Desempenho</label>
+                                <input type="radio" class="btn-check" name="tipo" id="tipoPontuacao" value="pontuacao">
+                                <label class="btn btn-outline-primary" for="tipoPontuacao">Pontuação</label>
                             </div>
                         </div>
-                    </div>
-                    <div class="row">
                         <!-- Disciplina -->
-                        <div class="col-md-4">
-                            <label for="disciplinaSelect">Disciplina</label>
+                        <div class="col-md-3">
+                            <label>Disciplina</label>
                             <select id="disciplinaSelect" class="form-select">
-                                <option value="todos">Todas as Disciplinas</option>
+                                <option value="0">Todas as Disciplinas</option>
                                 {% for disciplina in disciplinas %}
                                 <option value="{{ disciplina.id }}">{{ disciplina.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <!-- Ano Escolar -->
-                        <div class="col-md-4">
-                            <label for="anoSelect">Ano Escolar</label>
+                    </div>
+                    <div class="row mt-3">
+                        <!-- Ano -->
+                        <div class="col-md-3">
+                            <label>Ano Escolar</label>
                             <select id="anoSelect" class="form-select">
-                                <option value="todos">Todos os Anos</option>
+                                <option value="0">Todos os Anos</option>
                                 {% for ano in anos_escolares %}
                                 <option value="{{ ano.id }}">{{ ano.nome }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                    </div>
-                    <div class="row">
-                        <!-- Busca de Escolas -->
-                        <div class="col-md-8">
+                        <!-- Busca de Escola -->
+                        <div class="col-md-6">
+                            <label>Escola</label>
                             <div class="position-relative">
                                 <input type="text" id="escolaSearch" class="form-control" placeholder="Digite o nome da escola..." autocomplete="off">
-                                <div id="escolasDropdown" class="position-absolute w-100 bg-white border rounded-bottom shadow-sm" style="display: none; z-index: 1000; max-height: 200px; overflow-y: auto;">
+                                <div id="escolasDropdown" class="dropdown-menu w-100" style="display: none;">
+                                    <!-- Resultados da busca serão inseridos aqui -->
                                 </div>
-                                <button class="btn btn-primary mt-2" type="button" id="addEscolaBtn" onclick="adicionarEscolaAtual()" disabled>
-                                    Comparar
-                                </button>
-                            </div>
-                            <div id="escolasComparacao" class="mt-2 d-flex flex-wrap gap-2">
-                                <!-- Tags das escolas selecionadas serão adicionadas aqui -->
                             </div>
                         </div>
+                        <div class="col-md-3">
+                            <label>&nbsp;</label>
+                            <button id="addEscolaBtn" class="btn btn-primary w-100" onclick="adicionarEscolaAtual()" disabled>
+                                Adicionar Escola
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Escolas selecionadas -->
+                    <div id="escolasComparacao" class="mt-3">
+                        <!-- Tags das escolas serão inseridas aqui -->
                     </div>
                 </div>
-                <div id="chart" class="chart-container"></div>
+                <div id="chart" class="chart-container">
+                    <div id="tooltip" class="tooltip" style="display: none;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -485,6 +548,14 @@ const margin = { top: 40, right: 200, bottom: 50, left: 60 };
 let width = 800;
 let height = 400;
 
+// Criar o tooltip
+const tooltip = d3.select('#chart')
+    .append('div')
+    .attr('id', 'tooltip')
+    .style('opacity', 0)
+    .style('position', 'absolute')
+    .style('pointer-events', 'none');
+
 // Criar o SVG
 const svg = d3.select('#chart')
     .append('svg')
@@ -522,11 +593,37 @@ const legend = svg.append('g')
     .attr('class', 'legend')
     .attr('transform', `translate(${width + 20}, 0)`);
 
-// Criar tooltip
-const tooltip = d3.select('#chart')
-    .append('div')
-    .attr('class', 'tooltip')
-    .style('opacity', 0);
+// Variáveis globais
+let escolasSelecionadas = new Set();
+let todasEscolas = [];
+let escolaAtual = '';
+
+// Event listeners
+document.querySelectorAll('input[name="periodo"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const mesContainer = document.getElementById('mes_container');
+        if (this.value === 'mes') {
+            mesContainer.style.display = 'block';
+            // Selecionar o mês atual
+            const mesAtual = new Date().getMonth() + 1;
+            document.getElementById('mesSelect').value = mesAtual.toString();
+        } else {
+            mesContainer.style.display = 'none';
+        }
+        updateChart();
+    });
+});
+
+// Inicializar o mês atual se o modo mensal estiver selecionado
+document.addEventListener('DOMContentLoaded', function() {
+    const periodoMes = document.querySelector('input[name="periodo"][value="mes"]');
+    if (periodoMes && periodoMes.checked) {
+        const mesContainer = document.getElementById('mes_container');
+        mesContainer.style.display = 'block';
+        const mesAtual = new Date().getMonth() + 1;
+        document.getElementById('mesSelect').value = mesAtual.toString();
+    }
+});
 
 // Função para mostrar tooltip
 function showTooltip(event, d, escola) {
@@ -543,30 +640,24 @@ function showTooltip(event, d, escola) {
             d3.format('.1f')(ponto.media) : 
             d3.format('.0f')(ponto.media * 100) + '%';
 
-        // Calcular a posição exata do ponto no gráfico
-        const xPos = x(periodo === 'ano' ? ponto.mes : ponto.dia);
-        const yPos = y(ponto.media);
-        const svgRect = svg.node().getBoundingClientRect();
-        const chartX = svgRect.left + margin.left + xPos;
-        const chartY = svgRect.top + margin.top + yPos;
-
-        // Ajustar posição do tooltip
-        tooltip.style('opacity', 1)
-            .html(valor)
-            .style('left', chartX + 'px')
-            .style('top', chartY + 'px');
+        // Posicionar o tooltip próximo à legenda
+        const tooltipEl = document.getElementById('tooltip');
+        tooltipEl.innerHTML = `
+            <div>
+                <strong>${escola}</strong><br>
+                ${valor}
+            </div>
+        `;
+        tooltipEl.style.display = 'block';
+        tooltipEl.style.left = (width + margin.left + 20) + 'px';
+        tooltipEl.style.top = margin.top + 'px';
     }
 }
 
 // Função para esconder tooltip
 function hideTooltip() {
-    tooltip.style('opacity', 0);
+    document.getElementById('tooltip').style.display = 'none';
 }
-
-// Variáveis globais
-let escolasSelecionadas = new Set();
-let todasEscolas = [];
-let escolaAtual = '';
 
 // Função para buscar escolas
 function buscarEscolas(texto) {
@@ -703,9 +794,9 @@ async function updateChart() {
                 return meses[d-1];
             }));
         } else {
-            const maxDia = new Date(2024, mes, 0).getDate();
+            const maxDia = new Date(2024, parseInt(mes), 0).getDate();
             x.domain([1, maxDia]);
-            xAxis.call(d3.axisBottom(x).tickFormat(d => d));
+            xAxis.call(d3.axisBottom(x).ticks(maxDia).tickFormat(d => d));
         }
 
         const maxY = d3.max(dadosProcessados, d => d3.max(d.data, v => v.media));
@@ -722,7 +813,7 @@ async function updateChart() {
         const line = d3.line()
             .x(d => x(periodo === 'ano' ? d.mes : d.dia))
             .y(d => y(d.media))
-            .defined(d => !isNaN(d.media))
+            .defined(d => !isNaN(d.media) && d.media !== null)
             .curve(d3.curveMonotoneX);
 
         // Limpar linhas e pontos existentes
@@ -744,12 +835,12 @@ async function updateChart() {
                     };
                 });
             } else {
-                const maxDia = new Date(2024, mes, 0).getDate();
+                const maxDia = new Date(2024, parseInt(mes), 0).getDate();
                 dadosCompletos = Array.from({length: maxDia}, (_, i) => {
                     const diaAtual = i + 1;
-                    const dadoExistente = escola.data.find(d => d.dia === diaAtual);
+                    const dadoExistente = escola.data.find(d => d.dia === diaAtual && d.mes === parseInt(mes));
                     return {
-                        mes: mes,
+                        mes: parseInt(mes),
                         dia: diaAtual,
                         media: dadoExistente ? dadoExistente.media : 0,
                         escola: escola.name
@@ -841,15 +932,6 @@ async function updateChart() {
 }
 
 // Event listeners
-document.querySelectorAll('input[name="periodo"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        console.log("Período alterado para:", this.value); 
-        document.getElementById('mes_container').style.display = 
-            this.value === 'mes' ? 'block' : 'none';
-        updateChart();
-    });
-});
-
 document.getElementById('mesSelect').addEventListener('change', updateChart);
 document.getElementById('disciplinaSelect').addEventListener('change', updateChart);
 document.getElementById('anoSelect').addEventListener('change', updateChart);
@@ -913,6 +995,22 @@ window.addEventListener('resize', function() {
 
         updateChart();
     }
+});
+
+// Função para filtrar por mês
+function filtrarPorMes(mes) {
+    const currentUrl = new URL(window.location.href);
+    currentUrl.searchParams.set('mes', mes);
+    window.location.href = currentUrl.toString();
+}
+
+// Função para atualizar o tipo de ranking
+document.querySelectorAll('input[name="tipo_ranking"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const currentUrl = new URL(window.location.href);
+        currentUrl.searchParams.set('tipo_ranking', this.value);
+        window.location.href = currentUrl.toString();
+    });
 });
 </script>
 

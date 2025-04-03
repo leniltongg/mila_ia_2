@@ -32,6 +32,13 @@ app = Flask(__name__, static_folder='static', static_url_path='/static')
 # Adicionar filtros personalizados ao Jinja2
 app.jinja_env.filters['chr'] = chr
 
+def nl2br(text):
+    if not text:
+        return ""
+    return text.replace('\n', '<br>')
+
+app.jinja_env.filters['nl2br'] = nl2br
+
 # Configurações básicas do Flask
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'chave-secreta-temporaria')
 
@@ -2052,6 +2059,13 @@ def clean_numeric(value):
 @app.route('/static/questoes_imagens/<path:filename>')
 def serve_image(filename):
     return send_from_directory('static/questoes_imagens', filename)
+
+@app.context_processor
+def utility_processor():
+    from datetime import datetime
+    return {
+        'now': datetime.now
+    }
 
 if __name__ == "__main__":
     app.run(debug=True)

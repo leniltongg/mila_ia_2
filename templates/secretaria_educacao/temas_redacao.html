@@ -1,0 +1,172 @@
+{% extends "secretaria_educacao/base_secretaria_educacao.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-pen-fancy me-2"></i>Temas de Redação</h2>
+        <a href="{{ url_for('secretaria_educacao.novo_tema_redacao') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Novo Tema
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            {% if temas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Ano Escolar</th>
+                            <th>Data Envio</th>
+                            <th>Data Limite</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tema in temas %}
+                        <tr>
+                            <td>{{ tema.titulo }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'primary' if tema.tipo == 'enem' else 'success' if tema.tipo == 'vestibular' else 'info' }}">
+                                    {{ tema.tipo.upper() }}
+                                </span>
+                            </td>
+                            <td>{{ tema.ano_escolar.nome }}</td>
+                            <td>{{ tema.data_envio.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ tema.data_limite.strftime('%d/%m/%Y') if tema.data_limite else 'Sem limite' }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if tema.status == 'ativo' else 'secondary' }}">
+                                    {{ tema.status.upper() }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info" data-tema-id="{{ tema.id }}" onclick="verDetalhes(this.dataset.temaId)">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" data-tema-id="{{ tema.id }}" onclick="encerrarTema(this.dataset.temaId)">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" data-tema-id="{{ tema.id }}" onclick="excluirTema(this.dataset.temaId)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-pen-alt fa-3x text-muted mb-3"></i>
+                <h4 class="text-muted">Nenhum tema de redação cadastrado</h4>
+                <p class="text-muted">Clique no botão "Novo Tema" para começar</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes -->
+<div class="modal fade" id="detalhesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes do Tema</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="detalhesConteudo"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function verDetalhes(temaId) {
+    try {
+        const response = await fetch(`/secretaria_educacao/tema_redacao/${temaId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const modal = new bootstrap.Modal(document.getElementById('detalhesModal'));
+            document.getElementById('detalhesConteudo').innerHTML = `
+                <h4>${data.tema.titulo}</h4>
+                <p class="text-muted">
+                    ${data.tema.tipo.toUpperCase()} | 
+                    ${data.tema.ano_escolar.nome} | 
+                    Enviado em ${new Date(data.tema.data_envio).toLocaleDateString()}
+                </p>
+                <hr>
+                <div class="mb-4">
+                    <h5>Descrição</h5>
+                    <p>${data.tema.descricao}</p>
+                </div>
+                <div>
+                    <h5>Estatísticas</h5>
+                    <ul>
+                        <li>Total de redações: ${data.estatisticas.total_redacoes}</li>
+                        <li>Média das notas: ${data.estatisticas.media_notas}</li>
+                    </ul>
+                </div>
+            `;
+            modal.show();
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao carregar detalhes do tema');
+    }
+}
+
+async function encerrarTema(temaId) {
+    if (!confirm('Tem certeza que deseja encerrar este tema? Alunos não poderão mais enviar redações.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/secretaria_educacao/encerrar_tema_redacao/${temaId}`, {
+            method: 'POST'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao encerrar tema');
+    }
+}
+
+async function excluirTema(temaId) {
+    if (!confirm('Tem certeza que deseja excluir este tema? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/secretaria_educacao/excluir_tema_redacao/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ tema_id: temaId })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            location.reload();
+        } else {
+            throw new Error(data.message);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao excluir tema: ' + error);
+    }
+}
+</script>
+{% endblock %}

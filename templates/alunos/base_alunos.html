@@ -32,6 +32,10 @@
                href="{{ url_for('simulados.listar_simulados_professores') }}">
                 <i class="bi bi-person-video3"></i> Simulados dos Professores
             </a>
+            <a class="nav-link {% if request.endpoint == 'alunos_bp.temas_redacao' %}active{% endif %}" 
+               href="{{ url_for('alunos_bp.temas_redacao') }}">
+                <i class="bi bi-pen"></i> Temas de Redação
+            </a>
         </div>
     </div>
 
@@ -67,6 +71,9 @@
             </a>
             <a class="nav-link {% if request.endpoint == 'alunos_bp.treinar_apresentacao' %}active{% endif %}" href="{{ url_for('alunos_bp.treinar_apresentacao') }}">
                 <i class="bi bi-easel"></i> Treinar Apresentação
+            </a>
+            <a class="nav-link {% if request.endpoint == 'alunos_bp.preparar_redacao' %}active{% endif %}" href="{{ url_for('alunos_bp.preparar_redacao') }}">
+                <i class="bi bi-pencil-square"></i> Redação Livre
             </a>
         </div>
     </div>

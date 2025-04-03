@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, current_app, make_response
 from flask_login import login_required, current_user
-from models import db, Usuarios, Escolas, Turmas, Ano_escolar, SimuladosGerados, DesempenhoSimulado, MESES, Disciplinas
+from models import db, Usuarios, Escolas, Turmas, Ano_escolar, SimuladosGerados, DesempenhoSimulado, MESES, Disciplinas, TemasRedacao, RedacoesAlunos
 from extensions import db
 from sqlalchemy import func, case, exists, and_
 import openai
@@ -404,91 +404,27 @@ def preparar_redacao():
 @alunos_bp.route('/analisar_redacao', methods=['POST'])
 @login_required
 def analisar_redacao():
+    """Analisa uma redação livre usando IA"""
+    if current_user.tipo_usuario_id != 4:  # Aluno
+        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
+        
+    data = request.get_json()
+    
     try:
-        data = request.get_json()
-        tipo = data.get('tipo', '')
-        tema = data.get('tema', '')
-        redacao = data.get('redacao', '')
-        analise_estrutura = data.get('analise_estrutura', True)
-        analise_argumentos = data.get('analise_argumentos', True)
-        analise_gramatical = data.get('analise_gramatical', True)
-        sugestoes_melhoria = data.get('sugestoes_melhoria', True)
-
-        if not tipo or not tema or not redacao.strip():
-            return jsonify({
-                'success': False,
-                'error': 'Por favor, preencha todos os campos.'
-            }), 400
-
-        # Prompt para o OpenAI
-        prompt = f"""Analise a redação abaixo e forneça uma avaliação detalhada.
-
-Tipo de redação: {tipo}
-Tema: {tema}
-
-Redação:
-{redacao}
-
-Por favor, forneça:
-1. Nota final (0-1000)
-2. Notas por competência (0-200 cada):
-   - Competência 1: Domínio da norma culta
-   - Competência 2: Compreensão do tema e tipo textual
-   - Competência 3: Organização e argumentação
-   - Competência 4: Mecanismos linguísticos e coesão
-   - Competência 5: Proposta de intervenção
-
-3. Análises solicitadas:
-{f'- Análise estrutural: avalie a estrutura do texto, parágrafos e desenvolvimento.' if analise_estrutura else ''}
-{f'- Análise argumentativa: avalie a qualidade e desenvolvimento dos argumentos.' if analise_argumentos else ''}
-{f'- Análise gramatical: aponte erros gramaticais e sugestões de correção.' if analise_gramatical else ''}
-{f'- Sugestões de melhoria: forneça sugestões específicas para melhorar o texto.' if sugestoes_melhoria else ''}
-
-Responda em formato JSON com os seguintes campos:
-- nota_final: número
-- comp1: número
-- comp2: número
-- comp3: número
-- comp4: número
-- comp5: número
-- estrutura: string com análise estrutural em HTML (use <p>, <ul>, <li>, etc.)
-- argumentacao: string com análise argumentativa em HTML
-- gramatica: string com análise gramatical em HTML
-- sugestoes: string com sugestões de melhoria em HTML"""
-
-        # Fazer a chamada para o OpenAI
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo-16k",
-            messages=[
-                {"role": "system", "content": "Você é um professor especializado em redação, com vasta experiência em correção de textos do ENEM e vestibulares."},
-                {"role": "user", "content": prompt}
-            ]
+        analise = analisar_redacao_ia(
+            tipo=data['tipo'],
+            tema=data['tema'],
+            redacao=data['redacao'],
+            analise_estrutura=data.get('analise_estrutura', True),
+            analise_argumentos=data.get('analise_argumentos', True),
+            analise_gramatical=data.get('analise_gramatical', True),
+            sugestoes_melhoria=data.get('sugestoes_melhoria', True)
         )
-
-        # Processar resposta
-        try:
-            content = response.choices[0].message.content.strip()
-            # Remover possíveis textos antes ou depois do JSON
-            content = content[content.find('{'):content.rfind('}')+1]
-            analise = json.loads(content)
-            return jsonify({
-                'success': True,
-                'analise': analise
-            })
-        except Exception as e:
-            print(f"Erro ao processar resposta: {str(e)}")
-            print(f"Resposta recebida: {response.choices[0].message.content}")
-            return jsonify({
-                'success': False,
-                'error': 'Erro ao processar a análise da redação.'
-            }), 500
-
+        
+        return jsonify({'success': True, 'analise': analise})
+        
     except Exception as e:
-        print(f"Erro ao analisar redação: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': 'Erro ao analisar a redação.'
-        }), 500
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 @alunos_bp.route('/download_analise_redacao', methods=['POST'])
 @login_required
@@ -1333,3 +1269,243 @@ def formatar_resumo_html(resumo, tipo):
     resumo = f'<p class="mb-3">{resumo}</p>'
     
     return resumo
+
+@alunos_bp.route('/temas-redacao')
+@login_required
+def temas_redacao():
+    """Lista os temas de redação disponíveis para o aluno"""
+    if current_user.tipo_usuario_id != 4:  # Aluno
+        flash('Acesso não autorizado', 'danger')
+        return redirect(url_for('index'))
+        
+    # Busca temas ativos para o ano escolar do aluno
+    temas = TemasRedacao.query.filter_by(
+        codigo_ibge=current_user.codigo_ibge,
+        ano_escolar_id=current_user.ano_escolar_id,
+        ativo=True
+    ).order_by(TemasRedacao.data_envio.desc()).all()
+    
+    # Para cada tema, verifica se o aluno já respondeu
+    for tema in temas:
+        redacao = RedacoesAlunos.query.filter_by(
+            tema_id=tema.id,
+            aluno_id=current_user.id
+        ).first()
+        tema.respondido = redacao is not None
+        if tema.respondido:
+            tema.nota = redacao.nota_final
+    
+    return render_template('alunos/temas_redacao.html', temas=temas)
+
+@alunos_bp.route('/responder-tema/<int:tema_id>')
+@login_required
+def responder_tema(tema_id):
+    """Mostra a página para escrever a redação de um tema específico"""
+    if current_user.tipo_usuario_id != 4:  # Aluno
+        flash('Acesso não autorizado', 'danger')
+        return redirect(url_for('index'))
+        
+    # Verifica se o tema existe e está disponível
+    tema = TemasRedacao.query.filter_by(
+        id=tema_id,
+        codigo_ibge=current_user.codigo_ibge,
+        ano_escolar_id=current_user.ano_escolar_id,
+        ativo=True
+    ).first_or_404()
+    
+    # Verifica se já respondeu
+    redacao = RedacoesAlunos.query.filter_by(
+        tema_id=tema.id,
+        aluno_id=current_user.id
+    ).first()
+    
+    if redacao:
+        flash('Você já respondeu este tema', 'warning')
+        return redirect(url_for('alunos_bp.temas_redacao'))
+        
+    return render_template('alunos/preparar_redacao.html', tema=tema)
+
+@alunos_bp.route('/analisar_redacao_tema', methods=['POST'])
+@login_required
+def analisar_redacao_tema():
+    """Analisa a redação do aluno usando IA e salva no banco"""
+    if current_user.tipo_usuario_id != 4:  # Aluno
+        return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
+        
+    data = request.get_json()
+    
+    # Verifica se o tema existe e está ativo
+    tema = TemasRedacao.query.filter_by(
+        id=data['tema_id'],
+        codigo_ibge=current_user.codigo_ibge,
+        ano_escolar_id=current_user.ano_escolar_id,
+        ativo=True
+    ).first()
+    
+    if not tema:
+        return jsonify({'success': False, 'message': 'Tema não encontrado ou não disponível'}), 404
+    
+    # Verifica se já respondeu
+    redacao_existente = RedacoesAlunos.query.filter_by(
+        tema_id=tema.id,
+        aluno_id=current_user.id
+    ).first()
+    
+    if redacao_existente:
+        return jsonify({'success': False, 'message': 'Você já respondeu este tema'}), 400
+    
+    try:
+        # Chama a mesma função de análise da redação livre
+        analise = analisar_redacao_ia(
+            tipo=tema.tipo,
+            tema=tema.titulo,
+            redacao=data['redacao'],
+            analise_estrutura=True,
+            analise_argumentos=True,
+            analise_gramatical=True,
+            sugestoes_melhoria=True
+        )
+        
+        # Salva a redação e a análise
+        redacao = RedacoesAlunos(
+            tema_id=tema.id,
+            aluno_id=current_user.id,
+            texto=data['redacao'],
+            nota_final=analise['nota_final'],
+            comp1=analise['comp1'],
+            comp2=analise['comp2'],
+            comp3=analise['comp3'],
+            comp4=analise['comp4'],
+            comp5=analise['comp5'],
+            analise_estrutura=analise['estrutura'],
+            analise_argumentos=analise['argumentacao'],
+            analise_gramatical=analise['gramatica'],
+            sugestoes_melhoria=analise['sugestoes']
+        )
+        
+        db.session.add(redacao)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'analise': analise})
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+def analisar_redacao_ia(tipo, tema, redacao, analise_estrutura=True, analise_argumentos=True, analise_gramatical=True, sugestoes_melhoria=True):
+    """
+    Analisa uma redação usando IA e retorna um dicionário com a análise completa.
+    
+    Args:
+        tipo (str): Tipo da redação (enem, vestibular, concurso)
+        tema (str): Tema da redação
+        redacao (str): Texto da redação
+        analise_estrutura (bool): Se deve analisar a estrutura
+        analise_argumentos (bool): Se deve analisar os argumentos
+        analise_gramatical (bool): Se deve fazer análise gramatical
+        sugestoes_melhoria (bool): Se deve dar sugestões de melhoria
+    
+    Returns:
+        dict: Dicionário com a análise completa
+    """
+    try:
+        import os
+        from openai import OpenAI
+
+        # Inicializa o cliente OpenAI com a chave da API
+        client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        
+        # Monta o prompt para a análise
+        prompt = f"""
+        Analise a seguinte redação do tipo {tipo.upper()} sobre o tema: "{tema}"
+
+        REDAÇÃO:
+        {redacao}
+
+        INSTRUÇÕES:
+        1. Avalie a redação considerando as 5 competências do ENEM:
+           - Competência 1: Domínio da norma culta da língua escrita (0-200 pontos)
+           - Competência 2: Compreensão do tema e aplicação das áreas do conhecimento (0-200 pontos)
+           - Competência 3: Capacidade de argumentação (0-200 pontos)
+           - Competência 4: Domínio dos mecanismos linguísticos para a construção da argumentação (0-200 pontos)
+           - Competência 5: Elaboração de proposta de intervenção para o problema abordado (0-200 pontos)
+
+        2. Forneça uma análise detalhada dos seguintes aspectos:
+           - Estrutura do texto (introdução, desenvolvimento, conclusão)
+           - Argumentação e repertório sociocultural
+           - Aspectos gramaticais e linguísticos
+           - Sugestões específicas para melhoria
+
+        3. Retorne a análise no seguinte formato JSON:
+        {{
+            "nota_final": <nota_total_0_a_1000>,
+            "comp1": <nota_0_a_200>,
+            "comp2": <nota_0_a_200>,
+            "comp3": <nota_0_a_200>,
+            "comp4": <nota_0_a_200>,
+            "comp5": <nota_0_a_200>,
+            "estrutura": "<análise_estrutural_em_html>",
+            "argumentacao": "<análise_argumentativa_em_html>",
+            "gramatica": "<análise_gramatical_em_html>",
+            "sugestoes": "<sugestões_melhoria_em_html>"
+        }}
+        """
+
+        # Faz a chamada para a API
+        response = client.chat.completions.create(
+            model="gpt-4-turbo-preview",  # ou outro modelo adequado
+            messages=[
+                {"role": "system", "content": "Você é um especialista em avaliação de redações com vasta experiência em bancas do ENEM, vestibulares e concursos."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+
+        # Extrai e retorna a análise em formato JSON
+        import json
+        analise = json.loads(response.choices[0].message.content)
+        
+        # Garante que todas as chaves necessárias existam
+        required_keys = ['nota_final', 'comp1', 'comp2', 'comp3', 'comp4', 'comp5']
+        if analise_estrutura:
+            required_keys.append('estrutura')
+        if analise_argumentos:
+            required_keys.append('argumentacao')
+        if analise_gramatical:
+            required_keys.append('gramatica')
+        if sugestoes_melhoria:
+            required_keys.append('sugestoes')
+            
+        for key in required_keys:
+            if key not in analise:
+                raise Exception(f"A análise não retornou o campo obrigatório: {key}")
+
+        return analise
+        
+    except Exception as e:
+        raise Exception(f"Erro ao analisar redação: {str(e)}")
+
+# @alunos_bp.route('/analisar-redacao', methods=['POST'])
+# @login_required
+# def analisar_redacao():
+#     """Analisa uma redação livre usando IA"""
+#     if current_user.tipo_usuario_id != 4:  # Aluno
+#         return jsonify({'success': False, 'message': 'Acesso não autorizado'}), 403
+        
+#     data = request.get_json()
+    
+#     try:
+#         analise = analisar_redacao_ia(
+#             tipo=data['tipo'],
+#             tema=data['tema'],
+#             redacao=data['redacao'],
+#             analise_estrutura=data.get('analise_estrutura', True),
+#             analise_argumentos=data.get('analise_argumentos', True),
+#             analise_gramatical=data.get('analise_gramatical', True),
+#             sugestoes_melhoria=data.get('sugestoes_melhoria', True)
+#         )
+        
+#         return jsonify({'success': True, 'analise': analise})
+        
+#     except Exception as e:
+#         return jsonify({'success': False, 'message': str(e)}), 500
